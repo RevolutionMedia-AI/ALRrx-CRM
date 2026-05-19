@@ -5,7 +5,7 @@ COPY ../ALRrx.sln ./
 COPY ../ALRrx.Domain/*.csproj ALRrx.Domain/
 COPY ../ALRrx.Application/*.csproj ALRrx.Application/
 COPY ../ALRrx.Infrastructure/*.csproj ALRrx.Infrastructure/
-COPY ./*.csproj ALRrx.Api/
+COPY ALRrx.Api.csproj ALRrx.Api/
 RUN dotnet restore
 
 COPY ../ .
