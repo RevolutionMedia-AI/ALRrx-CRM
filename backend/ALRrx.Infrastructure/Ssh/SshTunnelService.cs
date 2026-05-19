@@ -23,6 +23,7 @@ public sealed class SshTunnelService : ISshTunnelService
     public async Task ConnectAsync(CancellationToken ct = default)
     {
         if (IsConnected) return;
+        if (string.IsNullOrEmpty(_config.Host)) return;
 
         await Task.Run(() =>
         {

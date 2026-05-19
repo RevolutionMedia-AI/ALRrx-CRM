@@ -61,9 +61,9 @@ builder.Services.AddControllers();
 var cfg = builder.Configuration;
 var connectionConfig = new ConnectionConfig
 {
-    Host = cfg["Ssh:Host"] ?? throw new InvalidOperationException("SSH_HOST is required"),
-    Port = int.Parse(cfg["Ssh:Port"] ?? throw new InvalidOperationException("SSH_PORT is required")),
-    Username = cfg["Ssh:Username"] ?? throw new InvalidOperationException("SSH_USERNAME is required"),
+    Host = cfg["Ssh:Host"] ?? "",
+    Port = int.Parse(cfg["Ssh:Port"] ?? "0"),
+    Username = cfg["Ssh:Username"] ?? "",
     Password = cfg["Ssh:Password"] ?? "",
     PrivateKeyPath = cfg["Ssh:PrivateKeyPath"] ?? "",
     PrivateKeyPassphrase = cfg["Ssh:PrivateKeyPassphrase"] ?? "",

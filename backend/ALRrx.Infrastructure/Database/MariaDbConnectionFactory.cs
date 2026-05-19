@@ -25,7 +25,8 @@ public sealed class MariaDbConnectionFactory : IDatabaseConnection
 
     public async Task<DbConnection> GetConnectionAsync(CancellationToken ct = default)
     {
-        await _tunnel.ConnectAsync(ct);
+        if (!string.IsNullOrEmpty(_config.Host))
+            await _tunnel.ConnectAsync(ct);
 
         if (_connection is { State: System.Data.ConnectionState.Open })
             return _connection;
