@@ -2,10 +2,12 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { login as apiLogin, setAuthToken, type UserInfo } from '../services/authApi';
 
 const FAKE_USER: UserInfo = {
-  id: 'dev-bypass',
+  id: 0,
   email: 'kevin.escalante@revolutionmedia.ai',
-  name: 'Kevin Escalante',
+  fullName: 'Kevin Escalante',
   role: 'Admin',
+  isActive: true,
+  createdAt: new Date().toISOString(),
 };
 
 interface AuthContextType {
