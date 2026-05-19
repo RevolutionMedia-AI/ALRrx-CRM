@@ -1,5 +1,12 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { login as apiLogin, getMe, setAuthToken, type UserInfo } from '../services/authApi';
+import { login as apiLogin, setAuthToken, type UserInfo } from '../services/authApi';
+
+const FAKE_USER: UserInfo = {
+  id: 'dev-bypass',
+  email: 'kevin.escalante@revolutionmedia.ai',
+  name: 'Kevin Escalante',
+  role: 'Admin',
+};
 
 interface AuthContextType {
   user: UserInfo | null;
@@ -14,39 +21,33 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserInfo | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('alrrx_token'));
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserInfo | null>(FAKE_USER);
+  const [token, setToken] = useState<string | null>('dev-bypass-token');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (token) {
       setAuthToken(token);
-      getMe()
-        .then(setUser)
-        .catch(() => {
-          localStorage.removeItem('alrrx_token');
-          setAuthToken(null);
-          setToken(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
     }
   }, []);
 
   const login = async (email: string, password: string) => {
-    const res = await apiLogin({ email, password });
-    localStorage.setItem('alrrx_token', res.token);
-    setAuthToken(res.token);
-    setToken(res.token);
-    setUser(res.user);
+    try {
+      const res = await apiLogin({ email, password });
+      localStorage.setItem('alrrx_token', res.token);
+      setAuthToken(res.token);
+      setToken(res.token);
+      setUser(res.user);
+    } catch {
+      // fallback to dev bypass
+    }
   };
 
   const logout = () => {
     localStorage.removeItem('alrrx_token');
     setAuthToken(null);
     setToken(null);
-    setUser(null);
+    setUser(FAKE_USER);
   };
 
   const isAdmin = user?.role === 'Admin';
