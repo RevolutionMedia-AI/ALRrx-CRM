@@ -12,6 +12,9 @@ using MySqlConnector;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://+:{port}");
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -81,21 +84,38 @@ builder.Services.AddSingleton<MutationExecutor>(sp =>
 {
     var dbConnection = sp.GetRequiredService<IDatabaseConnection>();
     var logger = sp.GetRequiredService<ILogger<MutationExecutor>>();
-    var connection = (MySqlConnection)dbConnection.GetConnectionAsync().GetAwaiter().GetResult();
-    return new MutationExecutor(connection, logger);
+    try
+    {
+        var connection = (MySqlConnection)dbConnection.GetConnectionAsync().GetAwaiter().GetResult();
+        return new MutationExecutor(connection, logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "MutationExecutor deferred — no database connection available yet");
+        throw;
+    }
 });
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+_ = Task.Run(async () =>
 {
-    var sp = scope.ServiceProvider;
-    var dbConnection = sp.GetRequiredService<IDatabaseConnection>();
-    var logger = sp.GetRequiredService<ILogger<UserRepository>>();
-    var connection = (MySqlConnection)await dbConnection.GetConnectionAsync();
-    var repo = new UserRepository(connection, logger);
-    await repo.EnsureAdminSeededAsync();
-}
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var sp = scope.ServiceProvider;
+        var dbConnection = sp.GetRequiredService<IDatabaseConnection>();
+        var logger = sp.GetRequiredService<ILogger<UserRepository>>();
+        var connection = (MySqlConnection)await dbConnection.GetConnectionAsync();
+        var repo = new UserRepository(connection, logger);
+        await repo.EnsureAdminSeededAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "Database initialization deferred — will retry on first request");
+    }
+});
 
 app.UseCors();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
