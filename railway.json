@@ -6,7 +6,7 @@
   },
   "deploy": {
     "numReplicas": 1,
-    "healthcheckPath": "/api/dashboard/summary?period=Today",
+    "healthcheckPath": "/health",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE"
   }
