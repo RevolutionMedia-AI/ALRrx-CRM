@@ -11,7 +11,7 @@ services:
       - Ssh__Port=${SSH_PORT:-22}
       - Ssh__Username=${SSH_USERNAME}
       - Ssh__Password=${SSH_PASSWORD}
-      - Ssh__PrivateKeyPath=${SSH_PRIVATE_KEY_PATH:-/app/keys/id_rsa}
+      - Ssh__PrivateKeyPath=${SSH_PRIVATE_KEY_PATH:-}
       - Ssh__PrivateKeyPassphrase=${SSH_PRIVATE_KEY_PASSPHRASE}
       - Ssh__RemoteHost=${SSH_REMOTE_HOST:-127.0.0.1}
       - Ssh__RemotePort=${SSH_REMOTE_PORT:-3306}
