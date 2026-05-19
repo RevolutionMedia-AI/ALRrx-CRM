@@ -1,0 +1,11 @@
+node_modules/
+frontend/
+skills/
+.env
+.git/
+.gitignore
+*.md
+docker-compose.yml
+railway.json
+**/bin/
+**/obj/
