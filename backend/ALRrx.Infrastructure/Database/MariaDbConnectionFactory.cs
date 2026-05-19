@@ -32,8 +32,8 @@ public sealed class MariaDbConnectionFactory : IDatabaseConnection
 
         var builder = new MySqlConnectionStringBuilder
         {
-            Server = _tunnel.LocalHost,
-            Port = (uint)_tunnel.LocalPort,
+            Server = _config.DatabaseHost,
+            Port = (uint)_config.DatabasePort,
             UserID = _config.DatabaseUser,
             Password = _config.DatabasePassword,
             Database = _config.Database,

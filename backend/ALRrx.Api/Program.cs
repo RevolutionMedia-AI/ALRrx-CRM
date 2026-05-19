@@ -55,20 +55,22 @@ builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
 builder.Services.AddControllers();
 
+var cfg = builder.Configuration;
 var connectionConfig = new ConnectionConfig
 {
-    Host = builder.Configuration["Ssh:Host"] ?? "localhost",
-    Port = int.Parse(builder.Configuration["Ssh:Port"] ?? "22"),
-    Username = builder.Configuration["Ssh:Username"] ?? "",
-    Password = builder.Configuration["Ssh:Password"] ?? "",
-    PrivateKeyPath = builder.Configuration["Ssh:PrivateKeyPath"] ?? "",
-    PrivateKeyPassphrase = builder.Configuration["Ssh:PrivateKeyPassphrase"] ?? "",
-    LocalPort = int.Parse(builder.Configuration["Ssh:LocalPort"] ?? "3307"),
-    RemoteHost = builder.Configuration["Ssh:RemoteHost"] ?? "127.0.0.1",
-    RemotePort = int.Parse(builder.Configuration["Ssh:RemotePort"] ?? "3306"),
-    Database = builder.Configuration["Database:Name"] ?? "asterisk",
-    DatabaseUser = builder.Configuration["Database:User"] ?? "",
-    DatabasePassword = builder.Configuration["Database:Password"] ?? ""
+    Host = cfg["Ssh:Host"] ?? throw new InvalidOperationException("SSH_HOST is required"),
+    Port = int.Parse(cfg["Ssh:Port"] ?? throw new InvalidOperationException("SSH_PORT is required")),
+    Username = cfg["Ssh:Username"] ?? throw new InvalidOperationException("SSH_USERNAME is required"),
+    Password = cfg["Ssh:Password"] ?? "",
+    PrivateKeyPath = cfg["Ssh:PrivateKeyPath"] ?? "",
+    PrivateKeyPassphrase = cfg["Ssh:PrivateKeyPassphrase"] ?? "",
+    RemoteHost = cfg["Ssh:RemoteHost"] ?? "127.0.0.1",
+    RemotePort = int.Parse(cfg["Ssh:RemotePort"] ?? "3306"),
+    DatabaseHost = cfg["Database:Host"] ?? "127.0.0.1",
+    DatabasePort = int.Parse(cfg["Database:Port"] ?? "3306"),
+    Database = cfg["Database:Name"] ?? throw new InvalidOperationException("DB_NAME is required"),
+    DatabaseUser = cfg["Database:User"] ?? throw new InvalidOperationException("DB_USER is required"),
+    DatabasePassword = cfg["Database:Password"] ?? throw new InvalidOperationException("DB_PASSWORD is required"),
 };
 
 builder.Services.AddInfrastructure(connectionConfig);

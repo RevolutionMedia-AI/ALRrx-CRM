@@ -19,8 +19,6 @@ public sealed class SshTunnelService : ISshTunnelService
     }
 
     public bool IsConnected => _client?.IsConnected == true && _port?.IsStarted == true;
-    public string LocalHost => _config.LocalPort.ToString();
-    public int LocalPort => _config.LocalPort;
 
     public async Task ConnectAsync(CancellationToken ct = default)
     {
@@ -34,8 +32,8 @@ public sealed class SshTunnelService : ISshTunnelService
             _client.Connect();
 
             _port = new ForwardedPortLocal(
-                "127.0.0.1",
-                (uint)_config.LocalPort,
+                _config.DatabaseHost,
+                (uint)_config.DatabasePort,
                 _config.RemoteHost,
                 (uint)_config.RemotePort);
 
@@ -43,8 +41,8 @@ public sealed class SshTunnelService : ISshTunnelService
             _port.Start();
 
             _logger.LogInformation(
-                "SSH tunnel established: localhost:{LocalPort} -> {RemoteHost}:{RemotePort}",
-                _config.LocalPort, _config.RemoteHost, _config.RemotePort);
+                "SSH tunnel established: {DbHost}:{DbPort} -> {RemoteHost}:{RemotePort}",
+                _config.DatabaseHost, _config.DatabasePort, _config.RemoteHost, _config.RemotePort);
         }, ct);
     }
 

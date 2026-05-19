@@ -13,9 +13,10 @@ services:
       - Ssh__Password=${SSH_PASSWORD}
       - Ssh__PrivateKeyPath=${SSH_PRIVATE_KEY_PATH:-/app/keys/id_rsa}
       - Ssh__PrivateKeyPassphrase=${SSH_PRIVATE_KEY_PASSPHRASE}
-      - Ssh__LocalPort=${SSH_LOCAL_PORT:-3307}
       - Ssh__RemoteHost=${SSH_REMOTE_HOST:-127.0.0.1}
       - Ssh__RemotePort=${SSH_REMOTE_PORT:-3306}
+      - Database__Host=${DB_HOST:-127.0.0.1}
+      - Database__Port=${DB_PORT:-3306}
       - Database__Name=${DB_NAME:-asterisk}
       - Database__User=${DB_USER}
       - Database__Password=${DB_PASSWORD}
