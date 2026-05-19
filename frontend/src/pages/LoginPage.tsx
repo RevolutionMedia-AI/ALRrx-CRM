@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import logoImg from '../images/RevolutionLogo.png';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -25,7 +26,7 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
-          <h1>ALRrx <span>Operations</span></h1>
+          <img src={logoImg} alt="Revolution Logo" className="login-logo" />
           <p>Sign in to your account</p>
         </div>
         <form onSubmit={handleSubmit}>

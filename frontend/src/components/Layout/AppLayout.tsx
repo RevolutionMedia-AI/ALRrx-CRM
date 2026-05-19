@@ -1,6 +1,7 @@
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
+import logoImg from '../../images/RevolutionLogo.png';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout, isAdmin } = useAuth();
@@ -11,7 +12,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <div className="app-layout">
       <header className="app-header">
         <div className="app-header-left">
-          <h1>ALRrx <span>Operations</span></h1>
+          <img src={logoImg} alt="Revolution Logo" className="nav-logo" />
           <nav className="app-nav">
             <button
               className={`nav-btn ${location.pathname === '/' ? 'active' : ''}`}
