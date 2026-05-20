@@ -1,3 +1,4 @@
+using ALRrx.Application.Interfaces;
 using ALRrx.Domain.Entities;
 using ALRrx.Domain.Interfaces;
 using ALRrx.Domain.ValueObjects;
@@ -8,7 +9,7 @@ namespace ALRrx.Infrastructure.Database;
 
 public sealed class QueryExecutor : IQueryService
 {
-    private readonly MySqlConnection _connection;
+    private readonly IDatabaseConnection _dbConnection;
     private readonly ILogger<QueryExecutor> _logger;
     private readonly Dictionary<string, QueryDefinition> _queries = new()
     {
@@ -138,9 +139,9 @@ public sealed class QueryExecutor : IQueryService
         }
     };
 
-    public QueryExecutor(MySqlConnection connection, ILogger<QueryExecutor> logger)
+    public QueryExecutor(IDatabaseConnection dbConnection, ILogger<QueryExecutor> logger)
     {
-        _connection = connection;
+        _dbConnection = dbConnection;
         _logger = logger;
     }
 
@@ -154,10 +155,8 @@ public sealed class QueryExecutor : IQueryService
 
         _logger.LogInformation("Executing query: {QueryName}", query.Name);
 
-        if (_connection.State != System.Data.ConnectionState.Open)
-            await _connection.OpenAsync(ct);
-
-        await using var cmd = new MySqlCommand(query.SqlTemplate, _connection);
+        var connection = (MySqlConnection)await _dbConnection.GetConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(query.SqlTemplate, connection);
 
         if (query.SqlTemplate.Contains("@Start"))
             cmd.Parameters.AddWithValue("@Start", timeRange.Start);

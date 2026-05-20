@@ -8,13 +8,18 @@ namespace ALRrx.Infrastructure.Database;
 
 public sealed class UserRepository : IUserRepository
 {
-    private readonly MySqlConnection _connection;
+    private readonly IDatabaseConnection _dbConnection;
     private readonly ILogger<UserRepository> _logger;
 
-    public UserRepository(MySqlConnection connection, ILogger<UserRepository> logger)
+    public UserRepository(IDatabaseConnection dbConnection, ILogger<UserRepository> logger)
     {
-        _connection = connection;
+        _dbConnection = dbConnection;
         _logger = logger;
+    }
+
+    private async Task<MySqlConnection> GetOpenConnectionAsync(CancellationToken ct)
+    {
+        return (MySqlConnection)await _dbConnection.GetConnectionAsync(ct);
     }
 
     public async Task EnsureAdminSeededAsync(CancellationToken ct = default)
@@ -33,10 +38,8 @@ public sealed class UserRepository : IUserRepository
             )
             """;
 
-        if (_connection.State != System.Data.ConnectionState.Open)
-            await _connection.OpenAsync(ct);
-
-        await using var createCmd = new MySqlCommand(createTable, _connection);
+        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var createCmd = new MySqlCommand(createTable, connection);
         await createCmd.ExecuteNonQueryAsync(ct);
 
         var admins = new[]
@@ -51,7 +54,7 @@ public sealed class UserRepository : IUserRepository
         {
             var role = email == "jessica.duarte@revolutionmedia.ai" ? "Supervisor" : "Admin";
             await using var checkCmd = new MySqlCommand(
-                "SELECT COUNT(*) FROM alrrx_users WHERE Email = @Email", _connection);
+                "SELECT COUNT(*) FROM alrrx_users WHERE Email = @Email", connection);
             checkCmd.Parameters.AddWithValue("@Email", email);
             var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync(ct)) > 0;
             if (exists) continue;
@@ -59,7 +62,7 @@ public sealed class UserRepository : IUserRepository
             await using var insertCmd = new MySqlCommand("""
                 INSERT INTO alrrx_users (Email, PasswordHash, FullName, Role, IsActive)
                 VALUES (@Email, @PasswordHash, @FullName, @Role, 1)
-                """, _connection);
+                """, connection);
             insertCmd.Parameters.AddWithValue("@Email", email);
             insertCmd.Parameters.AddWithValue("@PasswordHash", hash);
             insertCmd.Parameters.AddWithValue("@FullName", name);
@@ -71,11 +74,9 @@ public sealed class UserRepository : IUserRepository
 
     public async Task<AuthUser?> GetByEmailAsync(string email, CancellationToken ct = default)
     {
-        if (_connection.State != System.Data.ConnectionState.Open)
-            await _connection.OpenAsync(ct);
-
+        await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(
-            "SELECT * FROM alrrx_users WHERE Email = @Email", _connection);
+            "SELECT * FROM alrrx_users WHERE Email = @Email", connection);
         cmd.Parameters.AddWithValue("@Email", email);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -86,11 +87,9 @@ public sealed class UserRepository : IUserRepository
 
     public async Task<AuthUser?> GetByIdAsync(int id, CancellationToken ct = default)
     {
-        if (_connection.State != System.Data.ConnectionState.Open)
-            await _connection.OpenAsync(ct);
-
+        await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(
-            "SELECT * FROM alrrx_users WHERE Id = @Id", _connection);
+            "SELECT * FROM alrrx_users WHERE Id = @Id", connection);
         cmd.Parameters.AddWithValue("@Id", id);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -101,11 +100,9 @@ public sealed class UserRepository : IUserRepository
 
     public async Task<List<AuthUser>> GetAllAsync(CancellationToken ct = default)
     {
-        if (_connection.State != System.Data.ConnectionState.Open)
-            await _connection.OpenAsync(ct);
-
+        await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(
-            "SELECT * FROM alrrx_users ORDER BY CreatedAt DESC", _connection);
+            "SELECT * FROM alrrx_users ORDER BY CreatedAt DESC", connection);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         var users = new List<AuthUser>();
@@ -117,13 +114,11 @@ public sealed class UserRepository : IUserRepository
 
     public async Task CreateAsync(AuthUser user, CancellationToken ct = default)
     {
-        if (_connection.State != System.Data.ConnectionState.Open)
-            await _connection.OpenAsync(ct);
-
+        await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand("""
             INSERT INTO alrrx_users (Email, PasswordHash, FullName, Role, IsActive, CreatedBy)
             VALUES (@Email, @PasswordHash, @FullName, @Role, @IsActive, @CreatedBy)
-            """, _connection);
+            """, connection);
         cmd.Parameters.AddWithValue("@Email", user.Email);
         cmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
         cmd.Parameters.AddWithValue("@FullName", user.FullName);
@@ -135,14 +130,12 @@ public sealed class UserRepository : IUserRepository
 
     public async Task UpdateAsync(AuthUser user, CancellationToken ct = default)
     {
-        if (_connection.State != System.Data.ConnectionState.Open)
-            await _connection.OpenAsync(ct);
-
+        await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand("""
             UPDATE alrrx_users
             SET FullName = @FullName, Role = @Role, IsActive = @IsActive
             WHERE Id = @Id
-            """, _connection);
+            """, connection);
         cmd.Parameters.AddWithValue("@FullName", user.FullName);
         cmd.Parameters.AddWithValue("@Role", user.Role.ToString());
         cmd.Parameters.AddWithValue("@IsActive", user.IsActive);

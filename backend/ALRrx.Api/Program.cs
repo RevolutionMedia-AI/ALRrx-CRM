@@ -4,11 +4,9 @@ using ALRrx.Api.Middleware;
 using ALRrx.Application.DependencyInjection;
 using ALRrx.Application.Interfaces;
 using ALRrx.Domain.ValueObjects;
-using ALRrx.Infrastructure.Database;
 using ALRrx.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using MySqlConnector;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -80,21 +78,6 @@ builder.Services.AddInfrastructure(connectionConfig);
 builder.Services.AddApplication();
 
 builder.Services.AddSingleton<IAuthService, ALRrx.Infrastructure.Auth.AuthService>();
-builder.Services.AddSingleton<MutationExecutor>(sp =>
-{
-    var dbConnection = sp.GetRequiredService<IDatabaseConnection>();
-    var logger = sp.GetRequiredService<ILogger<MutationExecutor>>();
-    try
-    {
-        var connection = (MySqlConnection)dbConnection.GetConnectionAsync().GetAwaiter().GetResult();
-        return new MutationExecutor(connection, logger);
-    }
-    catch (Exception ex)
-    {
-        logger.LogWarning(ex, "MutationExecutor deferred — no database connection available yet");
-        throw;
-    }
-});
 
 var app = builder.Build();
 
