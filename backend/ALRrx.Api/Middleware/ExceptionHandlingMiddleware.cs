@@ -38,6 +38,10 @@ public sealed class ExceptionHandlingMiddleware
             context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
             await WriteErrorResponse(context, "Invalid Operation", ex.Message);
         }
+        catch (OperationCanceledException)
+        {
+            context.Response.StatusCode = 499;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception");

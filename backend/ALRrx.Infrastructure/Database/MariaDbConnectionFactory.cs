@@ -37,7 +37,20 @@ public sealed class MariaDbConnectionFactory : IDatabaseConnection
         };
 
         var connection = new MySqlConnection(builder.ConnectionString);
-        await connection.OpenAsync(ct);
+        var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, ct);
+        try
+        {
+            await connection.OpenAsync(linkedCts.Token);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            throw new TimeoutException("Database connection timed out after 30s");
+        }
 
         return connection;
     }
