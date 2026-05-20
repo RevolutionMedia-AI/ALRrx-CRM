@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const [callsLoading, setCallsLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const filter = (p: Period): TimeFilterDto => ({ period: p });
 
@@ -79,7 +80,11 @@ export default function DashboardPage() {
     }
   }, []);
 
-  useEffect(() => { loadAll(period); }, []);
+  useEffect(() => {
+    loadAll(period);
+    intervalRef.current = setInterval(() => loadAll(period), 30000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [period]);
 
   const totalCalls = summary ? findMetric(summary.metrics, 'Total Calls') : undefined;
   const aht = summary ? findMetric(summary.metrics, 'Handle Time') : undefined;
@@ -106,7 +111,6 @@ export default function DashboardPage() {
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);
-    loadAll(p);
   };
 
   const handleExportCSV = async () => {
@@ -161,7 +165,7 @@ export default function DashboardPage() {
           <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight">Operations Overview</h1>
           <p className="text-secondary mt-1 flex items-center gap-2 text-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-signal animate-pulse" />
-            <span>Live Data Feed {summary ? `• ${new Date(summary.lastUpdated).toLocaleTimeString()}` : ''}</span>
+            <span>Auto-refreshing every 30s {summary ? `• ${new Date(summary.lastUpdated).toLocaleTimeString()}` : ''}</span>
           </p>
         </div>
         <div className="flex gap-2">
