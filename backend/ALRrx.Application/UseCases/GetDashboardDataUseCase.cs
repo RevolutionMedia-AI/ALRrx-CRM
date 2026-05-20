@@ -88,13 +88,22 @@ public sealed class GetDashboardDataUseCase
         };
     }
 
+    private static bool IsNumericValue(object? val) => val switch
+    {
+        short or int or long or ushort or uint or ulong or float or double or decimal => true,
+        string s => decimal.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _),
+        _ => false,
+    };
+
     private static ChartDataDto BuildChartFromReport(Domain.Entities.ReportResult report, string chartType, string title)
     {
         if (report.Rows.Length == 0 || report.Columns.Length < 2)
             return new ChartDataDto { ChartType = chartType, Title = title };
 
         var labelColumn = report.Columns[0];
-        var valueColumn = report.Columns[1];
+        var valueColumn = report.Columns.Skip(1)
+            .FirstOrDefault(c => report.Rows.Any(r => IsNumericValue(r.GetValueOrDefault(c))))
+            ?? report.Columns[^1];
 
         var labels = report.Rows.Select(r => r.GetValueOrDefault(labelColumn)?.ToString() ?? "").ToArray();
         var data = report.Rows.Select(r =>
