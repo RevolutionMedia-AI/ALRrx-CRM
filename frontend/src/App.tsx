@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import RealTimePage from './pages/RealTimePage';
 import UsersPage from './pages/UsersPage';
 import AppLayout from './components/Layout/AppLayout';
 import type { ReactNode } from 'react';
@@ -25,6 +27,8 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+      <Route path="/real-time" element={<ProtectedRoute><RealTimePage /></ProtectedRoute>} />
       <Route path="/users" element={<AdminRoute><UsersPage /></AdminRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

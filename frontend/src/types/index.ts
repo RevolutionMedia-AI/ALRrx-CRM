@@ -15,6 +15,7 @@ export interface MetricCardDto {
 export interface ChartSeriesDto {
   name: string;
   data: number[];
+  color?: string;
 }
 
 export interface ChartDataDto {
