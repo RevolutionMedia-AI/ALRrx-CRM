@@ -10,6 +10,38 @@ type Period = 'Today' | 'Week' | 'Month';
 
 const DISPOSITION_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#6B7280'];
 
+const PASTEL_BG: Record<string, string> = {
+  'text-emerald-signal': 'bg-emerald-signal/8',
+  'text-electric-blue': 'bg-electric-blue/8',
+  'text-deep-rose': 'bg-deep-rose/8',
+  'text-amber-warmth': 'bg-amber-warmth/8',
+};
+
+function Icon({ name, className = '' }: { name: string; className?: string }) {
+  const paths: Record<string, string> = {
+    payments: 'M2 8a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2zm2 0v8h12V8zm3 4a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z',
+    'call-made': 'M9.143 4.545a.714.714 0 01.714.714v9.089l2.555-2.555a.714.714 0 011.01 1.01l-3.75 3.75a.714.714 0 01-1.01 0l-3.75-3.75a.714.714 0 111.01-1.01L8.43 14.35V5.259a.714.714 0 01.714-.714z',
+    'call-received': 'M6.857 4.545a.714.714 0 01.714.714v9.089l2.555-2.555a.714.714 0 011.01 1.01l-3.75 3.75a.714.714 0 01-1.01 0l-3.75-3.75a.714.714 0 111.01-1.01L6.143 14.35V5.259a.714.714 0 01.714-.714z',
+    call: 'M7.073 2.5c.313.09.59.27.797.518l2.317 2.788a1.25 1.25 0 01-.175 1.725l-1.112.928a.179.179 0 00-.05.216c.27.568.664 1.093 1.163 1.53l2.356 2.06a.179.179 0 00.221.024l1.132-.672a1.25 1.25 0 011.627.305l1.87 2.452c.213.28.309.64.269.995a1.477 1.477 0 01-.695 1.066l-.485.32c-.77.508-1.703.705-2.636.557-1.581-.25-3.333-1.206-5.255-2.867C5.517 12.09 4.071 9.99 3.356 7.79c-.347-1.07-.384-2.177.212-3.146l.38-.622c.25-.409.68-.66 1.148-.672.278-.009.55.064.78.208l.507.313c.296.183.539.445.69.762v-.001z',
+    'trending-up': 'M1.47 11.97a.75.75 0 011.06 0L6 15.44l3.72-3.72a.75.75 0 011.06 0l2.47 2.47V11.5a.75.75 0 011.5 0v5a.75.75 0 01-.75.75h-5a.75.75 0 010-1.5h2.69L9.78 13.2l-3.72 3.72a.75.75 0 01-1.06 0L1.47 13.03a.75.75 0 010-1.06z',
+    'trending-down': 'M1.47 4.03a.75.75 0 011.06 0L6 7.44l3.72-3.72a.75.75 0 011.06 0l2.47 2.47V4.5a.75.75 0 011.5 0v5a.75.75 0 01-.75.75h-5a.75.75 0 010-1.5h2.69L9.78 6.2l-3.72 3.72a.75.75 0 01-1.06 0L1.47 5.09a.75.75 0 010-1.06z',
+    'minus-small': 'M3.75 8a.75.75 0 01.75-.75h6.5a.75.75 0 010 1.5h-6.5A.75.75 0 013.75 8z',
+    'unfold-more': 'M8 1.5a.5.5 0 01.5.5v10.793l2.646-2.647a.5.5 0 11.708.708l-3.5 3.5a.5.5 0 01-.708 0l-3.5-3.5a.5.5 0 11.708-.708L7.5 12.793V2a.5.5 0 01.5-.5z',
+    'chevron-up': 'M8 3.5a.5.5 0 01.5.5v8.793l2.646-2.647a.5.5 0 11.708.708l-3.5 3.5a.5.5 0 01-.708 0l-3.5-3.5a.5.5 0 11.708-.708L7.5 12.793V4a.5.5 0 01.5-.5z',
+    'chevron-down': 'M8 12.5a.5.5 0 01-.5-.5V3.207L4.854 5.854a.5.5 0 11-.708-.708l3.5-3.5a.5.5 0 01.708 0l3.5 3.5a.5.5 0 11-.708.708L8.5 3.207V12a.5.5 0 01-.5.5z',
+    download: 'M8 1.5a.5.5 0 01.5.5v7.793l2.146-2.147a.5.5 0 11.708.708l-3 3a.5.5 0 01-.708 0l-3-3a.5.5 0 11.708-.708L7.5 9.793V2a.5.5 0 01.5-.5zM2 13a.5.5 0 01.5.5v.5a.5.5 0 00.5.5h9a.5.5 0 00.5-.5v-.5a.5.5 0 011 0v.5a1.5 1.5 0 01-1.5 1.5H3A1.5 1.5 0 011.5 14v-.5A.5.5 0 012 13z',
+    'chart-pie': 'M8.5 1.5a.5.5 0 00-.5.5v5.5a.5.5 0 00.5.5H14a.5.5 0 00.5-.5A6.5 6.5 0 008.5 1.5zm.5 5.5V2.522A5.5 5.5 0 0113.478 7H9zM7.5 3.038V8a.5.5 0 00.5.5h4.962A5.5 5.5 0 117.5 3.037z',
+    'chart-bar': 'M1 13a1 1 0 011-1h1a1 1 0 011 1v1a1 1 0 01-1 1H2a1 1 0 01-1-1zm4-4a1 1 0 011-1h1a1 1 0 011 1v5a1 1 0 01-1 1H6a1 1 0 01-1-1zm4-4a1 1 0 011-1h1a1 1 0 011 1v9a1 1 0 01-1 1h-1a1 1 0 01-1-1z',
+    table: 'M2 3a1 1 0 011-1h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1zm1 0v2h10V3zm0 3v2h4V6zm0 3v2h4V9zm5-3v2h5V6zm0 3v2h5V9z',
+  };
+  const d = paths[name] || paths.table;
+  return (
+    <svg className={className} width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  );
+}
+
 function previousPeriod(p: Period): TimeFilterDto {
   switch (p) {
     case 'Today': return { period: 'Today', customStart: new Date(Date.now() - 86400000).toISOString(), customEnd: new Date(Date.now() - 86400000).toISOString() };
@@ -39,6 +71,15 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}m ${s}s`;
+}
+
+function animateIn(style: React.CSSProperties = {}): React.CSSProperties {
+  return {
+    opacity: 0,
+    transform: 'translateY(12px)',
+    animation: 'fadeSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+    ...style,
+  };
 }
 
 type SortKey = 'user' | 'calls' | 'sales' | 'contacts' | 'conv' | 'aht';
@@ -105,17 +146,18 @@ export default function AnalyticsPage() {
   }, [agentReport, sortKey, sortDir]);
 
   const colMap: Record<SortKey, string> = {
-    user: 'Name',
-    calls: 'Calls_Handled',
-    sales: 'Sales_Made',
-    contacts: 'Contacts',
-    conv: 'Conversion_Percentage',
-    aht: 'AHT',
+    user: 'Name', calls: 'Calls_Handled', sales: 'Sales_Made',
+    contacts: 'Contacts', conv: 'Conversion_Percentage', aht: 'AHT',
   };
 
   const sortArrow = (key: SortKey) => {
-    if (sortKey !== key) return <span className="text-muted-slate ml-1 material-symbols-outlined text-[14px]">unfold_more</span>;
-    return <span className="ml-1 material-symbols-outlined text-[14px]">{sortDir === 'asc' ? 'expand_less' : 'expand_more'}</span>;
+    if (sortKey !== key) return <Icon name="unfold-more" className="text-muted-slate ml-1" />;
+    return (
+      <Icon
+        name={sortDir === 'asc' ? 'chevron-up' : 'chevron-down'}
+        className="ml-1"
+      />
+    );
   };
 
   const salesMetric = summary ? findMetric(summary.metrics, 'Sales Today') : undefined;
@@ -130,8 +172,8 @@ export default function AnalyticsPage() {
 
   const kpiCards = [
     { title: 'Sales Today', value: salesMetric?.value ?? '--', change: pctChange(salesMetric?.value ?? '0', prevSales?.value), icon: 'payments', color: 'text-emerald-signal' },
-    { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: 'call_made', color: 'text-electric-blue' },
-    { title: 'No Contacts', value: noContactsMetric?.value ?? '--', change: pctChange(noContactsMetric?.value ?? '0', prevNoContacts?.value), icon: 'call_received', color: 'text-deep-rose' },
+    { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: 'call-made', color: 'text-electric-blue' },
+    { title: 'No Contacts', value: noContactsMetric?.value ?? '--', change: pctChange(noContactsMetric?.value ?? '0', prevNoContacts?.value), icon: 'call-received', color: 'text-deep-rose' },
     { title: 'Total Calls', value: totalCallsMetric?.value ?? '--', change: pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value), icon: 'call', color: 'text-amber-warmth' },
   ];
 
@@ -149,10 +191,16 @@ export default function AnalyticsPage() {
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <style>{`
+        @keyframes fadeSlideIn {
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-whisper-border pb-5">
         <div>
           <h1 className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Analytics</h1>
-          <p className="text-secondary text-sm mt-1">Deep dive into historical trends and agent performance</p>
+          <p className="text-secondary text-sm mt-1 max-w-[65ch]">Deep dive into historical trends and agent performance</p>
         </div>
         <div className="flex gap-2">
           <div className="bg-surface-container-low border border-whisper-border rounded flex text-sm overflow-hidden">
@@ -160,10 +208,10 @@ export default function AnalyticsPage() {
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-4 py-1.5 border-r border-whisper-border last:border-r-0 ${
+                className={`px-4 py-1.5 border-r border-whisper-border last:border-r-0 transition-colors ${
                   period === p
                     ? 'bg-pure-surface text-primary font-medium'
-                    : 'text-secondary hover:bg-surface-container transition-colors'
+                    : 'text-secondary hover:bg-surface-container'
                 }`}
               >
                 {p}
@@ -174,35 +222,41 @@ export default function AnalyticsPage() {
       </div>
 
       {error && (
-        <div className="bg-deep-rose/10 border border-deep-rose/20 rounded-xl p-4 text-deep-rose text-sm">{error}</div>
+        <div className="bg-deep-rose/8 border border-deep-rose/15 rounded-xl p-4 text-deep-rose text-sm" style={animateIn()}>
+          {error}
+        </div>
       )}
 
-      {/* KPI Comparison Cards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpiCards.map((card) => (
-          <div key={card.title} className="bg-pure-surface border border-whisper-border rounded-xl p-6 shadow-diffused">
-            <div className="flex justify-between items-start mb-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {kpiCards.map((card, i) => (
+          <div
+            key={card.title}
+            className="border border-whisper-border rounded-xl p-8"
+            style={animateIn({ animationDelay: `${i * 80}ms` })}
+          >
+            <div className="flex justify-between items-start mb-5">
               <p className="text-secondary text-sm font-medium">{card.title}</p>
-              <div className={`p-1.5 bg-surface-container rounded-lg ${card.color}`}>
-                <span className="material-symbols-outlined text-sm">{card.icon}</span>
+              <div className={`p-2 rounded-lg ${PASTEL_BG[card.color] || 'bg-surface-container'} ${card.color}`}>
+                <Icon name={card.icon} className="text-sm" />
               </div>
             </div>
             {loading ? (
-              <div className="h-8 w-24 bg-surface-container rounded animate-pulse" />
+              <div className="h-8 w-28 bg-surface-container rounded animate-pulse" />
             ) : (
               <div className="flex items-baseline gap-3">
-                <h2 className="text-3xl font-bold text-primary">{card.value}</h2>
+                <h2 className="text-[2rem] font-bold text-primary leading-none tracking-tight">{card.value}</h2>
                 {card.change && (
                   <span className={`text-sm font-medium flex items-center font-metadata-mono ${
                     card.change.direction === 'up' ? 'text-emerald-signal'
                     : card.change.direction === 'down' ? 'text-deep-rose'
                     : 'text-muted-slate'
                   }`}>
-                    <span className="material-symbols-outlined text-[16px]">
-                      {card.change.direction === 'up' ? 'trending_up'
-                      : card.change.direction === 'down' ? 'trending_down'
-                      : 'remove'}
-                    </span>
+                    <Icon
+                      name={card.change.direction === 'up' ? 'trending-up'
+                        : card.change.direction === 'down' ? 'trending-down'
+                        : 'minus-small'}
+                      className="text-[15px]"
+                    />
                     {card.change.pct}
                   </span>
                 )}
@@ -212,10 +266,9 @@ export default function AnalyticsPage() {
         ))}
       </section>
 
-      {/* Dispositions Pie Chart + Table */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused p-6">
-          <h3 className="font-bold text-lg text-primary mb-4">Dispositions Breakdown</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-2 border border-whisper-border rounded-xl p-8" style={animateIn({ animationDelay: '160ms' })}>
+          <h3 className="font-bold text-lg text-primary mb-6">Dispositions</h3>
           {loading ? (
             <div className="h-64 bg-surface-container rounded animate-pulse" />
           ) : summary?.charts?.[0] ? (
@@ -227,12 +280,9 @@ export default function AnalyticsPage() {
                       name: label,
                       value: summary.charts[0].series[0]?.data[i] ?? 0,
                     }))}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
+                    cx="50%" cy="50%"
+                    innerRadius={56} outerRadius={100}
+                    paddingAngle={2} dataKey="value"
                   >
                     {summary.charts[0].labels.map((_, i) => (
                       <Cell key={i} fill={DISPOSITION_COLORS[i % DISPOSITION_COLORS.length]} />
@@ -249,8 +299,9 @@ export default function AnalyticsPage() {
             </div>
           )}
         </div>
-        <div className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused p-6">
-          <h3 className="font-bold text-lg text-primary mb-4">Disposition Details</h3>
+
+        <div className="lg:col-span-3 border border-whisper-border rounded-xl p-8" style={animateIn({ animationDelay: '240ms' })}>
+          <h3 className="font-bold text-lg text-primary mb-6">Disposition Details</h3>
           {loading ? (
             <div className="space-y-2 animate-pulse">{[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-8 bg-surface-container rounded" />)}</div>
           ) : dispositions && dispositions.rows.length > 0 ? (
@@ -282,29 +333,26 @@ export default function AnalyticsPage() {
             </div>
           )}
         </div>
-      </section>
+      </div>
 
-      {/* Contact vs No Contact Bar Chart */}
-      <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused p-6">
-        <h3 className="font-bold text-lg text-primary mb-4">Contact vs No Contact</h3>
+      <div className="border border-whisper-border rounded-xl p-8" style={animateIn({ animationDelay: '320ms' })}>
+        <h3 className="font-bold text-lg text-primary mb-6">Contact vs No Contact</h3>
         {loading ? (
           <div className="h-64 bg-surface-container rounded animate-pulse" />
         ) : contactReport && contactReport.rows.length > 0 ? (
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart
-              data={[{
-                name: period,
-                Contact: Number(contactReport.rows[0]?.Contact ?? 0),
-                'No Contact': Number(contactReport.rows[0]?.No_Contact ?? 0),
-              }]}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e2e1" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748B' }} />
-              <YAxis tick={{ fontSize: 12, fill: '#64748B' }} />
+            <BarChart data={[{
+              name: period,
+              Contact: Number(contactReport.rows[0]?.Contact ?? 0),
+              'No Contact': Number(contactReport.rows[0]?.No_Contact ?? 0),
+            }]}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#787774' }} />
+              <YAxis tick={{ fontSize: 12, fill: '#787774' }} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="Contact" fill="#10B981" radius={[4, 4, 0, 0]} name="Contact" />
-              <Bar dataKey="No Contact" fill="#EF4444" radius={[4, 4, 0, 0]} name="No Contact" />
+              <Bar dataKey="Contact" fill="#346538" radius={[4, 4, 0, 0]} name="Contact" />
+              <Bar dataKey="No Contact" fill="#9F2F2D" radius={[4, 4, 0, 0]} name="No Contact" />
             </BarChart>
           </ResponsiveContainer>
         ) : (
@@ -312,10 +360,9 @@ export default function AnalyticsPage() {
             No contact data available
           </div>
         )}
-      </section>
+      </div>
 
-      {/* Agent Performance Table */}
-      <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused overflow-hidden">
+      <section className="border border-whisper-border rounded-xl overflow-hidden" style={animateIn({ animationDelay: '400ms' })}>
         <div className="p-6 border-b border-whisper-border">
           <h3 className="font-bold text-lg text-primary">Agent Performance</h3>
         </div>
@@ -359,8 +406,7 @@ export default function AnalyticsPage() {
         )}
       </section>
 
-      {/* Export */}
-      <div className="flex justify-end">
+      <div className="flex justify-end" style={animateIn({ animationDelay: '480ms' })}>
         <button
           onClick={async () => {
             const sections: { name: string; columns: string[]; rows: Record<string, unknown>[] }[] = [];
@@ -386,9 +432,9 @@ export default function AnalyticsPage() {
               exportCombinedCSV(sections);
             }
           }}
-          className="bg-primary text-on-primary px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2"
+          className="bg-primary text-on-primary px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2"
         >
-          <span className="material-symbols-outlined text-sm">download</span>
+          <Icon name="download" className="text-sm" />
           Export Analytics CSV
         </button>
       </div>
