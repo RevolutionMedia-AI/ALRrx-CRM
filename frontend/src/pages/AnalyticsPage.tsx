@@ -51,9 +51,10 @@ function Icon({ name, className = '' }: { name: string; className?: string }) {
 
 function previousPeriod(p: Period): TimeFilterDto {
   switch (p) {
-    case 'Today': return { period: 'Today', customStart: new Date(Date.now() - 86400000).toISOString(), customEnd: new Date(Date.now() - 86400000).toISOString() };
+    case 'Today': return { period: 'Custom', customStart: new Date(Date.now() - 86400000).toISOString(), customEnd: new Date(Date.now() - 86400000).toISOString() };
     case 'Week': return { period: 'Custom', customStart: new Date(Date.now() - 14 * 86400000).toISOString(), customEnd: new Date(Date.now() - 7 * 86400000).toISOString() };
     case 'Month': return { period: 'Custom', customStart: new Date(Date.now() - 60 * 86400000).toISOString(), customEnd: new Date(Date.now() - 30 * 86400000).toISOString() };
+    case 'Custom': return { period: 'Custom', customStart: new Date(Date.now() - 7 * 86400000).toISOString(), customEnd: new Date(Date.now() - 86400000).toISOString() };
   }
 }
 
