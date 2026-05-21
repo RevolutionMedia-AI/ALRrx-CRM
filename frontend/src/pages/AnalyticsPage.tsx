@@ -397,7 +397,7 @@ export default function AnalyticsPage() {
           {loading ? (
             <div className="space-y-2 animate-pulse">{[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-8 bg-surface-container rounded" />)}</div>
           ) : dispositions && dispositions.rows.length > 0 ? (
-            <div className="overflow-x-auto max-h-[320px] overflow-y-auto">
+            <div className="overflow-x-auto max-h-[320px] overflow-y-auto scrollbar-thin">
               <table className="w-full text-left text-sm border-collapse">
                 <thead className="text-xs uppercase tracking-wider text-secondary font-metadata-mono bg-surface-container-low sticky top-0">
                   <tr>
@@ -408,7 +408,7 @@ export default function AnalyticsPage() {
                 </thead>
                 <tbody>
                   {dispositions.rows.map((r, i) => (
-                    <tr key={i} className="border-b border-whisper-border hover:bg-surface-container-lowest transition-colors">
+                    <tr key={i} className="border-b border-whisper-border hover:bg-surface-container-lowest dark:hover:bg-gray-800 transition-colors">
                       <td className="p-3 text-primary font-medium">{String(r.Disposition ?? '')}</td>
                       <td className="p-3 text-right font-metadata-mono">{String(r.Total ?? '')}</td>
                       <td className="p-3 text-right font-metadata-mono text-secondary">

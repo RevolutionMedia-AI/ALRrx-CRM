@@ -402,7 +402,7 @@ export default function DashboardPage() {
                   const status = String(call.status ?? 'completed').toLowerCase();
                   const sc = getStatusColor(status);
                   return (
-                    <tr key={i} className="border-b border-whisper-border hover:bg-surface-container-lowest transition-colors">
+                    <tr key={i} className="border-b border-whisper-border hover:bg-surface-container-lowest dark:hover:bg-gray-800 transition-colors">
                       <td className="p-4 font-metadata-mono text-primary">#{String(call.call_id ?? call.id ?? i + 1)}</td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
