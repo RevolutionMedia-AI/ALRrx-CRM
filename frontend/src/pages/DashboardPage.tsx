@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardSummary, getReport, getStaffing, exportReport } from '../services/api';
+import { getDashboardSummary, getReport, getStaffing } from '../services/api';
 import { exportCombinedCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -115,35 +115,19 @@ export default function DashboardPage() {
     setPeriod(p);
   };
 
-  const handleExportCSV = async () => {
+  const handleExportCSV = () => {
+    const sections: { name: string; columns: string[]; rows: Record<string, unknown>[] }[] = [];
     if (summary) {
-      try {
-        const blob = await exportReport({
-          reportId: 'dashboard',
-          format: 'csv',
-          timeFilter: filter(period),
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `ops-report-${period.toLowerCase()}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } catch {
-        const sections: { name: string; columns: string[]; rows: Record<string, unknown>[] }[] = [];
-        if (summary) {
-          sections.push({
-            name: 'KPI Metrics',
-            columns: ['Label', 'Value', 'Trend'],
-            rows: summary.metrics.map((m) => ({ Label: m.label, Value: m.value, Trend: m.trend ?? '' })),
-          });
-        }
-        if (agentReport) sections.push({ name: 'Agent Performance', columns: agentReport.columns, rows: agentReport.rows });
-        if (callsReport) sections.push({ name: 'All Calls', columns: callsReport.columns, rows: callsReport.rows });
-        if (staffingReport) sections.push({ name: 'Staffing', columns: staffingReport.columns, rows: staffingReport.rows });
-        exportCombinedCSV(sections);
-      }
+      sections.push({
+        name: 'KPI Metrics',
+        columns: ['Label', 'Value', 'Trend'],
+        rows: summary.metrics.map((m) => ({ Label: m.label, Value: m.value, Trend: m.trend ?? '' })),
+      });
     }
+    if (agentReport) sections.push({ name: 'Agent Performance', columns: agentReport.columns, rows: agentReport.rows });
+    if (callsReport) sections.push({ name: 'All Calls', columns: callsReport.columns, rows: callsReport.rows });
+    if (staffingReport) sections.push({ name: 'Staffing', columns: staffingReport.columns, rows: staffingReport.rows });
+    if (sections.length > 0) exportCombinedCSV(sections);
   };
 
   const periodBtn = (p: Period) => (

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { getDashboardSummary, getReport, exportReport } from '../services/api';
+import { getDashboardSummary, getReport } from '../services/api';
 import { exportCombinedCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 
@@ -409,7 +409,7 @@ export default function AnalyticsPage() {
 
       <div className="flex justify-end" style={animateIn({ animationDelay: '480ms' })}>
         <button
-          onClick={async () => {
+          onClick={() => {
             const sections: { name: string; columns: string[]; rows: Record<string, unknown>[] }[] = [];
             if (summary) {
               sections.push({
@@ -421,17 +421,7 @@ export default function AnalyticsPage() {
             if (dispositions) sections.push({ name: 'Dispositions', columns: dispositions.columns, rows: dispositions.rows });
             if (contactReport) sections.push({ name: 'Contact vs No Contact', columns: contactReport.columns, rows: contactReport.rows });
             if (agentReport) sections.push({ name: 'Agent Performance', columns: agentReport.columns, rows: agentReport.rows });
-            try {
-              const blob = await exportReport({ reportId: 'dashboard', format: 'csv', timeFilter: filter(period) });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `analytics-${period.toLowerCase()}.csv`;
-              a.click();
-              URL.revokeObjectURL(url);
-            } catch {
-              exportCombinedCSV(sections);
-            }
+            if (sections.length > 0) exportCombinedCSV(sections);
           }}
           className="bg-primary text-on-primary px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2"
         >
