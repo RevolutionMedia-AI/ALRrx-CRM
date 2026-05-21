@@ -62,19 +62,52 @@ public sealed class QueryExecutor : IQueryService
         {
             Id = "staffing",
             Name = "Staffing",
-            Description = "Active ALTRX agents by supervisor",
+            Description = "Active ALTRX agents with live status",
             Category = "Agents",
             SqlTemplate = """
                 SELECT
                     ug.group_name AS Supervisor,
                     vu.user AS Emp_Number,
                     vu.full_name AS Name,
-                    vu.user AS User
+                    vu.user AS User,
+                    COALESCE(vla.status, 'OFFLINE') AS Status,
+                    vla.last_call_time,
+                    vla.last_update_time
                 FROM vicidial_users vu
                 LEFT JOIN vicidial_user_groups ug ON vu.user_group = ug.user_group
+                LEFT JOIN vicidial_live_agents vla ON vu.user = vla.user
                 WHERE vu.user_group = 'ALTRX'
                 AND vu.active = 'Y'
                 ORDER BY ug.group_name, vu.full_name
+                """
+        },
+        ["aht_daily"] = new QueryDefinition
+        {
+            Id = "aht_daily",
+            Name = "AHT (Daily)",
+            Description = "Average handle time across all agents today",
+            Category = "Dashboard",
+            SqlTemplate = """
+                SELECT
+                    ROUND(AVG(talk_sec + dispo_sec + dead_sec) / 60, 1) AS AHT_Minutes
+                FROM vicidial_agent_log
+                WHERE event_time >= CURDATE()
+                """
+        },
+        ["occupancy_rate"] = new QueryDefinition
+        {
+            Id = "occupancy_rate",
+            Name = "Occupancy Rate",
+            Description = "Occupancy percentage across all agents today",
+            Category = "Dashboard",
+            SqlTemplate = """
+                SELECT
+                    ROUND(
+                        (SUM(talk_sec + dispo_sec + dead_sec) /
+                         NULLIF(SUM(pause_sec + wait_sec + talk_sec + dispo_sec + dead_sec), 0)) * 100
+                    , 1) AS Occupancy_Pct
+                FROM vicidial_agent_log
+                WHERE event_time >= CURDATE()
                 """
         },
         ["all_calls"] = new QueryDefinition

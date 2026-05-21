@@ -21,13 +21,17 @@ public sealed class GetDashboardDataUseCase
         var contactTask = _queryService.ExecuteQueryAsync("contact_vs_nocontact", timeRange, ct);
         var dispositionsTask = _queryService.ExecuteQueryAsync("dispositions", timeRange, ct);
         var agentTask = _queryService.ExecuteQueryAsync("agent_performance", timeRange, ct);
+        var ahtTask = _queryService.ExecuteQueryAsync("aht_daily", timeRange, ct);
+        var occupancyTask = _queryService.ExecuteQueryAsync("occupancy_rate", timeRange, ct);
 
-        await Task.WhenAll(salesTask, contactTask, agentTask, dispositionsTask);
+        await Task.WhenAll(salesTask, contactTask, agentTask, dispositionsTask, ahtTask, occupancyTask);
 
         var salesResult = salesTask.Result;
         var contactResult = contactTask.Result;
         var dispositionsResult = dispositionsTask.Result;
         var agentResult = agentTask.Result;
+        var ahtResult = ahtTask.Result;
+        var occupancyResult = occupancyTask.Result;
 
         var metrics = new List<MetricCardDto>();
 
@@ -65,6 +69,30 @@ public sealed class GetDashboardDataUseCase
                 Value = row.GetValueOrDefault("Total_Calls")?.ToString() ?? "0",
                 Color = "#f59e0b",
                 Format = "number"
+            });
+        }
+
+        if (ahtResult.Rows.Length > 0)
+        {
+            var ahtVal = ahtResult.Rows[0].GetValueOrDefault("AHT_Minutes");
+            metrics.Add(new MetricCardDto
+            {
+                Label = "Avg Handle Time",
+                Value = $"{ahtVal ?? 0} min",
+                Color = "#3B82F6",
+                Format = "duration"
+            });
+        }
+
+        if (occupancyResult.Rows.Length > 0)
+        {
+            var occVal = occupancyResult.Rows[0].GetValueOrDefault("Occupancy_Pct");
+            metrics.Add(new MetricCardDto
+            {
+                Label = "Occupancy",
+                Value = $"{occVal ?? 0}%",
+                Color = "#8B5CF6",
+                Format = "percentage"
             });
         }
 

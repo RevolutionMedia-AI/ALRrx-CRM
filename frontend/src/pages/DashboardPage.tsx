@@ -89,8 +89,8 @@ export default function DashboardPage() {
   }, [period]);
 
   const totalCalls = summary ? findMetric(summary.metrics, 'Total Calls') : undefined;
+  const salesToday = summary ? findMetric(summary.metrics, 'Sales Today') : undefined;
   const aht = summary ? findMetric(summary.metrics, 'Handle Time') : undefined;
-  const csat = summary ? findMetric(summary.metrics, 'CSAT') : undefined;
   const occupancy = summary ? findMetric(summary.metrics, 'Occupancy') : undefined;
 
   const chartData = summary?.charts?.[0]
@@ -194,13 +194,12 @@ export default function DashboardPage() {
           loading={summaryLoading}
         />
         <KpiCard
-          title="CSAT Score"
-          value={csat ? `${parseFloat(csat.value).toFixed(1)}` : '--'}
-          suffix="/ 5.0"
-          icon="star"
-          iconColor="text-amber-warmth"
+          title="Sales Today"
+          value={salesToday?.value ?? '--'}
+          change={salesToday?.trend}
+          icon="monetization_on"
+          iconColor="text-emerald-signal"
           loading={summaryLoading}
-          bar={csat ? `${(parseFloat(csat.value) / 5) * 100}%` : undefined}
         />
         <KpiCard
           title="Occupancy"
@@ -279,8 +278,8 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-primary">{String(agent.csat ?? agent.score ?? '')}% CSAT</p>
-                        <p className="text-[11px] text-emerald-signal font-metadata-mono">{formatDuration(Number(agent.aht ?? agent.avg_handle_time ?? 0))}</p>
+                        <p className="text-sm font-bold text-primary">{String(agent.Sales_Made ?? '0')} Sales</p>
+                        <p className="text-[11px] text-emerald-signal font-metadata-mono">{String(agent.Calls_Handled ?? '0')} calls</p>
                       </div>
                     </div>
                   ))}
