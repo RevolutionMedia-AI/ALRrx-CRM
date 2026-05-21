@@ -130,6 +130,11 @@ export default function AnalyticsPage() {
     else { setSortKey(key); setSortDir('desc'); }
   };
 
+  const colMap: Record<SortKey, string> = {
+    user: 'Name', calls: 'Calls_Handled', sales: 'Sales_Made',
+    contacts: 'Contacts', conv: 'Conversion_Percentage', aht: 'AHT',
+  };
+
   const sortedAgents = useMemo(() => {
     const rows = agentReport?.rows ?? [];
     const sorted = [...rows];
@@ -145,11 +150,6 @@ export default function AnalyticsPage() {
     });
     return sorted;
   }, [agentReport, sortKey, sortDir]);
-
-  const colMap: Record<SortKey, string> = {
-    user: 'Name', calls: 'Calls_Handled', sales: 'Sales_Made',
-    contacts: 'Contacts', conv: 'Conversion_Percentage', aht: 'AHT',
-  };
 
   const sortArrow = (key: SortKey) => {
     if (sortKey !== key) return <Icon name="unfold-more" className="text-muted-slate ml-1" />;
