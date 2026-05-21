@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, ResponsiveContainer,
 } from 'recharts';
 import { getDashboardSummary, getReport } from '../services/api';
 import { exportCombinedCSV } from '../utils/csv';
@@ -106,6 +106,8 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('sales');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [activeDispo, setActiveDispo] = useState<{ name: string; value: number } | null>(null);
+  const [activeContact, setActiveContact] = useState<{ name: string; value: number } | null>(null);
 
   const filter = (p: Period): TimeFilterDto => {
     if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${customStart}T00:00:00`, customEnd: `${customEnd}T23:59:59` };
@@ -233,20 +235,6 @@ export default function AnalyticsPage() {
     </th>
   );
 
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="bg-pure-surface/95 dark:bg-gray-900/95 backdrop-blur border border-whisper-border dark:border-gray-700 rounded-lg px-3 py-2 shadow-sm">
-        {payload.map((p) => (
-          <div key={p.name}>
-            <span className="text-secondary dark:text-gray-400 text-[11px] font-metadata-mono">{p.name}</span>
-            <span className="text-primary dark:text-gray-100 text-sm font-bold ml-3">{p.value}</span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   return (
     <>
       <style>{`
@@ -363,23 +351,35 @@ export default function AnalyticsPage() {
             <div className="h-80 bg-surface-container rounded animate-pulse" />
           ) : pieData.length > 0 ? (
             <div className="flex flex-col items-center gap-5">
-              <ResponsiveContainer width="100%" height={260}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%" cy="50%"
-                    innerRadius={52} outerRadius={100}
-                    paddingAngle={1.5}
-                    dataKey="value"
-                    nameKey="name"
-                  >
-                    {pieData.map((_, i) => (
-                      <Cell key={i} fill={DISPOSITION_COLORS[i % DISPOSITION_COLORS.length]} stroke="none" />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} cursor={false} />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="flex flex-col lg:flex-row items-center gap-4 w-full">
+                <ResponsiveContainer width="100%" height={260}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%" cy="50%"
+                      innerRadius={52} outerRadius={100}
+                      paddingAngle={1.5}
+                      dataKey="value"
+                      nameKey="name"
+                      onMouseEnter={(_, i) => setActiveDispo(pieData[i])}
+                      onMouseLeave={() => setActiveDispo(null)}
+                    >
+                      {pieData.map((_, i) => (
+                        <Cell key={i} fill={DISPOSITION_COLORS[i % DISPOSITION_COLORS.length]} stroke="none" />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                {activeDispo && (
+                  <div className="bg-pure-surface/95 dark:bg-gray-900/95 border border-whisper-border dark:border-gray-700 rounded-lg px-4 py-3 shadow-sm text-sm shrink-0">
+                    <p className="text-secondary dark:text-gray-400 text-[11px] font-metadata-mono uppercase tracking-wider">Hovered</p>
+                    <p className="text-primary dark:text-gray-100 font-bold text-lg mt-0.5">{activeDispo.name}</p>
+                    <p className="text-secondary dark:text-gray-400 font-metadata-mono text-xs">
+                      {activeDispo.value} {pieData.reduce((s, d) => s + d.value, 0) > 0 ? `(${((activeDispo.value / pieData.reduce((s, d) => s + d.value, 0)) * 100).toFixed(1)}%)` : ''}
+                    </p>
+                  </div>
+                )}
+              </div>
               <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-sm">
                 {pieData.map((d, i) => (
                   <div key={d.name} className="flex items-center gap-2">
@@ -451,11 +451,12 @@ export default function AnalyticsPage() {
                     paddingAngle={2}
                     dataKey="value"
                     startAngle={90} endAngle={-270}
+                    onMouseEnter={(_, i) => setActiveContact(contactDonut[i])}
+                    onMouseLeave={() => setActiveContact(null)}
                   >
                     <Cell fill="#4f46e5" stroke="none" />
                     <Cell fill="#c4b5fd" stroke="none" />
                   </Pie>
-                  <Tooltip content={<CustomTooltip />} cursor={false} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -468,14 +469,14 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-3 p-2 -mx-2 rounded-lg transition-colors ${activeContact?.name === 'Contact' ? 'bg-electric-blue/5 dark:bg-electric-blue/10' : ''}`}>
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#4f46e5' }} />
                 <div>
                   <p className="text-2xl font-bold text-primary">{contactDonut[0].value}</p>
                   <p className="text-xs text-secondary">Contact</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className={`flex items-center gap-3 p-2 -mx-2 rounded-lg transition-colors ${activeContact?.name === 'No Contact' ? 'bg-violet-500/5 dark:bg-violet-500/10' : ''}`}>
                 <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#c4b5fd' }} />
                 <div>
                   <p className="text-2xl font-bold text-primary">{contactDonut[1].value}</p>
