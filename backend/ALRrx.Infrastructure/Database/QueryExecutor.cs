@@ -190,10 +190,8 @@ public sealed class QueryExecutor : IQueryService
                             THEN lead_id
                         END) * 100.0 / COUNT(DISTINCT lead_id)
                     , 1) AS Contact_Rate
-                FROM vicidial_log vl
-                JOIN vicidial_users vu ON vl.user = vu.user
-                WHERE DATE(vl.call_date) BETWEEN @Start AND @End
-                AND vu.user_group = 'ALTRX'
+                FROM vicidial_log
+                WHERE DATE(call_date) BETWEEN @Start AND @End
                 """
         }
     };
