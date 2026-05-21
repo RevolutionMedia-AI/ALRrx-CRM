@@ -7,9 +7,10 @@ import { exportCombinedCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 import { useAuth } from '../context/AuthContext';
 
-type Period = 'Today' | 'Week' | 'Month';
+type Period = 'Today' | 'Week' | 'Month' | 'Custom';
 
-const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth' };
+const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth', Custom: 'Custom' };
+const PERIOD_LABEL: Record<Period, string> = { Today: 'Sales Today', Week: 'Sales This Week', Month: 'Sales This Month', Custom: 'Sales (Custom)' };
 
 function findMetric(metrics: MetricCardDto[], label: string): MetricCardDto | undefined {
   return metrics.find((m) => m.label.toLowerCase().includes(label.toLowerCase()));
@@ -39,6 +40,8 @@ function getStatusColor(status: string) {
 export default function DashboardPage() {
   const { canEdit } = useAuth();
   const [period, setPeriod] = useState<Period>('Today');
+  const [customStart, setCustomStart] = useState(() => new Date().toISOString().split('T')[0]);
+  const [customEnd, setCustomEnd] = useState(() => new Date().toISOString().split('T')[0]);
 
   const [summary, setSummary] = useState<DashboardSummaryDto | null>(null);
   const [agentReport, setAgentReport] = useState<ReportDto | null>(null);
@@ -53,7 +56,10 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const filter = (p: Period): TimeFilterDto => ({ period: PERIOD_API[p] });
+  const filter = (p: Period): TimeFilterDto => {
+    if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${customStart}T00:00:00`, customEnd: `${customEnd}T23:59:59` };
+    return { period: PERIOD_API[p] };
+  };
 
   const loadAll = useCallback(async (p: Period) => {
     setSummaryLoading(true);
@@ -86,7 +92,7 @@ export default function DashboardPage() {
     loadAll(period);
     intervalRef.current = setInterval(() => loadAll(period), 30000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [period]);
+  }, [period, customStart, customEnd]);
 
   const totalCalls = summary ? findMetric(summary.metrics, 'Total Calls') : undefined;
   const salesToday = summary ? findMetric(summary.metrics, 'Sales Today') : undefined;
@@ -154,12 +160,30 @@ export default function DashboardPage() {
             <span>Auto-refreshing every 30s {summary ? `• ${new Date(summary.lastUpdated).toLocaleTimeString()}` : ''}</span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap items-end">
           <div className="bg-surface-container-low border border-whisper-border rounded flex text-sm overflow-hidden">
             {periodBtn('Today')}
             {periodBtn('Week')}
             {periodBtn('Month')}
+            {periodBtn('Custom')}
           </div>
+          {period === 'Custom' && (
+            <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+              />
+              <span className="text-muted-slate text-xs">to</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+              />
+            </div>
+          )}
           <button
             onClick={() => loadAll(period)}
             className="p-1.5 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm"
@@ -194,7 +218,7 @@ export default function DashboardPage() {
           loading={summaryLoading}
         />
         <KpiCard
-          title="Sales Today"
+          title={PERIOD_LABEL[period]}
           value={salesToday?.value ?? '--'}
           change={salesToday?.trend}
           icon="monetization_on"

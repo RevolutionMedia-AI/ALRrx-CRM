@@ -6,8 +6,8 @@ import { getDashboardSummary, getReport } from '../services/api';
 import { exportCombinedCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 
-type Period = 'Today' | 'Week' | 'Month';
-const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth' };
+type Period = 'Today' | 'Week' | 'Month' | 'Custom';
+const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth', Custom: 'Custom' };
 
 const DISPOSITION_COLORS = [
   '#3B82F6', '#6366F1', '#8B5CF6', '#A78BFA', '#C084FC',
@@ -94,6 +94,8 @@ type SortDir = 'asc' | 'desc';
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>('Today');
+  const [customStart, setCustomStart] = useState(() => new Date().toISOString().split('T')[0]);
+  const [customEnd, setCustomEnd] = useState(() => new Date().toISOString().split('T')[0]);
   const [summary, setSummary] = useState<DashboardSummaryDto | null>(null);
   const [prevSummary, setPrevSummary] = useState<DashboardSummaryDto | null>(null);
   const [dispositions, setDispositions] = useState<ReportDto | null>(null);
@@ -104,7 +106,10 @@ export default function AnalyticsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('sales');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
-  const filter = (p: Period): TimeFilterDto => ({ period: PERIOD_API[p] });
+  const filter = (p: Period): TimeFilterDto => {
+    if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${customStart}T00:00:00`, customEnd: `${customEnd}T23:59:59` };
+    return { period: PERIOD_API[p] };
+  };
 
   const fetchAnalytics = async (p: Period) => {
     setLoading(true);
@@ -129,7 +134,7 @@ export default function AnalyticsPage() {
     }
   };
 
-  useEffect(() => { fetchAnalytics(period); }, [period]);
+  useEffect(() => { fetchAnalytics(period); }, [period, customStart, customEnd]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -236,9 +241,9 @@ export default function AnalyticsPage() {
           <h1 className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Analytics</h1>
           <p className="text-secondary text-sm mt-1 max-w-[65ch]">Deep dive into historical trends and agent performance</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap items-end">
           <div className="bg-surface-container-low border border-whisper-border rounded flex text-sm overflow-hidden">
-            {(['Today', 'Week', 'Month'] as Period[]).map((p) => (
+            {(['Today', 'Week', 'Month', 'Custom'] as Period[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
@@ -252,6 +257,23 @@ export default function AnalyticsPage() {
               </button>
             ))}
           </div>
+          {period === 'Custom' && (
+            <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+              />
+              <span className="text-muted-slate text-xs">to</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -270,8 +292,8 @@ export default function AnalyticsPage() {
           >
             <div className="flex justify-between items-start mb-5">
               <p className="text-secondary text-sm font-medium">{card.title}</p>
-              <div className={`p-2 rounded-lg ${PASTEL_BG[card.color] || 'bg-surface-container'} ${card.color}`}>
-                <Icon name={card.icon} className="text-sm" />
+              <div className={`p-2.5 rounded-lg ${PASTEL_BG[card.color] || 'bg-surface-container'} ${card.color}`}>
+                <Icon name={card.icon} className="text-base" />
               </div>
             </div>
             {loading ? (
