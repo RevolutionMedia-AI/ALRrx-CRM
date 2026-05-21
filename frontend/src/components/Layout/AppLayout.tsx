@@ -25,6 +25,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </span>
             OpsPulse Center
           </div>
+          <button
+            onClick={toggle}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-whisper-border dark:border-gray-700 bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-gray-100 hover:border-electric-blue transition-all text-sm font-medium"
+            title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              {isDark ? 'light_mode' : 'dark_mode'}
+            </span>
+          </button>
           <div className="hidden md:flex gap-6 items-center h-full">
             {navItems.map((item) => (
               <button
@@ -42,15 +51,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button
-            onClick={toggle}
-            className="p-2 text-secondary dark:text-gray-400 hover:text-primary dark:hover:text-gray-200 transition-colors rounded-full hover:bg-surface-container dark:hover:bg-gray-800"
-            title={isDark ? 'Light mode' : 'Dark mode'}
-          >
-            <span className="material-symbols-outlined">
-              {isDark ? 'light_mode' : 'dark_mode'}
-            </span>
-          </button>
           <div className="hidden lg:flex items-center bg-surface-container-low dark:bg-gray-800 px-3 py-1.5 rounded-full border border-whisper-border dark:border-gray-700 focus-within:border-electric-blue transition-colors">
             <span className="material-symbols-outlined text-muted-slate text-sm mr-2">search</span>
             <input

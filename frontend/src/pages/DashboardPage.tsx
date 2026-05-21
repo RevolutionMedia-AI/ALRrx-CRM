@@ -463,7 +463,7 @@ function KpiCard({
 }) {
   const isPositive = change ? !change.startsWith('-') : true;
   return (
-    <div className="bg-pure-surface border border-whisper-border rounded-xl p-6 shadow-diffused hover:-translate-y-px transition-transform">
+    <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-xl p-6 shadow-diffused hover:-translate-y-px transition-transform">
       <div className="flex justify-between items-start mb-4">
         <p className="text-secondary text-sm font-medium">{title}</p>
         <div className={`p-1.5 bg-surface-container rounded-lg ${iconColor}`}>
