@@ -120,6 +120,7 @@ public sealed class QueryExecutor : IQueryService
                 SELECT
                     vl.call_date,
                     vl.user,
+                    vu.full_name AS Name,
                     vl.status,
                     vl.lead_id,
                     vl.length_in_sec

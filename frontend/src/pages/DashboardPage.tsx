@@ -105,9 +105,9 @@ export default function DashboardPage() {
   const staffRows = staffingReport?.rows ?? [];
 
   const liveStatus = {
-    available: staffRows.filter((r) => String(r.status ?? '').toLowerCase() === 'available').length,
-    busy: staffRows.filter((r) => String(r.status ?? '').toLowerCase() === 'busy').length,
-    break: staffRows.filter((r) => String(r.status ?? '').toLowerCase() === 'break').length,
+    available: staffRows.filter((r) => String(r.Status ?? '').toUpperCase() === 'READY').length,
+    busy: staffRows.filter((r) => ['INCALL', 'QUEUE'].includes(String(r.Status ?? '').toUpperCase())).length,
+    break: staffRows.filter((r) => String(r.Status ?? '').toUpperCase() === 'PAUSED').length,
   };
   const totalStaff = liveStatus.available + liveStatus.busy + liveStatus.break;
 
@@ -364,9 +364,9 @@ export default function DashboardPage() {
                       <td className="p-4">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold">
-                            {getInitials(String(call.agent_name ?? ''))}
+                            {getInitials(String(call.Name ?? call.agent_name ?? call.user ?? ''))}
                           </div>
-                          <span className="font-medium text-primary">{String(call.agent_name ?? '')}</span>
+                          <span className="font-medium text-primary">{String(call.Name ?? call.agent_name ?? call.user ?? '')}</span>
                         </div>
                       </td>
                       <td className="p-4 font-metadata-mono text-secondary">{formatDuration(Number(call.duration ?? call.seconds ?? 0))}</td>
