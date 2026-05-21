@@ -98,6 +98,9 @@ export default function DashboardPage() {
   const salesToday = summary ? findMetric(summary.metrics, 'Sales Today') : undefined;
   const aht = summary ? findMetric(summary.metrics, 'Handle Time') : undefined;
   const occupancy = summary ? findMetric(summary.metrics, 'Occupancy') : undefined;
+  const leadsDialed = summary ? findMetric(summary.metrics, 'Leads Dialed') : undefined;
+  const leadsContacted = summary ? findMetric(summary.metrics, 'Leads Contacted') : undefined;
+  const contactRate = summary ? findMetric(summary.metrics, 'Contact Rate') : undefined;
 
   const chartData = summary?.charts?.[0]
     ? summary.charts[0].labels.map((label, i) => ({
@@ -199,6 +202,21 @@ export default function DashboardPage() {
           {error}
         </div>
       )}
+
+      <section className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', color: 'text-electric-blue' },
+          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', color: 'text-emerald-signal' },
+          { label: 'Contact Rate', value: contactRate?.value ?? '--%', color: 'text-violet-500' },
+        ].map((l) => (
+          <div key={l.label} className="border border-whisper-border rounded-xl p-5">
+            <p className="text-secondary text-sm">{l.label}</p>
+            <p className={`text-2xl font-bold mt-1 ${l.color}`}>
+              {summaryLoading ? '--' : l.value}
+            </p>
+          </div>
+        ))}
+      </section>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard

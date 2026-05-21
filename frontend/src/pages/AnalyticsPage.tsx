@@ -182,6 +182,10 @@ export default function AnalyticsPage() {
   const prevNoContacts = prevSummary ? findMetric(prevSummary.metrics, 'No Contacts') : undefined;
   const prevTotalCalls = prevSummary ? findMetric(prevSummary.metrics, 'Total Calls') : undefined;
 
+  const leadsDialed = summary ? findMetric(summary.metrics, 'Leads Dialed') : undefined;
+  const leadsContacted = summary ? findMetric(summary.metrics, 'Leads Contacted') : undefined;
+  const contactRateMetric = summary ? findMetric(summary.metrics, 'Contact Rate') : undefined;
+
   const kpiCards = [
     { title: 'Sales Today', value: salesMetric?.value ?? '--', change: pctChange(salesMetric?.value ?? '0', prevSales?.value), icon: 'payments', color: 'text-emerald-signal' },
     { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: 'call-made', color: 'text-electric-blue' },
@@ -282,6 +286,21 @@ export default function AnalyticsPage() {
           {error}
         </div>
       )}
+
+      <section className="grid grid-cols-3 gap-5">
+        {[
+          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', color: 'text-electric-blue' },
+          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', color: 'text-emerald-signal' },
+          { label: 'Contact Rate', value: contactRateMetric?.value ?? '--%', color: 'text-violet-500' },
+        ].map((l, i) => (
+          <div key={l.label} className="border border-whisper-border rounded-xl p-8" style={animateIn({ animationDelay: `${i * 60}ms` })}>
+            <p className="text-secondary text-sm">{l.label}</p>
+            <p className={`text-2xl font-bold mt-1 ${l.color}`}>
+              {loading ? '--' : l.value}
+            </p>
+          </div>
+        ))}
+      </section>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {kpiCards.map((card, i) => (

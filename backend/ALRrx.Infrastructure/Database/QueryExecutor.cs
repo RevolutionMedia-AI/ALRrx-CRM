@@ -170,6 +170,31 @@ public sealed class QueryExecutor : IQueryService
                 WHERE DATE(vl.call_date) BETWEEN @Start AND @End
                 AND vu.user_group = 'ALTRX'
                 """
+        },
+        ["leads_contact_rate"] = new QueryDefinition
+        {
+            Id = "leads_contact_rate",
+            Name = "Leads Contact Rate",
+            Description = "Leads dialed, contacted, and contact rate",
+            Category = "Dashboard",
+            SqlTemplate = """
+                SELECT
+                    COUNT(DISTINCT lead_id) AS Total_Dialed_Leads,
+                    COUNT(DISTINCT CASE
+                        WHEN status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY','HNGUP')
+                        THEN lead_id
+                    END) AS Contacted_Leads,
+                    ROUND(
+                        COUNT(DISTINCT CASE
+                            WHEN status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY','HNGUP')
+                            THEN lead_id
+                        END) * 100.0 / COUNT(DISTINCT lead_id)
+                    , 1) AS Contact_Rate
+                FROM vicidial_log vl
+                JOIN vicidial_users vu ON vl.user = vu.user
+                WHERE DATE(vl.call_date) BETWEEN @Start AND @End
+                AND vu.user_group = 'ALTRX'
+                """
         }
     };
 

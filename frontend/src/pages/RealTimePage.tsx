@@ -85,6 +85,9 @@ export default function RealTimePage() {
   const totalCalls = summary?.metrics.find((m) => m.label.toLowerCase().includes('total calls'))?.value ?? '--';
   const contacts = summary?.metrics.find((m) => m.label.toLowerCase().includes('contacts'))?.value ?? '--';
   const occupancy = summary?.metrics.find((m) => m.label.toLowerCase().includes('occupancy'))?.value ?? '--%';
+  const leadsDialed = summary?.metrics.find((m) => m.label.toLowerCase().includes('leads dialed'))?.value ?? '--';
+  const leadsContacted = summary?.metrics.find((m) => m.label.toLowerCase().includes('leads contacted'))?.value ?? '--';
+  const contactRateVal = summary?.metrics.find((m) => m.label.toLowerCase().includes('contact rate'))?.value ?? '--%';
 
   return (
     <>
@@ -110,6 +113,21 @@ export default function RealTimePage() {
           {error}
         </div>
       )}
+
+      <section className="grid grid-cols-3 gap-4 mt-6">
+        {[
+          { label: 'Leads Dialed', value: leadsDialed, color: 'text-electric-blue' },
+          { label: 'Leads Contacted', value: leadsContacted, color: 'text-emerald-signal' },
+          { label: 'Contact Rate', value: contactRateVal, color: 'text-violet-500' },
+        ].map((l) => (
+          <div key={l.label} className="border border-whisper-border rounded-xl p-5">
+            <p className="text-secondary text-sm">{l.label}</p>
+            <p className={`text-2xl font-bold mt-1 ${l.color}`}>
+              {loading ? '--' : l.value}
+            </p>
+          </div>
+        ))}
+      </section>
 
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
         {[

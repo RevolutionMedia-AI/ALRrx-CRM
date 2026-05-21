@@ -23,8 +23,9 @@ public sealed class GetDashboardDataUseCase
         var agentTask = _queryService.ExecuteQueryAsync("agent_performance", timeRange, ct);
         var ahtTask = _queryService.ExecuteQueryAsync("aht_daily", timeRange, ct);
         var occupancyTask = _queryService.ExecuteQueryAsync("occupancy_rate", timeRange, ct);
+        var leadsTask = _queryService.ExecuteQueryAsync("leads_contact_rate", timeRange, ct);
 
-        await Task.WhenAll(salesTask, contactTask, agentTask, dispositionsTask, ahtTask, occupancyTask);
+        await Task.WhenAll(salesTask, contactTask, agentTask, dispositionsTask, ahtTask, occupancyTask, leadsTask);
 
         var salesResult = salesTask.Result;
         var contactResult = contactTask.Result;
@@ -32,8 +33,35 @@ public sealed class GetDashboardDataUseCase
         var agentResult = agentTask.Result;
         var ahtResult = ahtTask.Result;
         var occupancyResult = occupancyTask.Result;
+        var leadsResult = leadsTask.Result;
 
         var metrics = new List<MetricCardDto>();
+
+        if (leadsResult.Rows.Length > 0)
+        {
+            var lr = leadsResult.Rows[0];
+            metrics.Add(new MetricCardDto
+            {
+                Label = "Leads Dialed",
+                Value = lr.GetValueOrDefault("Total_Dialed_Leads")?.ToString() ?? "0",
+                Color = "#3B82F6",
+                Format = "number"
+            });
+            metrics.Add(new MetricCardDto
+            {
+                Label = "Leads Contacted",
+                Value = lr.GetValueOrDefault("Contacted_Leads")?.ToString() ?? "0",
+                Color = "#10b981",
+                Format = "number"
+            });
+            metrics.Add(new MetricCardDto
+            {
+                Label = "Contact Rate",
+                Value = $"{lr.GetValueOrDefault("Contact_Rate") ?? 0}%",
+                Color = "#8B5CF6",
+                Format = "percentage"
+            });
+        }
 
         if (salesResult.Rows.Length > 0)
         {
