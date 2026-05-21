@@ -311,15 +311,16 @@ export default function DashboardPage() {
               <h4 className="text-sm font-medium text-secondary mb-3 uppercase tracking-wider text-[11px]">Availability Map</h4>
               <div className="grid grid-cols-8 gap-1.5">
                 {staffRows.slice(0, 24).map((agent, i) => {
-                  const status = String(agent.status ?? '').toLowerCase();
-                  const color = status === 'available' ? 'bg-emerald-signal'
-                    : status === 'busy' ? 'bg-amber-warmth'
+                  const status = String(agent.Status ?? '').toUpperCase();
+                  const color = status === 'READY' ? 'bg-emerald-signal'
+                    : (status === 'INCALL' || status === 'QUEUE') ? 'bg-amber-warmth'
+                    : status === 'PAUSED' ? 'bg-deep-rose'
                     : 'bg-muted-slate';
                   return (
                     <div
                       key={i}
                       className={`aspect-square ${color} rounded-sm opacity-80`}
-                      title={`${agent.name ?? agent.agent_name ?? ''} - ${status}`}
+                      title={`${agent.Name ?? agent.Emp_Number ?? agent.user ?? ''} - ${status}`}
                     />
                   );
                 })}
