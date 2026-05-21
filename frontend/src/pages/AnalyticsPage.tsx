@@ -233,6 +233,20 @@ export default function AnalyticsPage() {
     </th>
   );
 
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: { name: string; value: number }[] }) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="bg-pure-surface/95 dark:bg-gray-900/95 backdrop-blur border border-whisper-border dark:border-gray-700 rounded-lg px-3 py-2 shadow-sm">
+        {payload.map((p) => (
+          <div key={p.name}>
+            <span className="text-secondary dark:text-gray-400 text-[11px] font-metadata-mono">{p.name}</span>
+            <span className="text-primary dark:text-gray-100 text-sm font-bold ml-3">{p.value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <>
       <style>{`
@@ -363,13 +377,7 @@ export default function AnalyticsPage() {
                       <Cell key={i} fill={DISPOSITION_COLORS[i % DISPOSITION_COLORS.length]} stroke="none" />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value: number, name: string) => {
-                      const total = pieData.reduce((s, d) => s + d.value, 0);
-                      const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
-                      return [`${value} (${pct}%)`, name];
-                    }}
-                  />
+                  <Tooltip content={<CustomTooltip />} cursor={false} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-sm">
@@ -447,7 +455,7 @@ export default function AnalyticsPage() {
                     <Cell fill="#4f46e5" stroke="none" />
                     <Cell fill="#c4b5fd" stroke="none" />
                   </Pie>
-                  <Tooltip formatter={(value: number) => [`${value}`, '']} />
+                  <Tooltip content={<CustomTooltip />} cursor={false} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
@@ -506,7 +514,7 @@ export default function AnalyticsPage() {
               </thead>
               <tbody>
                 {sortedAgents.map((agent, i) => (
-                  <tr key={i} className="border-b border-whisper-border hover:bg-surface-container-lowest transition-colors">
+                  <tr key={i} className="border-b border-whisper-border hover:bg-surface-container-lowest dark:hover:bg-gray-800 transition-colors">
                     <td className="p-3 font-medium text-primary">{String(agent.Name ?? agent.User ?? '')}</td>
                     <td className="p-3 font-metadata-mono">{String(agent.Calls_Handled ?? '0')}</td>
                     <td className="p-3 font-metadata-mono text-emerald-signal font-medium">{String(agent.Sales_Made ?? '0')}</td>
