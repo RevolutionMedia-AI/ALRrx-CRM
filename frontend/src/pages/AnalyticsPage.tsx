@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { getDashboardSummary, getReport } from '../services/api';
 import { exportCombinedCSV } from '../utils/csv';
@@ -9,7 +9,13 @@ import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } fro
 type Period = 'Today' | 'Week' | 'Month';
 const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth' };
 
-const DISPOSITION_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#6B7280'];
+const DISPOSITION_COLORS = [
+  '#3B82F6', '#6366F1', '#8B5CF6', '#A78BFA', '#C084FC',
+  '#06B6D4', '#0EA5E9', '#14B8A6', '#10B981', '#84CC16',
+  '#F59E0B', '#F97316', '#EAB308', '#D97706',
+  '#EF4444', '#EC4899', '#F43F5E', '#E11D48',
+  '#6B7280', '#78716C',
+];
 
 const PASTEL_BG: Record<string, string> = {
   'text-emerald-signal': 'bg-emerald-signal/8',
@@ -178,6 +184,33 @@ export default function AnalyticsPage() {
     { title: 'Total Calls', value: totalCallsMetric?.value ?? '--', change: pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value), icon: 'call', color: 'text-amber-warmth' },
   ];
 
+  const pieData = useMemo(() => {
+    if (!summary?.charts?.[0]?.series?.[0]) return [];
+    const labels = summary.charts[0].labels;
+    const data = summary.charts[0].series[0].data;
+    const raw = labels.map((label, i) => ({
+      name: label,
+      value: data[i] ?? 0,
+    }));
+    const total = raw.reduce((sum, d) => sum + d.value, 0);
+    if (total === 0) return [];
+    const threshold = total * 0.04;
+    const major = raw.filter((d) => d.value >= threshold);
+    const otherTotal = raw.filter((d) => d.value < threshold).reduce((sum, d) => sum + d.value, 0);
+    if (otherTotal > 0) major.push({ name: 'Other', value: otherTotal });
+    return major;
+  }, [summary]);
+
+  const contactDonut = useMemo(() => {
+    if (!contactReport?.rows?.[0]) return [];
+    const c = Number(contactReport.rows[0].Contact ?? 0);
+    const nc = Number(contactReport.rows[0].No_Contact ?? 0);
+    return [
+      { name: 'Contact', value: c },
+      { name: 'No Contact', value: nc },
+    ];
+  }, [contactReport]);
+
   const sortableTh = (label: string, key: SortKey) => (
     <th
       className="p-3 font-medium cursor-pointer select-none hover:text-primary transition-colors"
@@ -271,28 +304,44 @@ export default function AnalyticsPage() {
         <div className="lg:col-span-2 border border-whisper-border rounded-xl p-8" style={animateIn({ animationDelay: '160ms' })}>
           <h3 className="font-bold text-lg text-primary mb-6">Dispositions</h3>
           {loading ? (
-            <div className="h-64 bg-surface-container rounded animate-pulse" />
-          ) : summary?.charts?.[0] ? (
-            <div className="flex flex-col items-center">
-              <ResponsiveContainer width="100%" height={280}>
+            <div className="h-80 bg-surface-container rounded animate-pulse" />
+          ) : pieData.length > 0 ? (
+            <div className="flex flex-col items-center gap-5">
+              <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie
-                    data={summary.charts[0].labels.map((label, i) => ({
-                      name: label,
-                      value: summary.charts[0].series[0]?.data[i] ?? 0,
-                    }))}
+                    data={pieData}
                     cx="50%" cy="50%"
-                    innerRadius={56} outerRadius={100}
-                    paddingAngle={2} dataKey="value"
+                    innerRadius={52} outerRadius={100}
+                    paddingAngle={1.5}
+                    dataKey="value"
+                    nameKey="name"
                   >
-                    {summary.charts[0].labels.map((_, i) => (
-                      <Cell key={i} fill={DISPOSITION_COLORS[i % DISPOSITION_COLORS.length]} />
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={DISPOSITION_COLORS[i % DISPOSITION_COLORS.length]} stroke="none" />
                     ))}
                   </Pie>
-                  <Tooltip />
-                  <Legend />
+                  <Tooltip
+                    formatter={(value: number, name: string) => {
+                      const total = pieData.reduce((s, d) => s + d.value, 0);
+                      const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+                      return [`${value} (${pct}%)`, name];
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 text-sm">
+                {pieData.map((d, i) => (
+                  <div key={d.name} className="flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: DISPOSITION_COLORS[i % DISPOSITION_COLORS.length] }}
+                    />
+                    <span className="text-primary font-medium">{d.name}</span>
+                    <span className="text-secondary font-metadata-mono">{d.value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="h-64 rounded-lg border border-whisper-border bg-surface-container-low flex items-center justify-center text-muted-slate text-sm">
@@ -340,22 +389,51 @@ export default function AnalyticsPage() {
         <h3 className="font-bold text-lg text-primary mb-6">Contact vs No Contact</h3>
         {loading ? (
           <div className="h-64 bg-surface-container rounded animate-pulse" />
-        ) : contactReport && contactReport.rows.length > 0 ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={[{
-              name: period,
-              Contact: Number(contactReport.rows[0]?.Contact ?? 0),
-              'No Contact': Number(contactReport.rows[0]?.No_Contact ?? 0),
-            }]}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#787774' }} />
-              <YAxis tick={{ fontSize: 12, fill: '#787774' }} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="Contact" fill="#346538" radius={[4, 4, 0, 0]} name="Contact" />
-              <Bar dataKey="No Contact" fill="#9F2F2D" radius={[4, 4, 0, 0]} name="No Contact" />
-            </BarChart>
-          </ResponsiveContainer>
+        ) : contactDonut.length > 0 ? (
+          <div className="flex items-center justify-center gap-10">
+            <div className="relative w-[200px] h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={contactDonut}
+                    cx="50%" cy="50%"
+                    innerRadius={58} outerRadius={88}
+                    paddingAngle={2}
+                    dataKey="value"
+                    startAngle={90} endAngle={-270}
+                  >
+                    <Cell fill="#4f46e5" stroke="none" />
+                    <Cell fill="#c4b5fd" stroke="none" />
+                  </Pie>
+                  <Tooltip formatter={(value: number) => [`${value}`, '']} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-2xl font-bold text-primary">
+                  {contactDonut[0].value + contactDonut[1].value > 0
+                    ? `${((contactDonut[0].value / (contactDonut[0].value + contactDonut[1].value)) * 100).toFixed(0)}%`
+                    : '--'}
+                </span>
+                <span className="text-[11px] text-secondary">Contact Rate</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#4f46e5' }} />
+                <div>
+                  <p className="text-2xl font-bold text-primary">{contactDonut[0].value}</p>
+                  <p className="text-xs text-secondary">Contact</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#c4b5fd' }} />
+                <div>
+                  <p className="text-2xl font-bold text-primary">{contactDonut[1].value}</p>
+                  <p className="text-xs text-secondary">No Contact</p>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="h-64 rounded-lg border border-whisper-border bg-surface-container-low flex items-center justify-center text-muted-slate text-sm">
             No contact data available
