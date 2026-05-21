@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AnalyticsPage from './pages/AnalyticsPage';
@@ -39,8 +40,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="grain-overlay" aria-hidden="true" />
-        <AppRoutes />
+        <ThemeProvider>
+          <div className="grain-overlay" aria-hidden="true" />
+          <AppRoutes />
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   );

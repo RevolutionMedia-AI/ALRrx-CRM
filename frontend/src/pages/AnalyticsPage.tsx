@@ -290,13 +290,13 @@ export default function AnalyticsPage() {
 
       <section className="grid grid-cols-3 gap-5">
         {[
-          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', color: 'text-electric-blue' },
-          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', color: 'text-emerald-signal' },
-          { label: 'Contact Rate', value: contactRateMetric?.value ?? '--%', color: 'text-violet-500' },
+          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', bg: 'bg-electric-blue/5 dark:bg-electric-blue/10', border: 'border-electric-blue/15 dark:border-electric-blue/25', textColor: 'text-electric-blue dark:text-blue-300' },
+          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', bg: 'bg-emerald-signal/5 dark:bg-emerald-signal/10', border: 'border-emerald-signal/15 dark:border-emerald-signal/25', textColor: 'text-emerald-signal dark:text-emerald-300' },
+          { label: 'Contact Rate', value: contactRateMetric?.value ?? '--%', bg: 'bg-violet-500/5 dark:bg-violet-500/10', border: 'border-violet-500/15 dark:border-violet-500/25', textColor: 'text-violet-500 dark:text-violet-300' },
         ].map((l, i) => (
-          <div key={l.label} className="border border-whisper-border rounded-xl p-8" style={animateIn({ animationDelay: `${i * 60}ms` })}>
-            <p className="text-secondary text-sm">{l.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${l.color}`}>
+          <div key={l.label} className={`${l.bg} ${l.border} border rounded-xl p-8 transition-colors`} style={animateIn({ animationDelay: `${i * 60}ms` })}>
+            <p className="text-secondary dark:text-gray-400 text-sm">{l.label}</p>
+            <p className={`text-2xl font-bold mt-1 ${l.textColor}`}>
               {loading ? '--' : l.value}
             </p>
           </div>
