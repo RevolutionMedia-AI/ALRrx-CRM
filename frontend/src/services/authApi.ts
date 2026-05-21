@@ -32,6 +32,11 @@ export async function login(req: LoginRequest): Promise<LoginResponse> {
   return data;
 }
 
+export async function googleLogin(credential: string): Promise<LoginResponse> {
+  const { data } = await client.post<LoginResponse>('/auth/google', { credential });
+  return data;
+}
+
 export async function register(req: RegisterRequest): Promise<UserInfo> {
   const { data } = await client.post<UserInfo>('/auth/register', req);
   return data;

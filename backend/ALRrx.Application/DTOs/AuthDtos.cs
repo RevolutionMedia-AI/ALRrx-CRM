@@ -6,6 +6,11 @@ public sealed record LoginRequest
     public string Password { get; init; } = string.Empty;
 }
 
+public sealed record GoogleLoginRequest
+{
+    public string Credential { get; init; } = string.Empty;
+}
+
 public sealed record LoginResponse
 {
     public string Token { get; init; } = string.Empty;
