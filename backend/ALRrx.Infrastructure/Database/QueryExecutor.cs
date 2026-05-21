@@ -155,7 +155,7 @@ public sealed class QueryExecutor : IQueryService
 
         _logger.LogInformation("Executing query: {QueryName}", query.Name);
 
-        var connection = (MySqlConnection)await _dbConnection.GetConnectionAsync(ct);
+        await using var connection = (MySqlConnection)await _dbConnection.GetConnectionAsync(ct);
         await using var cmd = new MySqlCommand(query.SqlTemplate, connection);
 
         if (query.SqlTemplate.Contains("@Start"))

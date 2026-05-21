@@ -62,13 +62,13 @@ export default function DashboardPage() {
     setCallsLoading(true);
     setError(null);
     try {
-      const [s, a, st, c] = await Promise.all([
-        getDashboardSummary(filter(p)),
+      const s = await getDashboardSummary(filter(p));
+      setSummary(s);
+      const [a, st, c] = await Promise.all([
         getReport('agent_performance', filter(p)).catch(() => null),
         getStaffing().catch(() => null),
         getReport('all_calls', filter(p)).catch(() => null),
       ]);
-      setSummary(s);
       setAgentReport(a);
       setStaffingReport(st);
       setCallsReport(c);
