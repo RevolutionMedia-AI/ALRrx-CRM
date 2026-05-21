@@ -9,6 +9,8 @@ import { useAuth } from '../context/AuthContext';
 
 type Period = 'Today' | 'Week' | 'Month';
 
+const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth' };
+
 function findMetric(metrics: MetricCardDto[], label: string): MetricCardDto | undefined {
   return metrics.find((m) => m.label.toLowerCase().includes(label.toLowerCase()));
 }
@@ -51,7 +53,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const filter = (p: Period): TimeFilterDto => ({ period: p });
+  const filter = (p: Period): TimeFilterDto => ({ period: PERIOD_API[p] });
 
   const loadAll = useCallback(async (p: Period) => {
     setSummaryLoading(true);

@@ -7,6 +7,7 @@ import { exportCombinedCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 
 type Period = 'Today' | 'Week' | 'Month';
+const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth' };
 
 const DISPOSITION_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#6B7280'];
 
@@ -97,7 +98,7 @@ export default function AnalyticsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('sales');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
-  const filter = (p: Period): TimeFilterDto => ({ period: p });
+  const filter = (p: Period): TimeFilterDto => ({ period: PERIOD_API[p] });
 
   const fetchAnalytics = async (p: Period) => {
     setLoading(true);
