@@ -270,11 +270,11 @@ export default function DashboardPage() {
                     <div key={i} className="flex items-center justify-between group">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-primary font-bold text-xs border border-whisper-border">
-                          {getInitials(String(agent.agent_name ?? agent.name ?? ''))}
+                          {getInitials(String(agent.Name ?? agent.User ?? ''))}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-primary">{String(agent.agent_name ?? agent.name ?? '')}</p>
-                          <p className="text-[11px] text-secondary font-metadata-mono">{String(agent.team ?? agent.queue ?? 'General')}</p>
+                          <p className="text-sm font-medium text-primary">{String(agent.Name ?? agent.User ?? '')}</p>
+                          <p className="text-[11px] text-secondary font-metadata-mono">#{String(agent.User ?? '--')}</p>
                         </div>
                       </div>
                       <div className="text-right">
