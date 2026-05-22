@@ -2,8 +2,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardSummary, getReport, getStaffing } from '../services/api';
-import { exportCombinedCSV } from '../utils/csv';
+import { getDashboardSummary, getReport, getStaffing, exportDashboardPdf } from '../services/api';
+import { exportCombinedCSV, exportDashboardCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,6 +28,27 @@ function getInitials(name: string): string {
   return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
 }
 
+function elapsed(isoDate: string | null): string {
+  if (!isoDate) return '';
+  const diff = Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000);
+  if (diff < 60) return `${diff}s`;
+  const m = Math.floor(diff / 60);
+  const s = diff % 60;
+  if (m < 60) return `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
+}
+
+type AgentStatus = 'READY' | 'INCALL' | 'QUEUE' | 'PAUSED' | 'OFFLINE';
+
+const STATUS_COLORS: Record<AgentStatus, { bg: string; text: string; dot: string; label: string }> = {
+  READY:   { bg: 'bg-emerald-signal/8', text: 'text-emerald-signal', dot: 'bg-emerald-signal', label: 'Available' },
+  INCALL:  { bg: 'bg-electric-blue/8', text: 'text-electric-blue', dot: 'bg-electric-blue', label: 'On Call' },
+  QUEUE:   { bg: 'bg-amber-warmth/8', text: 'text-amber-warmth', dot: 'bg-amber-warmth', label: 'In Queue' },
+  PAUSED:  { bg: 'bg-deep-rose/8', text: 'text-deep-rose', dot: 'bg-deep-rose', label: 'Paused' },
+  OFFLINE: { bg: 'bg-muted-slate/8', text: 'text-muted-slate', dot: 'bg-muted-slate', label: 'Offline' },
+};
+
 function getStatusColor(status: string) {
   switch (status) {
     case 'completed': return { bg: 'bg-emerald-signal/10', text: 'text-emerald-signal', dot: 'bg-emerald-signal' };
@@ -47,6 +68,8 @@ export default function DashboardPage() {
   const [agentReport, setAgentReport] = useState<ReportDto | null>(null);
   const [staffingReport, setStaffingReport] = useState<ReportDto | null>(null);
   const [callsReport, setCallsReport] = useState<ReportDto | null>(null);
+  const [dispositionsReport, setDispositionsReport] = useState<ReportDto | null>(null);
+  const [contactReport, setContactReport] = useState<ReportDto | null>(null);
 
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [agentLoading, setAgentLoading] = useState(false);
@@ -54,6 +77,7 @@ export default function DashboardPage() {
   const [callsLoading, setCallsLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const filter = (p: Period): TimeFilterDto => {
@@ -70,14 +94,18 @@ export default function DashboardPage() {
     try {
       const s = await getDashboardSummary(filter(p));
       setSummary(s);
-      const [a, st, c] = await Promise.all([
+      const [a, st, c, d, ct] = await Promise.all([
         getReport('agent_performance', filter(p)).catch(() => null),
         getStaffing().catch(() => null),
         getReport('all_calls', filter(p)).catch(() => null),
+        getReport('dispositions', filter(p)).catch(() => null),
+        getReport('contact_vs_nocontact', filter(p)).catch(() => null),
       ]);
       setAgentReport(a);
       setStaffingReport(st);
       setCallsReport(c);
+      setDispositionsReport(d);
+      setContactReport(ct);
     } catch {
       setError('Failed to load dashboard data');
     } finally {
@@ -125,18 +153,32 @@ export default function DashboardPage() {
   };
 
   const handleExportCSV = () => {
-    const sections: { name: string; columns: string[]; rows: Record<string, unknown>[] }[] = [];
-    if (summary) {
-      sections.push({
-        name: 'KPI Metrics',
-        columns: ['Label', 'Value', 'Trend'],
-        rows: summary.metrics.map((m) => ({ Label: m.label, Value: m.value, Trend: m.trend ?? '' })),
-      });
+    exportDashboardCSV(
+      summary?.metrics ?? [],
+      agentReport ? { name: 'Agent Performance', columns: agentReport.columns, rows: agentReport.rows } : null,
+      dispositionsReport ? { name: 'Dispositions', columns: dispositionsReport.columns, rows: dispositionsReport.rows } : null,
+      contactReport ? { name: 'Contact vs No Contact', columns: contactReport.columns, rows: contactReport.rows } : null,
+      period,
+    );
+  };
+
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const blob = await exportDashboardPdf(filter(period));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ALTRX_Dashboard_${period}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('Failed to export PDF');
+    } finally {
+      setExportingPdf(false);
     }
-    if (agentReport) sections.push({ name: 'Agent Performance', columns: agentReport.columns, rows: agentReport.rows });
-    if (callsReport) sections.push({ name: 'All Calls', columns: callsReport.columns, rows: callsReport.rows });
-    if (staffingReport) sections.push({ name: 'Staffing', columns: staffingReport.columns, rows: staffingReport.rows });
-    if (sections.length > 0) exportCombinedCSV(sections);
   };
 
   const periodBtn = (p: Period) => (
@@ -350,23 +392,57 @@ export default function DashboardPage() {
               </div>
             )}
             <div className="mt-8 pt-6 border-t border-whisper-border">
-              <h4 className="text-sm font-medium text-secondary mb-3 uppercase tracking-wider text-[11px]">Availability Map</h4>
-              <div className="grid grid-cols-8 gap-1.5">
-                {staffRows.slice(0, 24).map((agent, i) => {
-                  const status = String(agent.Status ?? '').toUpperCase();
-                  const color = status === 'READY' ? 'bg-emerald-signal'
-                    : (status === 'INCALL' || status === 'QUEUE') ? 'bg-amber-warmth'
-                    : status === 'PAUSED' ? 'bg-deep-rose'
-                    : 'bg-muted-slate';
-                  return (
-                    <div
-                      key={i}
-                      className={`aspect-square ${color} rounded-sm opacity-80`}
-                      title={`${agent.Name ?? agent.Emp_Number ?? agent.user ?? ''} - ${status}`}
-                    />
-                  );
-                })}
-              </div>
+              <h4 className="text-sm font-medium text-secondary mb-3 uppercase tracking-wider text-[11px]">Agent Status</h4>
+              {staffingLoading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-24 border border-whisper-border rounded-lg bg-surface-container animate-pulse" />
+                  ))}
+                </div>
+              ) : staffRows.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {staffRows.slice(0, 12).map((agent, i) => {
+                    const s = (String(agent.Status ?? '').toUpperCase() || 'OFFLINE') as AgentStatus;
+                    const c = STATUS_COLORS[s] ?? STATUS_COLORS.OFFLINE;
+                    const time = s === 'INCALL' || s === 'QUEUE'
+                      ? elapsed(String(agent.last_call_time ?? ''))
+                      : s === 'PAUSED'
+                      ? elapsed(String(agent.last_update_time ?? ''))
+                      : '';
+                    return (
+                      <div key={i} className={`border border-whisper-border rounded-lg p-3 ${c.bg}`}>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <div className="w-7 h-7 rounded-full bg-pure-surface border border-whisper-border flex items-center justify-center text-primary font-bold text-[10px]">
+                            {getInitials(String(agent.Name ?? agent.User ?? ''))}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-primary truncate">{String(agent.Name ?? agent.User ?? '--')}</p>
+                            <p className="text-[10px] text-secondary font-metadata-mono">#{String(agent.Emp_Number ?? agent.User ?? '--')}</p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
+                            <span className={`text-[10px] font-medium ${c.text}`}>{c.label}</span>
+                          </div>
+                        </div>
+                        {time ? (
+                          <div className="flex items-center gap-1 text-[10px] text-secondary font-metadata-mono">
+                            <span className="material-symbols-outlined text-[12px]">timer</span>
+                            {s === 'INCALL' || s === 'QUEUE' ? 'Call: ' : 'Paused: '}
+                            <span className="font-medium text-primary">{time}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-[10px] text-secondary font-metadata-mono">
+                            <span className="material-symbols-outlined text-[12px]">schedule</span>
+                            {s === 'READY' ? 'Waiting for calls' : s === 'OFFLINE' ? 'Not logged in' : '\u00A0'}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-slate">No agent data available</p>
+              )}
             </div>
           </div>
         </div>
@@ -435,7 +511,15 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={handleExportPdf}
+          disabled={exportingPdf}
+          className="bg-deep-rose text-white px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+          {exportingPdf ? 'Generating...' : 'Export PDF'}
+        </button>
         <button
           onClick={handleExportCSV}
           className="bg-primary text-on-primary px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2"

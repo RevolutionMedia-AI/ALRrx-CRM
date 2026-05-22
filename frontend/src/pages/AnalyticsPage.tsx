@@ -2,8 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardSummary, getReport } from '../services/api';
-import { exportCombinedCSV } from '../utils/csv';
+import { getDashboardSummary, getReport, exportDashboardPdf } from '../services/api';
+import { exportAnalyticsCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 
 type Period = 'Today' | 'Week' | 'Month' | 'Custom';
@@ -106,6 +106,7 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('sales');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const filter = (p: Period): TimeFilterDto => {
     if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${customStart}T00:00:00`, customEnd: `${customEnd}T23:59:59` };
@@ -511,21 +512,40 @@ export default function AnalyticsPage() {
         )}
       </section>
 
-      <div className="flex justify-end" style={animateIn({ animationDelay: '480ms' })}>
+      <div className="flex justify-end gap-3" style={animateIn({ animationDelay: '480ms' })}>
+        <button
+          onClick={async () => {
+            setExportingPdf(true);
+            try {
+              const blob = await exportDashboardPdf(filter(period));
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `ALTRX_Analytics_${period}_${new Date().toISOString().split('T')[0]}.pdf`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } catch {
+              setError('Failed to export PDF');
+            } finally {
+              setExportingPdf(false);
+            }
+          }}
+          disabled={exportingPdf}
+          className="bg-deep-rose text-white px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+          {exportingPdf ? 'Generating...' : 'Export PDF'}
+        </button>
         <button
           onClick={() => {
-            const sections: { name: string; columns: string[]; rows: Record<string, unknown>[] }[] = [];
-            if (summary) {
-              sections.push({
-                name: 'KPI Metrics',
-                columns: ['Label', 'Value'],
-                rows: summary.metrics.map((m) => ({ Label: m.label, Value: m.value })),
-              });
-            }
-            if (dispositions) sections.push({ name: 'Dispositions', columns: dispositions.columns, rows: dispositions.rows });
-            if (contactReport) sections.push({ name: 'Contact vs No Contact', columns: contactReport.columns, rows: contactReport.rows });
-            if (agentReport) sections.push({ name: 'Agent Performance', columns: agentReport.columns, rows: agentReport.rows });
-            if (sections.length > 0) exportCombinedCSV(sections);
+            exportAnalyticsCSV(
+              agentReport ? { name: 'Agent Performance', columns: agentReport.columns, rows: agentReport.rows } : null,
+              period,
+              period === 'Custom' ? customStart : undefined,
+              period === 'Custom' ? customEnd : undefined,
+            );
           }}
           className="bg-primary text-on-primary px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2"
         >

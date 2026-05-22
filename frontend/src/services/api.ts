@@ -39,3 +39,10 @@ export async function exportReport(request: ExportRequestDto): Promise<Blob> {
   });
   return data;
 }
+
+export async function exportDashboardPdf(filter: TimeFilterDto): Promise<Blob> {
+  const { data } = await client.post('/dashboard-export/pdf', filter, {
+    responseType: 'blob',
+  });
+  return data;
+}

@@ -1,4 +1,3 @@
-using System.Text;
 using ALRrx.Application.Interfaces;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -45,9 +44,13 @@ public sealed class PdfExportService : IReportExportService
                 page.Size(PageSizes.A4.Landscape());
                 page.Margin(20);
 
-                page.Header().Text(_title).FontSize(18).Bold().FontColor(Colors.Blue.Darken2);
+                page.Header().Row(row =>
+                {
+                    row.RelativeItem().Text(_title).FontSize(16).Bold().FontColor(Colors.Blue.Darken2);
+                    row.RelativeItem().AlignRight().Text($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}").FontSize(8).FontColor(Colors.Grey.Darken1);
+                });
 
-                page.Content().Table(table =>
+                page.Content().PaddingTop(10).Table(table =>
                 {
                     table.ColumnsDefinition(columns =>
                     {
@@ -58,32 +61,29 @@ public sealed class PdfExportService : IReportExportService
                     table.Header(header =>
                     {
                         foreach (var col in _columns)
-                        {
-                            header.Cell().Element(CellStyle).Text(col).Bold().FontSize(10);
-                        }
+                            header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).Text(col).FontSize(8).SemiBold().FontColor(Colors.Grey.Darken2);
                     });
 
-                    foreach (var row in _rows)
+                    for (var i = 0; i < _rows.Length; i++)
                     {
+                        var row = _rows[i];
+                        var bg = i % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
                         foreach (var col in _columns)
                         {
                             var value = row.GetValueOrDefault(col)?.ToString() ?? "";
-                            table.Cell().Element(CellStyle).Text(value).FontSize(9);
+                            table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).Text(value).FontSize(7.5f);
                         }
                     }
                 });
 
                 page.Footer().AlignCenter().Text(text =>
                 {
-                    text.Span("Generated: ").FontSize(9);
-                    text.Span(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")).FontSize(9);
+                    text.Span("Page ").FontSize(7).FontColor(Colors.Grey.Lighten1);
+                    text.CurrentPageNumber().FontSize(7).FontColor(Colors.Grey.Lighten1);
+                    text.Span(" / ").FontSize(7).FontColor(Colors.Grey.Lighten1);
+                    text.TotalPages().FontSize(7).FontColor(Colors.Grey.Lighten1);
                 });
             });
-        }
-
-        private static IContainer CellStyle(IContainer container)
-        {
-            return container.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).PaddingVertical(4).PaddingHorizontal(6);
         }
     }
 }

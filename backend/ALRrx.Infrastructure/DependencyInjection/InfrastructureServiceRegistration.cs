@@ -1,4 +1,5 @@
 using ALRrx.Application.Interfaces;
+using ALRrx.Application.UseCases;
 using ALRrx.Domain.Interfaces;
 using ALRrx.Domain.ValueObjects;
 using ALRrx.Infrastructure.Database;
@@ -19,6 +20,7 @@ public static class InfrastructureServiceRegistration
         services.AddSingleton<IQueryService, QueryExecutor>();
         services.AddSingleton<IUserRepository, UserRepository>();
         services.AddSingleton<MutationExecutor>();
+        services.AddSingleton<IDashboardPdfService, DashboardPdfService>();
 
         services.AddSingleton<IReportExportService, ExcelExportService>();
         services.AddSingleton<IReportExportService, CsvExportService>();

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { getStaffing, getDashboardSummary } from '../services/api';
+import { exportRealTimeCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto } from '../types';
 
 type AgentStatus = 'READY' | 'INCALL' | 'QUEUE' | 'PAUSED' | 'OFFLINE';
@@ -227,6 +228,27 @@ export default function RealTimePage() {
           ))}
         </div>
       </section>
+
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => {
+            exportRealTimeCSV(
+              staffing ? { name: 'Staffing', columns: staffing.columns, rows: staffing.rows } : null,
+              {
+                campaign: 'ALTRX',
+                callsWaiting: statusCounts.incall,
+                maxWait: '--:--:--',
+                agentsLogged: totalOnline,
+              },
+              'Today',
+            );
+          }}
+          className="bg-primary text-on-primary px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2"
+        >
+          <span className="material-symbols-outlined text-sm">download</span>
+          Export Real-Time CSV
+        </button>
+      </div>
     </>
   );
 }
