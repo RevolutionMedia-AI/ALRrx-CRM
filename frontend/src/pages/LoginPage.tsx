@@ -1,8 +1,10 @@
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import logoSrc from '../images/RevolutionLogo.png';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 
 function GoogleIcon() {
   return (
@@ -42,7 +44,22 @@ export default function LoginPage() {
     onError: () => setError('Google sign-in was cancelled or failed'),
   });
 
+  if (!GOOGLE_CLIENT_ID) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 px-4">
+        <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-2xl shadow-diffused w-full max-w-md p-10 text-center">
+          <img src={logoSrc} alt="Revolution Logo" className="h-12 mb-6 mx-auto" />
+          <h1 className="text-xl font-bold text-primary dark:text-gray-100 mb-3">OpsPulse Center</h1>
+          <p className="text-secondary dark:text-gray-400 text-sm">
+            Google Sign-In is not configured. Set <code className="text-electric-blue bg-electric-blue/10 px-1 rounded text-xs">VITE_GOOGLE_CLIENT_ID</code> in your environment variables.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
     <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 px-4">
       <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-2xl shadow-diffused w-full max-w-md p-10">
         <div className="flex flex-col items-center mb-8">
@@ -71,5 +88,6 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+    </GoogleOAuthProvider>
   );
 }

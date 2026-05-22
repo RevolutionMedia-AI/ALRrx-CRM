@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import LoginPage from './pages/LoginPage';
@@ -9,8 +8,6 @@ import RealTimePage from './pages/RealTimePage';
 import UsersPage from './pages/UsersPage';
 import AppLayout from './components/Layout/AppLayout';
 import type { ReactNode } from 'react';
-
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -48,15 +45,13 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <BrowserRouter>
-        <AuthProvider>
-          <ThemeProvider>
-            <div className="grain-overlay" aria-hidden="true" />
-            <AppRoutes />
-          </ThemeProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </GoogleOAuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <ThemeProvider>
+          <div className="grain-overlay" aria-hidden="true" />
+          <AppRoutes />
+        </ThemeProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
