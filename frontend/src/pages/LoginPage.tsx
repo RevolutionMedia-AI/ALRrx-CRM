@@ -21,15 +21,20 @@ function GoogleButton() {
   const [busy, setBusy] = useState(false);
 
   const handleGoogle = useGoogleLogin({
+    flow: 'implicit',
     onSuccess: async (res: Record<string, unknown>) => {
       setBusy(true);
       setError('');
       try {
+        console.log('Google response:', JSON.stringify(Object.keys(res)));
         const credential = String(res.credential ?? '');
-        if (!credential) throw new Error('No credential');
+        if (!credential) {
+          setError(`No credential in response. Keys: ${Object.keys(res).join(', ')}`);
+          return;
+        }
         await loginWithGoogle(credential);
-      } catch {
-        setError('Google sign-in failed. Ensure your account uses @revolutionmedia.ai');
+      } catch (e) {
+        setError(`Google sign-in failed: ${e instanceof Error ? e.message : String(e)}`);
       } finally {
         setBusy(false);
       }
