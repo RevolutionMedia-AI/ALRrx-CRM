@@ -391,51 +391,23 @@ export default function DashboardPage() {
                 <StatusBar label="Break" count={liveStatus.break} total={totalStaff} color="bg-muted-slate" />
               </div>
             )}
-            <div className="mt-8 pt-6 border-t border-whisper-border">
-              <h4 className="text-sm font-medium text-secondary mb-3 uppercase tracking-wider text-[11px]">Agent Status</h4>
+            <div className="mt-6 pt-4 border-t border-whisper-border">
+              <h4 className="text-sm font-medium text-secondary mb-2 uppercase tracking-wider text-[11px]">Agent Status</h4>
               {staffingLoading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-24 border border-whisper-border rounded-lg bg-surface-container animate-pulse" />
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="h-6 bg-surface-container rounded animate-pulse" />
                   ))}
                 </div>
               ) : staffRows.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {staffRows.slice(0, 12).map((agent, i) => {
+                <div className="grid grid-cols-3 gap-1.5">
+                  {staffRows.slice(0, 15).map((agent, i) => {
                     const s = (String(agent.Status ?? '').toUpperCase() || 'OFFLINE') as AgentStatus;
                     const c = STATUS_COLORS[s] ?? STATUS_COLORS.OFFLINE;
-                    const time = s === 'INCALL' || s === 'QUEUE'
-                      ? elapsed(String(agent.last_call_time ?? ''))
-                      : s === 'PAUSED'
-                      ? elapsed(String(agent.last_update_time ?? ''))
-                      : '';
                     return (
-                      <div key={i} className={`border border-whisper-border rounded-lg p-3 ${c.bg}`}>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <div className="w-7 h-7 rounded-full bg-pure-surface border border-whisper-border flex items-center justify-center text-primary font-bold text-[10px]">
-                            {getInitials(String(agent.Name ?? agent.User ?? ''))}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-primary truncate">{String(agent.Name ?? agent.User ?? '--')}</p>
-                            <p className="text-[10px] text-secondary font-metadata-mono">#{String(agent.Emp_Number ?? agent.User ?? '--')}</p>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
-                            <span className={`text-[10px] font-medium ${c.text}`}>{c.label}</span>
-                          </div>
-                        </div>
-                        {time ? (
-                          <div className="flex items-center gap-1 text-[10px] text-secondary font-metadata-mono">
-                            <span className="material-symbols-outlined text-[12px]">timer</span>
-                            {s === 'INCALL' || s === 'QUEUE' ? 'Call: ' : 'Paused: '}
-                            <span className="font-medium text-primary">{time}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-[10px] text-secondary font-metadata-mono">
-                            <span className="material-symbols-outlined text-[12px]">schedule</span>
-                            {s === 'READY' ? 'Waiting for calls' : s === 'OFFLINE' ? 'Not logged in' : '\u00A0'}
-                          </div>
-                        )}
+                      <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded bg-surface-container-low">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${c.dot}`} />
+                        <span className="text-[11px] text-primary truncate">{String(agent.Name ?? agent.User ?? '--')}</span>
                       </div>
                     );
                   })}

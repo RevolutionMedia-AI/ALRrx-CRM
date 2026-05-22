@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ALRrx.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/dashboard-export")]
 [Authorize]
 public sealed class DashboardExportController : ControllerBase
 {
