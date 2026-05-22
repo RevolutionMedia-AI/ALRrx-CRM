@@ -233,7 +233,7 @@ export default function AnalyticsPage() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-whisper-border pb-5">
         <div>
-          <h1 className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Analytics</h1>
+          <h1 className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Analytics — ALTRX</h1>
           <p className="text-secondary text-sm mt-1 max-w-[65ch]">Deep dive into historical trends and agent performance</p>
         </div>
         <div className="flex gap-2 flex-wrap items-end">

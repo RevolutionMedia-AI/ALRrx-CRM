@@ -4,9 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 const navItems = [
-  { label: 'Dashboard', path: '/' },
-  { label: 'Analytics', path: '/analytics' },
-  { label: 'Real-Time Report', path: '/real-time' },
+  { label: 'Dashboard ALTRX', path: '/' },
+  { label: 'Analytics ALTRX', path: '/analytics' },
+  { label: 'Real-Time ALTRX', path: '/real-time' },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {

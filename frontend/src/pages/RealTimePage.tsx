@@ -93,7 +93,7 @@ export default function RealTimePage() {
     <>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-whisper-border pb-5">
         <div>
-          <h1 className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Real-Time Report</h1>
+          <h1 className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Real-Time Report — ALTRX</h1>
           <p className="text-secondary text-sm mt-1">
             Live agent monitoring — auto-refreshes every 10s
             {summary ? ` • ${new Date(summary.lastUpdated).toLocaleTimeString()}` : ''}

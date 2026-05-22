@@ -157,7 +157,7 @@ export default function DashboardPage() {
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-whisper-border pb-4">
         <div>
-          <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight">Operations Overview</h1>
+          <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight">Operations Overview — ALTRX</h1>
           <p className="text-secondary mt-1 flex items-center gap-2 text-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-signal animate-pulse" />
             <span>Auto-refreshing every 30s {summary ? `• ${new Date(summary.lastUpdated).toLocaleTimeString()}` : ''}</span>
