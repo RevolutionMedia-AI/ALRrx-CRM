@@ -2,6 +2,7 @@ using ALRrx.Application.DTOs;
 using ALRrx.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace ALRrx.Api.Controllers;
 
@@ -75,8 +76,10 @@ public sealed class AuthController : ControllerBase
                 }
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            var logger = HttpContext.RequestServices.GetRequiredService<ILogger<AuthController>>();
+            logger.LogError(ex, "Google login failed");
             return Unauthorized(new { error = "Invalid Google credential" });
         }
     }

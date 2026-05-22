@@ -6,9 +6,12 @@ client.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err?.response?.status === 401) {
-      localStorage.removeItem('alrrx_token');
-      delete client.defaults.headers.common['Authorization'];
-      window.location.href = '/login';
+      const url: string = err.config?.url ?? '';
+      if (!url.startsWith('/auth/')) {
+        localStorage.removeItem('alrrx_token');
+        delete client.defaults.headers.common['Authorization'];
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   }
