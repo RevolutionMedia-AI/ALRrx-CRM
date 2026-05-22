@@ -412,7 +412,7 @@ export default function DashboardPage() {
                           <span className="font-medium text-primary">{String(call.Name ?? call.agent_name ?? call.user ?? '')}</span>
                         </div>
                       </td>
-                      <td className="p-4 font-metadata-mono text-secondary">{formatDuration(Number(call.duration ?? call.seconds ?? 0))}</td>
+                      <td className="p-4 font-metadata-mono text-secondary">{formatDuration(Number(call.length_in_sec ?? 0))}</td>
                       <td className="p-4">
                         <span className="px-2 py-1 bg-surface-container rounded text-xs text-primary font-medium border border-whisper-border">
                           {String(call.disposition ?? call.status ?? '')}
