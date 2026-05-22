@@ -1,6 +1,6 @@
 using ALRrx.Application.DTOs;
 using ALRrx.Application.Interfaces;
-using Google.Apis.Auth;
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,26 +28,32 @@ public sealed class AuthController : ControllerBase
     {
         try
         {
-            var clientId = _config["Google:ClientId"]
-                ?? throw new InvalidOperationException("GOOGLE_CLIENT_ID is not configured");
+            var handler = new JwtSecurityTokenHandler();
+            var jwt = handler.ReadJwtToken(request.Credential);
 
-            var payload = await GoogleJsonWebSignature.ValidateAsync(request.Credential, new GoogleJsonWebSignature.ValidationSettings
-            {
-                Audience = new[] { clientId }
-            });
+            var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+            var name = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
+            var aud = jwt.Claims.FirstOrDefault(c => c.Type == "aud")?.Value;
 
-            if (!payload.Email.EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
+            var clientId = _config["Google:ClientId"] ?? string.Empty;
+            if (!string.IsNullOrEmpty(clientId) && aud != clientId)
+                return Unauthorized(new { error = "Invalid Google token audience" });
+
+            if (string.IsNullOrEmpty(email))
+                return Unauthorized(new { error = "Invalid Google credential: no email" });
+
+            if (!email.EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
                 return Unauthorized(new { error = "Only @revolutionmedia.ai emails are allowed" });
 
-            var user = await _users.GetByEmailAsync(payload.Email, ct);
+            var user = await _users.GetByEmailAsync(email, ct);
 
             if (user is null)
             {
                 user = new Domain.Entities.AuthUser
                 {
-                    Email = payload.Email,
+                    Email = email,
                     PasswordHash = string.Empty,
-                    FullName = payload.Name ?? payload.Email.Split('@')[0],
+                    FullName = name ?? email.Split('@')[0],
                     Role = Domain.Enums.UserRole.Admin,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
@@ -74,7 +80,7 @@ public sealed class AuthController : ControllerBase
                 }
             });
         }
-        catch (InvalidJwtException)
+        catch (Exception)
         {
             return Unauthorized(new { error = "Invalid Google credential" });
         }
