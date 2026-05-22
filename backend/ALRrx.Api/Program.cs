@@ -85,6 +85,12 @@ app.UseCors();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups";
+    await next();
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 
