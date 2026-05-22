@@ -16,6 +16,9 @@ build/
 *.env
 keys/
 
+# --- Documentation ---
+*.md
+
 # --- Agent skills (local tooling, not project code) ---
 skills/
 
