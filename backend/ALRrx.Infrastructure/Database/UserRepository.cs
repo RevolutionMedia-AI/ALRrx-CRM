@@ -133,10 +133,11 @@ public sealed class UserRepository : IUserRepository
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand("""
             UPDATE alrrx_users
-            SET FullName = @FullName, Role = @Role, IsActive = @IsActive
+            SET FullName = @FullName, PasswordHash = @PasswordHash, Role = @Role, IsActive = @IsActive
             WHERE Id = @Id
             """, connection);
         cmd.Parameters.AddWithValue("@FullName", user.FullName);
+        cmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
         cmd.Parameters.AddWithValue("@Role", user.Role.ToString());
         cmd.Parameters.AddWithValue("@IsActive", user.IsActive);
         cmd.Parameters.AddWithValue("@Id", user.Id);

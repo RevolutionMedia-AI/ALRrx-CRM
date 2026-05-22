@@ -2,7 +2,6 @@ using ALRrx.Application.DTOs;
 using ALRrx.Infrastructure.Database;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
 
 namespace ALRrx.Api.Controllers;
 
@@ -12,12 +11,10 @@ namespace ALRrx.Api.Controllers;
 public sealed class DataController : ControllerBase
 {
     private readonly MutationExecutor _mutation;
-    private readonly MySqlConnection _connection;
 
-    public DataController(MutationExecutor mutation, MySqlConnection connection)
+    public DataController(MutationExecutor mutation)
     {
         _mutation = mutation;
-        _connection = connection;
     }
 
     [HttpPut("{table}/edit/{id}")]

@@ -21,11 +21,23 @@ public sealed class QueryExecutor : IQueryService
             Category = "Dashboard",
             SqlTemplate = """
                 SELECT COUNT(*) AS Sales_Today
-                FROM vicidial_log vl
-                JOIN vicidial_users vu ON vl.user = vu.user
-                WHERE DATE(vl.call_date) BETWEEN @Start AND @End
-                AND vl.status = 'SALE'
-                AND vu.user_group = 'ALTRX'
+                FROM (
+                    SELECT vl.status, vl.call_date
+                    FROM vicidial_log vl
+                    JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE DATE(vl.call_date) BETWEEN @Start AND @End
+                    AND vl.status = 'SALE'
+                    AND vu.user_group = 'ALTRX'
+
+                    UNION ALL
+
+                    SELECT cl.status, cl.call_date
+                    FROM vicidial_closer_log cl
+                    JOIN vicidial_users vu ON cl.user = vu.user
+                    WHERE DATE(cl.call_date) BETWEEN @Start AND @End
+                    AND cl.status = 'SALE'
+                    AND vu.user_group = 'ALTRX'
+                ) calls
                 """
         },
         ["agent_performance"] = new QueryDefinition
@@ -91,7 +103,7 @@ public sealed class QueryExecutor : IQueryService
                 SELECT
                     ROUND(AVG(talk_sec + dispo_sec + dead_sec) / 60, 1) AS AHT_Minutes
                 FROM vicidial_agent_log
-                WHERE event_time >= CURDATE()
+                WHERE event_time >= @Start AND event_time < @End
                 """
         },
         ["occupancy_rate"] = new QueryDefinition
@@ -107,7 +119,7 @@ public sealed class QueryExecutor : IQueryService
                          NULLIF(SUM(pause_sec + wait_sec + talk_sec + dispo_sec + dead_sec), 0)) * 100
                     , 1) AS Occupancy_Pct
                 FROM vicidial_agent_log
-                WHERE event_time >= CURDATE()
+                WHERE event_time >= @Start AND event_time < @End
                 """
         },
         ["all_calls"] = new QueryDefinition

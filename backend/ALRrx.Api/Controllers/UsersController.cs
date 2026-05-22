@@ -2,7 +2,6 @@ using ALRrx.Application.DTOs;
 using ALRrx.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
 
 namespace ALRrx.Api.Controllers;
 
@@ -13,13 +12,11 @@ public sealed class UsersController : ControllerBase
 {
     private readonly IUserRepository _users;
     private readonly IAuthService _auth;
-    private readonly MySqlConnection _connection;
 
-    public UsersController(IUserRepository users, IAuthService auth, MySqlConnection connection)
+    public UsersController(IUserRepository users, IAuthService auth)
     {
         _users = users;
         _auth = auth;
-        _connection = connection;
     }
 
     [HttpGet]
@@ -61,26 +58,17 @@ public sealed class UsersController : ControllerBase
         var user = await _users.GetByIdAsync(id, ct);
         if (user is null) return NotFound();
 
+        var newHash = request.Password is not null ? _auth.HashPassword(request.Password) : user.PasswordHash;
+
         var updated = user with
         {
             FullName = request.FullName ?? user.FullName,
+            PasswordHash = newHash,
             Role = request.Role is not null ? Enum.Parse<Domain.Enums.UserRole>(request.Role) : user.Role,
             IsActive = request.IsActive ?? user.IsActive
         };
 
         await _users.UpdateAsync(updated, ct);
-
-        if (request.Password is not null)
-        {
-            var newHash = _auth.HashPassword(request.Password);
-            if (_connection.State != System.Data.ConnectionState.Open)
-                await _connection.OpenAsync(ct);
-            await using var cmd = new MySqlCommand(
-                "UPDATE alrrx_users SET PasswordHash = @Hash WHERE Id = @Id", _connection);
-            cmd.Parameters.AddWithValue("@Hash", newHash);
-            cmd.Parameters.AddWithValue("@Id", id);
-            await cmd.ExecuteNonQueryAsync(ct);
-        }
 
         return NoContent();
     }
