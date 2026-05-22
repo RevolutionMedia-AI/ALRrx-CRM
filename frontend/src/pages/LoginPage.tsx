@@ -17,15 +17,10 @@ function GoogleIcon() {
   );
 }
 
-export default function LoginPage() {
-  const { user, loginWithGoogle } = useAuth();
-  const navigate = useNavigate();
+function GoogleButton() {
+  const { loginWithGoogle } = useAuth();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (user) navigate('/', { replace: true });
-  }, [user, navigate]);
 
   const handleGoogle = useGoogleLogin({
     onSuccess: async (res: Record<string, unknown>) => {
@@ -44,6 +39,33 @@ export default function LoginPage() {
     onError: () => setError('Google sign-in was cancelled or failed'),
   });
 
+  return (
+    <>
+      {error && (
+        <div className="bg-deep-rose/10 border border-deep-rose/20 rounded-lg px-4 py-3 text-deep-rose text-sm mb-6">
+          {error}
+        </div>
+      )}
+      <button
+        onClick={() => handleGoogle()}
+        disabled={busy}
+        className="w-full flex items-center justify-center gap-3 bg-pure-surface dark:bg-gray-800 border border-whisper-border dark:border-gray-700 rounded-lg px-6 py-3 text-primary dark:text-gray-200 font-medium text-sm hover:bg-surface-container-low dark:hover:bg-gray-700 hover:border-electric-blue transition-all shadow-sm disabled:opacity-50"
+      >
+        <GoogleIcon />
+        {busy ? 'Signing in...' : 'Continue with Google'}
+      </button>
+    </>
+  );
+}
+
+export default function LoginPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) navigate('/', { replace: true });
+  }, [user, navigate]);
+
   if (!GOOGLE_CLIENT_ID) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 px-4">
@@ -60,34 +82,19 @@ export default function LoginPage() {
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-    <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 px-4">
-      <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-2xl shadow-diffused w-full max-w-md p-10">
-        <div className="flex flex-col items-center mb-8">
-          <img src={logoSrc} alt="Revolution Logo" className="h-12 mb-6" />
-          <h1 className="text-xl font-bold text-primary dark:text-gray-100">OpsPulse Center</h1>
-          <p className="text-secondary dark:text-gray-400 text-sm mt-1">Sign in to your account</p>
-        </div>
-
-        {error && (
-          <div className="bg-deep-rose/10 border border-deep-rose/20 rounded-lg px-4 py-3 text-deep-rose text-sm mb-6">
-            {error}
+      <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 px-4">
+        <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-2xl shadow-diffused w-full max-w-md p-10">
+          <div className="flex flex-col items-center mb-8">
+            <img src={logoSrc} alt="Revolution Logo" className="h-12 mb-6" />
+            <h1 className="text-xl font-bold text-primary dark:text-gray-100">OpsPulse Center</h1>
+            <p className="text-secondary dark:text-gray-400 text-sm mt-1">Sign in to your account</p>
           </div>
-        )}
-
-        <button
-          onClick={() => handleGoogle()}
-          disabled={busy}
-          className="w-full flex items-center justify-center gap-3 bg-pure-surface dark:bg-gray-800 border border-whisper-border dark:border-gray-700 rounded-lg px-6 py-3 text-primary dark:text-gray-200 font-medium text-sm hover:bg-surface-container-low dark:hover:bg-gray-700 hover:border-electric-blue transition-all shadow-sm disabled:opacity-50"
-        >
-          <GoogleIcon />
-          {busy ? 'Signing in...' : 'Continue with Google'}
-        </button>
-
-        <p className="text-center text-muted-slate text-xs mt-6">
-          Only <span className="font-medium text-secondary dark:text-gray-400">@revolutionmedia.ai</span> accounts are allowed
-        </p>
+          <GoogleButton />
+          <p className="text-center text-muted-slate text-xs mt-6">
+            Only <span className="font-medium text-secondary dark:text-gray-400">@revolutionmedia.ai</span> accounts are allowed
+          </p>
+        </div>
       </div>
-    </div>
     </GoogleOAuthProvider>
   );
 }
