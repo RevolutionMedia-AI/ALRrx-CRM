@@ -23,7 +23,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <span className="material-symbols-outlined text-electric-blue" style={{ fontVariationSettings: "'FILL' 1" }}>
               local_fire_department
             </span>
-            OpsPulse Center
+            RevolutionMedia Reports
           </div>
           <button
             onClick={toggle}

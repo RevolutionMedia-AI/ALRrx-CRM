@@ -87,7 +87,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 px-4">
         <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-2xl shadow-diffused w-full max-w-md p-10 text-center">
           <img src={logoSrc} alt="Revolution Logo" className="h-12 mb-6 mx-auto" />
-          <h1 className="text-xl font-bold text-primary dark:text-gray-100 mb-3">OpsPulse Center</h1>
+          <h1 className="text-xl font-bold text-primary dark:text-gray-100 mb-3">RevolutionMedia Reports</h1>
           <p className="text-secondary dark:text-gray-400 text-sm">
             Google Sign-In is not configured. Set <code className="text-electric-blue bg-electric-blue/10 px-1 rounded text-xs">Google__ClientId</code> in Northflank backend environment.
           </p>
@@ -102,7 +102,7 @@ export default function LoginPage() {
         <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-2xl shadow-diffused w-full max-w-md p-10">
           <div className="flex flex-col items-center mb-8">
             <img src={logoSrc} alt="Revolution Logo" className="h-12 mb-6" />
-            <h1 className="text-xl font-bold text-primary dark:text-gray-100">OpsPulse Center</h1>
+            <h1 className="text-xl font-bold text-primary dark:text-gray-100">RevolutionMedia Reports</h1>
             <p className="text-secondary dark:text-gray-400 text-sm mt-1">Sign in to your account</p>
           </div>
           <GoogleButton />
