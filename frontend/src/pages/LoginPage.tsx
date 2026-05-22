@@ -26,13 +26,12 @@ function GoogleButton() {
       setBusy(true);
       setError('');
       try {
-        console.log('Google response:', JSON.stringify(Object.keys(res)));
-        const credential = String(res.credential ?? '');
-        if (!credential) {
-          setError(`No credential in response. Keys: ${Object.keys(res).join(', ')}`);
+        const accessToken = String(res.access_token ?? '');
+        if (!accessToken) {
+          setError(`No access_token. Keys: ${Object.keys(res).join(', ')}`);
           return;
         }
-        await loginWithGoogle(credential);
+        await loginWithGoogle(accessToken);
       } catch (e) {
         setError(`Google sign-in failed: ${e instanceof Error ? e.message : String(e)}`);
       } finally {

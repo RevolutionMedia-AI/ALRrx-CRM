@@ -1,6 +1,5 @@
 using ALRrx.Application.DTOs;
 using ALRrx.Application.Interfaces;
-using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,32 +27,28 @@ public sealed class AuthController : ControllerBase
     {
         try
         {
-            var handler = new JwtSecurityTokenHandler();
-            var jwt = handler.ReadJwtToken(request.Credential);
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", request.AccessToken);
 
-            var email = jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
-            var name = jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
-            var aud = jwt.Claims.FirstOrDefault(c => c.Type == "aud")?.Value;
+            var userInfo = await http.GetFromJsonAsync<GoogleUserInfo>(
+                "https://www.googleapis.com/oauth2/v3/userinfo", ct);
 
-            var clientId = _config["Google:ClientId"] ?? string.Empty;
-            if (!string.IsNullOrEmpty(clientId) && aud != clientId)
-                return Unauthorized(new { error = "Invalid Google token audience" });
+            if (userInfo is null || string.IsNullOrEmpty(userInfo.Email))
+                return Unauthorized(new { error = "Invalid Google token" });
 
-            if (string.IsNullOrEmpty(email))
-                return Unauthorized(new { error = "Invalid Google credential: no email" });
-
-            if (!email.EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
+            if (!userInfo.Email.EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
                 return Unauthorized(new { error = "Only @revolutionmedia.ai emails are allowed" });
 
-            var user = await _users.GetByEmailAsync(email, ct);
+            var user = await _users.GetByEmailAsync(userInfo.Email, ct);
 
             if (user is null)
             {
                 user = new Domain.Entities.AuthUser
                 {
-                    Email = email,
+                    Email = userInfo.Email,
                     PasswordHash = string.Empty,
-                    FullName = name ?? email.Split('@')[0],
+                    FullName = userInfo.Name ?? userInfo.Email.Split('@')[0],
                     Role = Domain.Enums.UserRole.Admin,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
@@ -85,6 +80,8 @@ public sealed class AuthController : ControllerBase
             return Unauthorized(new { error = "Invalid Google credential" });
         }
     }
+
+    private record GoogleUserInfo(string Email, string? Name);
 
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(
