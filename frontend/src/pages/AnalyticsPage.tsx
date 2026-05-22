@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardSummary, getReport, exportDashboardPdf } from '../services/api';
+import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import { exportAnalyticsCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 
@@ -107,6 +107,7 @@ export default function AnalyticsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('sales');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const filter = (p: Period): TimeFilterDto => {
     if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${customStart}T00:00:00`, customEnd: `${customEnd}T23:59:59` };
@@ -513,6 +514,28 @@ export default function AnalyticsPage() {
       </section>
 
       <div className="flex justify-end gap-3" style={animateIn({ animationDelay: '480ms' })}>
+        <button
+          onClick={async () => {
+            setExportingExcel(true);
+            try {
+              const blob = await exportDashboardExcel(filter(period));
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `ALTRX_Analytics_${period}_${new Date().toISOString().split('T')[0]}.xlsx`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } catch { setError('Failed to export Excel'); }
+            finally { setExportingExcel(false); }
+          }}
+          disabled={exportingExcel}
+          className="bg-emerald-signal text-white px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span className="material-symbols-outlined text-sm">table_chart</span>
+          {exportingExcel ? 'Generating...' : 'Export Excel'}
+        </button>
         <button
           onClick={async () => {
             setExportingPdf(true);

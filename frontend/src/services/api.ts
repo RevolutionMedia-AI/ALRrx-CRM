@@ -46,3 +46,10 @@ export async function exportDashboardPdf(filter: TimeFilterDto): Promise<Blob> {
   });
   return data;
 }
+
+export async function exportDashboardExcel(filter: TimeFilterDto): Promise<Blob> {
+  const { data } = await client.post('/dashboard-export/excel', filter, {
+    responseType: 'blob',
+  });
+  return data;
+}

@@ -21,6 +21,7 @@ public static class InfrastructureServiceRegistration
         services.AddSingleton<IUserRepository, UserRepository>();
         services.AddSingleton<MutationExecutor>();
         services.AddSingleton<IDashboardPdfService, DashboardPdfService>();
+        services.AddSingleton<IDashboardExcelService, DashboardExcelService>();
 
         services.AddSingleton<IReportExportService, ExcelExportService>();
         services.AddSingleton<IReportExportService, CsvExportService>();

@@ -9,6 +9,13 @@ public interface IDashboardPdfService
     byte[] GenerateDashboardPdf(DashboardPdfData data);
 }
 
+public interface IDashboardExcelService
+{
+    string Format { get; }
+    string ContentType { get; }
+    byte[] GenerateDashboardExcel(DashboardPdfData data);
+}
+
 public sealed class ExportDashboardUseCase
 {
     private readonly IQueryService _queryService;
@@ -21,6 +28,12 @@ public sealed class ExportDashboardUseCase
     }
 
     public async Task<byte[]> ExecuteAsync(TimeFilterDto filter, CancellationToken ct = default)
+    {
+        var data = await BuildDataAsync(filter, ct);
+        return _pdfService.GenerateDashboardPdf(data);
+    }
+
+    public async Task<DashboardPdfData> BuildDataAsync(TimeFilterDto filter, CancellationToken ct = default)
     {
         var timeRange = BuildTimeRange(filter);
 
@@ -115,7 +128,7 @@ public sealed class ExportDashboardUseCase
             ContactData = contactData,
         };
 
-        return _pdfService.GenerateDashboardPdf(data);
+        return data;
     }
 
     private static string FormatDuration(object? secondsObj)

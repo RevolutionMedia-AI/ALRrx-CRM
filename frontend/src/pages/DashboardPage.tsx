@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardSummary, getReport, getStaffing, exportDashboardPdf } from '../services/api';
+import { getDashboardSummary, getReport, getStaffing, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import { exportCombinedCSV, exportDashboardCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -78,6 +78,7 @@ export default function DashboardPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const filter = (p: Period): TimeFilterDto => {
@@ -484,6 +485,28 @@ export default function DashboardPage() {
       </section>
 
       <div className="flex justify-end gap-3">
+        <button
+          onClick={async () => {
+            setExportingExcel(true);
+            try {
+              const blob = await exportDashboardExcel(filter(period));
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `ALTRX_Dashboard_${period}_${new Date().toISOString().split('T')[0]}.xlsx`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } catch { setError('Failed to export Excel'); }
+            finally { setExportingExcel(false); }
+          }}
+          disabled={exportingExcel}
+          className="bg-emerald-signal text-white px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span className="material-symbols-outlined text-sm">table_chart</span>
+          {exportingExcel ? 'Generating...' : 'Export Excel'}
+        </button>
         <button
           onClick={handleExportPdf}
           disabled={exportingPdf}
