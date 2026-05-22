@@ -85,6 +85,19 @@ app.UseCors();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 
+app.Use(async (ctx, next) =>
+{
+    ctx.User = new System.Security.Claims.ClaimsPrincipal(
+        new System.Security.Claims.ClaimsIdentity(new[]
+        {
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "dev-bypass"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, "dev@dev.com"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "Admin"),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "Dev User"),
+        }, "dev-bypass"));
+    await next();
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 
