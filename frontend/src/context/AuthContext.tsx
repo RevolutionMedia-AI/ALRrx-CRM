@@ -1,14 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { setAuthToken, type UserInfo } from '../services/authApi';
-
-const FAKE_USER: UserInfo = {
-  id: 0,
-  email: 'kevin.escalante@revolutionmedia.ai',
-  fullName: 'Kevin Escalante',
-  role: 'Admin',
-  isActive: true,
-  createdAt: new Date().toISOString(),
-};
+import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, type UserInfo } from '../services/authApi';
 
 interface AuthContextType {
   user: UserInfo | null;
@@ -24,16 +15,41 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserInfo | null>(FAKE_USER);
-  const [token, setToken] = useState<string | null>('dev-bypass-token');
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<UserInfo | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) setAuthToken(token);
+    const stored = localStorage.getItem('alrrx_token');
+    if (stored) {
+      setAuthToken(stored);
+      setToken(stored);
+      getMe().then((u) => { setUser(u); setLoading(false); }).catch(() => {
+        localStorage.removeItem('alrrx_token');
+        setAuthToken(null);
+        setToken(null);
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
+    }
   }, []);
 
-  const login = async () => {};
-  const loginWithGoogle = async () => {};
+  const login = async (email: string, password: string) => {
+    const res = await apiLogin({ email, password });
+    localStorage.setItem('alrrx_token', res.token);
+    setAuthToken(res.token);
+    setToken(res.token);
+    setUser(res.user);
+  };
+
+  const loginWithGoogle = async (credential: string) => {
+    const res = await apiGoogleLogin(credential);
+    localStorage.setItem('alrrx_token', res.token);
+    setAuthToken(res.token);
+    setToken(res.token);
+    setUser(res.user);
+  };
 
   const logout = () => {
     localStorage.removeItem('alrrx_token');
