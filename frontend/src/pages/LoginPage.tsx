@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import logoSrc from '../images/RevolutionLogo.png';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
-
 function GoogleIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -61,19 +59,37 @@ function GoogleButton() {
 export default function LoginPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) navigate('/', { replace: true });
+    if (user) { navigate('/', { replace: true }); return; }
+    fetch('/api/config/google-client-id')
+      .then((r) => r.json())
+      .then((d) => setClientId(d.clientId || null))
+      .catch(() => setClientId(null))
+      .finally(() => setLoading(false));
   }, [user, navigate]);
 
-  if (!GOOGLE_CLIENT_ID) {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 px-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-electric-blue border-t-transparent rounded-full animate-spin" />
+          <p className="text-secondary dark:text-gray-400 text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!clientId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 px-4">
         <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-2xl shadow-diffused w-full max-w-md p-10 text-center">
           <img src={logoSrc} alt="Revolution Logo" className="h-12 mb-6 mx-auto" />
           <h1 className="text-xl font-bold text-primary dark:text-gray-100 mb-3">OpsPulse Center</h1>
           <p className="text-secondary dark:text-gray-400 text-sm">
-            Google Sign-In is not configured. Set <code className="text-electric-blue bg-electric-blue/10 px-1 rounded text-xs">VITE_GOOGLE_CLIENT_ID</code> in your environment variables.
+            Google Sign-In is not configured. Set <code className="text-electric-blue bg-electric-blue/10 px-1 rounded text-xs">Google__ClientId</code> in Northflank backend environment.
           </p>
         </div>
       </div>
@@ -81,7 +97,7 @@ export default function LoginPage() {
   }
 
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+    <GoogleOAuthProvider clientId={clientId}>
       <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 px-4">
         <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-2xl shadow-diffused w-full max-w-md p-10">
           <div className="flex flex-col items-center mb-8">
