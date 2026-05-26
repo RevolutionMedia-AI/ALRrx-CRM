@@ -3,6 +3,7 @@ using ALRrx.Application.UseCases;
 using ALRrx.Application.Validators;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace ALRrx.Api.Controllers;
 
@@ -13,13 +14,16 @@ public sealed class DashboardController : ControllerBase
 {
     private readonly GetDashboardDataUseCase _getDashboardData;
     private readonly TimeFilterValidator _validator;
+    private readonly ILogger<DashboardController> _logger;
 
     public DashboardController(
         GetDashboardDataUseCase getDashboardData,
-        TimeFilterValidator validator)
+        TimeFilterValidator validator,
+        ILogger<DashboardController> logger)
     {
         _getDashboardData = getDashboardData;
         _validator = validator;
+        _logger = logger;
     }
 
     [HttpGet("summary")]
@@ -29,6 +33,8 @@ public sealed class DashboardController : ControllerBase
         [FromQuery] DateTime? customEnd = null,
         CancellationToken ct = default)
     {
+        _logger.LogInformation("DashboardSummary request | period: {Period} | customStart: {CustomStart} | customEnd: {CustomEnd}", period, customStart, customEnd);
+
         var filter = new TimeFilterDto
         {
             Period = period,
@@ -38,7 +44,10 @@ public sealed class DashboardController : ControllerBase
 
         var validationResult = await _validator.ValidateAsync(filter, ct);
         if (!validationResult.IsValid)
+        {
+            _logger.LogWarning("Validation failed: {Errors}", string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)));
             return BadRequest(validationResult.Errors);
+        }
 
         var result = await _getDashboardData.ExecuteAsync(filter, ct);
         return Ok(result);
