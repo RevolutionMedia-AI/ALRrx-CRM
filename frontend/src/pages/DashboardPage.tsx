@@ -236,14 +236,20 @@ export default function DashboardPage() {
               <input
                 type="date"
                 value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
+                onChange={(e) => {
+                  console.log('onChange setCustomStart:', e.target.value);
+                  setCustomStart(e.target.value);
+                }}
                 className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
               />
               <span className="text-muted-slate text-xs">to</span>
               <input
                 type="date"
                 value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
+                onChange={(e) => {
+                  console.log('onChange setCustomEnd:', e.target.value);
+                  setCustomEnd(e.target.value);
+                }}
                 className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
               />
             </div>
