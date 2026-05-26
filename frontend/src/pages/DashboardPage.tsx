@@ -146,9 +146,11 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    console.log('useEffect triggered | period:', period, '| customStart:', customStart, '| customEnd:', customEnd);
     loadAll(period);
-    intervalRef.current = setInterval(() => loadAll(period), 30000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    // TEMPORARILY DISABLED FOR DEBUGGING
+    // intervalRef.current = setInterval(() => loadAll(period), 30000);
+    // return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [period, customStart, customEnd]);
 
   const totalCalls = summary ? findMetric(summary.metrics, 'Total Calls') : undefined;
