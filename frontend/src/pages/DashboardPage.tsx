@@ -510,7 +510,7 @@ export default function DashboardPage() {
           className="bg-emerald-signal text-white px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-sm">table_chart</span>
-          {exportingExcel ? 'Generando...' : 'Exportar Excel'}
+          {exportingExcel ? 'Generating...' : 'Export Excel'}
         </button>
         <button
           onClick={handleExportPdf}
@@ -518,7 +518,7 @@ export default function DashboardPage() {
           className="bg-deep-rose text-white px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-          {exportingPdf ? 'Generando...' : 'Exportar PDF'}
+          {exportingPdf ? 'Generating...' : 'Export PDF'}
         </button>
       </div>
     </>
@@ -540,18 +540,18 @@ function KpiCard({
 }) {
   const isPositive = change ? !change.startsWith('-') : true;
   return (
-    <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-xl p-6 shadow-diffused hover:-translate-y-px transition-transform">
-      <div className="flex justify-between items-start mb-4">
-        <p className="text-secondary text-sm font-medium">{title}</p>
-        <div className={`p-1.5 bg-surface-container rounded-lg ${iconColor}`}>
-          <span className="material-symbols-outlined text-sm">{icon}</span>
+    <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-xl p-7 shadow-diffused hover:-translate-y-px transition-transform">
+      <div className="flex justify-between items-start mb-5">
+        <p className="text-secondary text-[15px] font-medium">{title}</p>
+        <div className={`p-2 bg-surface-container rounded-lg ${iconColor}`}>
+          <span className="material-symbols-outlined text-base">{icon}</span>
         </div>
       </div>
       {loading ? (
         <div className="h-8 w-24 bg-surface-container rounded animate-pulse" />
       ) : (
         <div className="flex items-baseline gap-3">
-          <h2 className="text-3xl font-bold text-primary">{value}</h2>
+          <h2 className="text-[2.2rem] font-bold text-primary">{value}</h2>
           {suffix && <span className="text-secondary text-sm">{suffix}</span>}
           {change && (
             <span className={`text-sm font-medium flex items-center font-metadata-mono ${isPositive ? 'text-emerald-signal' : 'text-deep-rose'}`}>

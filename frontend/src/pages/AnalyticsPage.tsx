@@ -314,20 +314,20 @@ export default function AnalyticsPage() {
         {kpiCards.map((card, i) => (
           <div
             key={card.title}
-            className="border border-whisper-border rounded-xl p-8"
+            className="border border-whisper-border rounded-xl py-8 px-7"
             style={animateIn({ animationDelay: `${i * 80}ms` })}
           >
             <div className="flex justify-between items-start mb-5">
-              <p className="text-secondary text-sm font-medium">{card.title}</p>
-              <div className={`p-2.5 rounded-lg ${PASTEL_BG[card.color] || 'bg-surface-container'} ${card.color}`}>
-                <Icon name={card.icon} className="text-base" />
+              <p className="text-secondary text-[15px] font-medium">{card.title}</p>
+              <div className={`p-3 rounded-lg ${PASTEL_BG[card.color] || 'bg-surface-container'} ${card.color}`}>
+                <Icon name={card.icon} className="text-lg" />
               </div>
             </div>
             {loading ? (
               <div className="h-8 w-28 bg-surface-container rounded animate-pulse" />
             ) : (
               <div className="flex items-baseline gap-3">
-                <h2 className="text-[2rem] font-bold text-primary leading-none tracking-tight">{card.value}</h2>
+                <h2 className="text-[2.2rem] font-bold text-primary leading-none tracking-tight">{card.value}</h2>
                 {card.change && (
                   <span className={`text-sm font-medium flex items-center font-metadata-mono ${
                     card.change.direction === 'up' ? 'text-emerald-signal'
@@ -533,7 +533,7 @@ export default function AnalyticsPage() {
           className="bg-emerald-signal text-white px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-sm">table_chart</span>
-          {exportingExcel ? 'Generando...' : 'Exportar Excel'}
+          {exportingExcel ? 'Generating...' : 'Export Excel'}
         </button>
         <button
           onClick={async () => {
@@ -558,7 +558,7 @@ export default function AnalyticsPage() {
           className="bg-deep-rose text-white px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-          {exportingPdf ? 'Generando...' : 'Exportar PDF'}
+          {exportingPdf ? 'Generating...' : 'Export PDF'}
         </button>
       </div>
     </>

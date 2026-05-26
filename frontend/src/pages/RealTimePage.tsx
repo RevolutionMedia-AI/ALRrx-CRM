@@ -251,7 +251,7 @@ export default function RealTimePage() {
           className="bg-emerald-signal text-white px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-sm">table_chart</span>
-          {exportingExcel ? 'Generando...' : 'Exportar Excel'}
+          {exportingExcel ? 'Generating...' : 'Export Excel'}
         </button>
         <button
           onClick={async () => {
@@ -273,7 +273,7 @@ export default function RealTimePage() {
           className="bg-deep-rose text-white px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-          {exportingPdf ? 'Generando...' : 'Exportar PDF'}
+          {exportingPdf ? 'Generating...' : 'Export PDF'}
         </button>
       </div>
     </>
