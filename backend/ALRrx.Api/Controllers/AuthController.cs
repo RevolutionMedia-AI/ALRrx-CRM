@@ -42,10 +42,10 @@ public sealed class AuthController : ControllerBase
             if (!userInfo.Email.EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
                 return Unauthorized(new { error = "Only @revolutionmedia.ai emails are allowed" });
 
-            Domain.Entities.AuthUser user;
+            Domain.Entities.AuthUser user = null!;
             try
             {
-                user = await _users.GetByEmailAsync(userInfo.Email, ct);
+                user = (await _users.GetByEmailAsync(userInfo.Email, ct))!;
                 if (user is null)
                 {
                     user = new Domain.Entities.AuthUser

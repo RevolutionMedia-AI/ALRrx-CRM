@@ -3,7 +3,6 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { getDashboardSummary, getReport, getStaffing, exportDashboardPdf, exportDashboardExcel } from '../services/api';
-import { exportCombinedCSV, exportDashboardCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 import { useAuth } from '../context/AuthContext';
 
@@ -151,16 +150,6 @@ export default function DashboardPage() {
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);
-  };
-
-  const handleExportCSV = () => {
-    exportDashboardCSV(
-      summary?.metrics ?? [],
-      agentReport ? { name: 'Agent Performance', columns: agentReport.columns, rows: agentReport.rows } : null,
-      dispositionsReport ? { name: 'Dispositions', columns: dispositionsReport.columns, rows: dispositionsReport.rows } : null,
-      contactReport ? { name: 'Contact vs No Contact', columns: contactReport.columns, rows: contactReport.rows } : null,
-      period,
-    );
   };
 
   const handleExportPdf = async () => {
@@ -505,7 +494,7 @@ export default function DashboardPage() {
           className="bg-emerald-signal text-white px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-sm">table_chart</span>
-          {exportingExcel ? 'Generating...' : 'Export Excel'}
+          {exportingExcel ? 'Generando...' : 'Exportar Excel'}
         </button>
         <button
           onClick={handleExportPdf}
@@ -513,14 +502,7 @@ export default function DashboardPage() {
           className="bg-deep-rose text-white px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-          {exportingPdf ? 'Generating...' : 'Export PDF'}
-        </button>
-        <button
-          onClick={handleExportCSV}
-          className="bg-primary text-on-primary px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2"
-        >
-          <span className="material-symbols-outlined text-sm">download</span>
-          Export CSV
+          {exportingPdf ? 'Generando...' : 'Exportar PDF'}
         </button>
       </div>
     </>

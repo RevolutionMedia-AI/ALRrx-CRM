@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { getStaffing, getDashboardSummary } from '../services/api';
-import { exportRealTimeCSV } from '../utils/csv';
+import { getStaffing, getDashboardSummary, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import type { DashboardSummaryDto, ReportDto } from '../types';
 
 type AgentStatus = 'READY' | 'INCALL' | 'QUEUE' | 'PAUSED' | 'OFFLINE';
@@ -45,6 +44,8 @@ export default function RealTimePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -229,24 +230,50 @@ export default function RealTimePage() {
         </div>
       </section>
 
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end gap-3 mb-4">
         <button
-          onClick={() => {
-            exportRealTimeCSV(
-              staffing ? { name: 'Staffing', columns: staffing.columns, rows: staffing.rows } : null,
-              {
-                campaign: 'ALTRX',
-                callsWaiting: statusCounts.incall,
-                maxWait: '--:--:--',
-                agentsLogged: totalOnline,
-              },
-              'Today',
-            );
+          onClick={async () => {
+            setExportingExcel(true);
+            try {
+              const blob = await exportDashboardExcel({ period: 'Today' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `ALTRX_RealTime_Today_${new Date().toISOString().split('T')[0]}.xlsx`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } catch { setError('Error al generar Excel'); }
+            finally { setExportingExcel(false); }
           }}
-          className="bg-primary text-on-primary px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2"
+          disabled={exportingExcel}
+          className="bg-emerald-signal text-white px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <span className="material-symbols-outlined text-sm">download</span>
-          Export Real-Time CSV
+          <span className="material-symbols-outlined text-sm">table_chart</span>
+          {exportingExcel ? 'Generando...' : 'Exportar Excel'}
+        </button>
+        <button
+          onClick={async () => {
+            setExportingPdf(true);
+            try {
+              const blob = await exportDashboardPdf({ period: 'Today' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `ALTRX_RealTime_Today_${new Date().toISOString().split('T')[0]}.pdf`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } catch { setError('Error al generar PDF'); }
+            finally { setExportingPdf(false); }
+          }}
+          disabled={exportingPdf}
+          className="bg-deep-rose text-white px-4 py-2 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
+          {exportingPdf ? 'Generando...' : 'Exportar PDF'}
         </button>
       </div>
     </>

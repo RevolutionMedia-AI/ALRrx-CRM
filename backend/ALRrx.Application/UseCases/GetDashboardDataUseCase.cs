@@ -1,6 +1,6 @@
 using ALRrx.Application.DTOs;
+using ALRrx.Application.Helpers;
 using ALRrx.Domain.Interfaces;
-using ALRrx.Domain.ValueObjects;
 
 namespace ALRrx.Application.UseCases;
 
@@ -15,7 +15,7 @@ public sealed class GetDashboardDataUseCase
 
     public async Task<DashboardSummaryDto> ExecuteAsync(TimeFilterDto filter, CancellationToken ct = default)
     {
-        var timeRange = BuildTimeRange(filter);
+        var timeRange = TimeFilterHelper.BuildTimeRange(filter);
 
         var salesTask = _queryService.ExecuteQueryAsync("ventas_hoy", timeRange, ct);
         var contactTask = _queryService.ExecuteQueryAsync("contact_vs_nocontact", timeRange, ct);
@@ -177,13 +177,4 @@ public sealed class GetDashboardDataUseCase
         };
     }
 
-    private static TimeRange BuildTimeRange(TimeFilterDto filter)
-    {
-        if (Enum.TryParse<Domain.Enums.TimePeriod>(filter.Period, out var period))
-            return period == Domain.Enums.TimePeriod.Custom
-                ? TimeRange.FromCustom(filter.CustomStart!.Value, filter.CustomEnd!.Value)
-                : TimeRange.FromPeriod(period);
-
-        return TimeRange.FromPeriod(Domain.Enums.TimePeriod.Today);
     }
-}

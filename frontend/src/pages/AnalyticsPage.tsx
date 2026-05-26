@@ -3,7 +3,6 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel } from '../services/api';
-import { exportAnalyticsCSV } from '../utils/csv';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 
 type Period = 'Today' | 'Week' | 'Month' | 'Custom';
@@ -527,14 +526,14 @@ export default function AnalyticsPage() {
               a.click();
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
-            } catch { setError('Failed to export Excel'); }
+            } catch { setError('Error al generar Excel'); }
             finally { setExportingExcel(false); }
           }}
           disabled={exportingExcel}
           className="bg-emerald-signal text-white px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-sm">table_chart</span>
-          {exportingExcel ? 'Generating...' : 'Export Excel'}
+          {exportingExcel ? 'Generando...' : 'Exportar Excel'}
         </button>
         <button
           onClick={async () => {
@@ -550,7 +549,7 @@ export default function AnalyticsPage() {
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
             } catch {
-              setError('Failed to export PDF');
+              setError('Error al generar PDF');
             } finally {
               setExportingPdf(false);
             }
@@ -559,21 +558,7 @@ export default function AnalyticsPage() {
           className="bg-deep-rose text-white px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <span className="material-symbols-outlined text-sm">picture_as_pdf</span>
-          {exportingPdf ? 'Generating...' : 'Export PDF'}
-        </button>
-        <button
-          onClick={() => {
-            exportAnalyticsCSV(
-              agentReport ? { name: 'Agent Performance', columns: agentReport.columns, rows: agentReport.rows } : null,
-              period,
-              period === 'Custom' ? customStart : undefined,
-              period === 'Custom' ? customEnd : undefined,
-            );
-          }}
-          className="bg-primary text-on-primary px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2"
-        >
-          <Icon name="download" className="text-sm" />
-          Export Analytics CSV
+          {exportingPdf ? 'Generando...' : 'Exportar PDF'}
         </button>
       </div>
     </>

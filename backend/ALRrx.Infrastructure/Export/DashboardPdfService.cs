@@ -103,16 +103,18 @@ internal sealed class DashboardReportDocument : IDocument
         container.Column(col =>
         {
             col.Item().Text("Key Performance Indicators").FontSize(12).Bold().FontColor(Colors.Grey.Darken2);
-            col.Item().PaddingTop(6).Grid(grid =>
+            col.Item().PaddingTop(6).Table(table =>
             {
-                grid.Columns(6);
-                grid.HorizontalSpacing(8);
-                grid.VerticalSpacing(8);
+                table.ColumnsDefinition(c =>
+                {
+                    for (var i = 0; i < 6; i++) c.RelativeColumn();
+                });
 
                 foreach (var kpi in kpis)
                 {
                     var bgColor = GetKpiColor(kpi.Label);
-                    grid.Item().Background(bgColor + "15").Border(1).BorderColor(bgColor + "40").Padding(8).Column(c =>
+                    table.Cell()
+                        .Background(bgColor + "15").Border(1).BorderColor(bgColor + "40").Padding(8).Column(c =>
                     {
                         c.Item().Text(kpi.Label).FontSize(7.5f).FontColor(Colors.Grey.Darken1).Medium();
                         c.Item().Text(kpi.Value).FontSize(18).Bold().FontColor(bgColor);
@@ -133,22 +135,26 @@ internal sealed class DashboardReportDocument : IDocument
         container.Background(SemanticColors["blue"] + "12").Border(1).BorderColor(SemanticColors["blue"] + "30").Padding(10).Column(col =>
         {
             col.Item().Text("Contact vs No Contact").FontSize(10).Bold().FontColor(Colors.Grey.Darken2);
-            col.Item().PaddingTop(6).Grid(grid =>
+            col.Item().PaddingTop(6).Table(table =>
             {
-                grid.Columns(3);
-                grid.HorizontalSpacing(24);
+                table.ColumnsDefinition(c =>
+                {
+                    c.RelativeColumn();
+                    c.RelativeColumn();
+                    c.RelativeColumn();
+                });
 
-                grid.Item().Column(inner =>
+                table.Cell().Column(inner =>
                 {
                     inner.Item().Text(c.Contacts).FontSize(16).Bold().FontColor(SemanticColors["blue"]);
                     inner.Item().Text("Contacts").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                 });
-                grid.Item().Column(inner =>
+                table.Cell().Column(inner =>
                 {
                     inner.Item().Text(c.NoContacts).FontSize(16).Bold().FontColor(SemanticColors["rose"]);
                     inner.Item().Text("No Contacts").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                 });
-                grid.Item().Column(inner =>
+                table.Cell().Column(inner =>
                 {
                     inner.Item().Text(c.ContactRate).FontSize(16).Bold().FontColor(SemanticColors["violet"]);
                     inner.Item().Text("Contact Rate").FontSize(7.5f).FontColor(Colors.Grey.Darken1);

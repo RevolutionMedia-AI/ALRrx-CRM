@@ -99,4 +99,10 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 app.MapControllers();
 app.MapHub<DashboardHub>("/hubs/dashboard");
 
+using (var scope = app.Services.CreateScope())
+{
+    var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+    await userRepo.EnsureAdminSeededAsync();
+}
+
 app.Run();

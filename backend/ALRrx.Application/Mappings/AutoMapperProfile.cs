@@ -8,8 +8,6 @@ public sealed class AutoMapperProfile : Profile
 {
     public AutoMapperProfile()
     {
-        CreateMap<DashboardMetric, MetricCardDto>();
-
         CreateMap<QueryDefinition, QueryDefinitionDto>();
 
         CreateMap<ReportResult, ReportDto>()

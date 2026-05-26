@@ -47,9 +47,3 @@ public sealed record EditRowRequest
 {
     public Dictionary<string, object?> Updates { get; init; } = [];
 }
-
-public sealed record DeleteRowRequest
-{
-    public string Column { get; init; } = string.Empty;
-    public object? Value { get; init; } = null;
-}
