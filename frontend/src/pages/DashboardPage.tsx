@@ -11,6 +11,22 @@ type Period = 'Today' | 'Week' | 'Month' | 'Custom';
 const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth', Custom: 'Custom' };
 const PERIOD_LABEL: Record<Period, string> = { Today: 'Sales Today', Week: 'Sales This Week', Month: 'Sales This Month', Custom: 'Sales (Custom)' };
 
+function DarkTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
+  if (!active || !payload) return null;
+  return (
+    <div className="bg-pure-surface dark:bg-gray-800 border border-whisper-border dark:border-gray-600 rounded-lg px-3 py-2 shadow-lg text-sm">
+      {label && <p className="font-medium text-primary dark:text-gray-100 mb-1">{label}</p>}
+      {payload.map((p, i) => (
+        <p key={i} className="flex items-center gap-2 text-primary dark:text-gray-200">
+          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+          <span className="font-medium">{p.name}:</span>
+          <span className="font-metadata-mono">{p.value}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function findMetric(metrics: MetricCardDto[], label: string): MetricCardDto | undefined {
   return metrics.find((m) => m.label.toLowerCase().includes(label.toLowerCase()));
 }
@@ -306,7 +322,7 @@ export default function DashboardPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e2e1" />
                     <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94A3B8' }} />
                     <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} />
-                    <Tooltip />
+                    <Tooltip content={<DarkTooltip />} />
                     {summary?.charts[0].series.map((s) => (
                       <Area
                         key={s.name}
