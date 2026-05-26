@@ -3,6 +3,7 @@ using ALRrx.Application.UseCases;
 using ALRrx.Application.Validators;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace ALRrx.Api.Controllers;
 
@@ -14,15 +15,18 @@ public sealed class ReportsController : ControllerBase
     private readonly GetAvailableQueriesUseCase _getQueries;
     private readonly GetReportUseCase _getReport;
     private readonly TimeFilterValidator _validator;
+    private readonly ILogger<ReportsController> _logger;
 
     public ReportsController(
         GetAvailableQueriesUseCase getQueries,
         GetReportUseCase getReport,
-        TimeFilterValidator validator)
+        TimeFilterValidator validator,
+        ILogger<ReportsController> logger)
     {
         _getQueries = getQueries;
         _getReport = getReport;
         _validator = validator;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -39,6 +43,8 @@ public sealed class ReportsController : ControllerBase
         [FromQuery] DateTime? customEnd = null,
         CancellationToken ct = default)
     {
+        _logger.LogInformation("GetReport request | reportId: {ReportId} | period: {Period} | customStart: {CustomStart} | customEnd: {CustomEnd}", reportId, period, customStart, customEnd);
+
         var filter = new TimeFilterDto
         {
             Period = period,
@@ -48,7 +54,10 @@ public sealed class ReportsController : ControllerBase
 
         var validationResult = await _validator.ValidateAsync(filter, ct);
         if (!validationResult.IsValid)
+        {
+            _logger.LogWarning("Validation failed: {Errors}", string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)));
             return BadRequest(validationResult.Errors);
+        }
 
         var result = await _getReport.ExecuteAsync(reportId, filter, ct);
         return Ok(result);
