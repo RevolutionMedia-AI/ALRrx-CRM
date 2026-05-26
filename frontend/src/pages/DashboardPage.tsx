@@ -76,8 +76,20 @@ function getStatusColor(status: string) {
 export default function DashboardPage() {
   const { canEdit } = useAuth();
   const [period, setPeriod] = useState<Period>('Today');
-  const [customStart, setCustomStart] = useState(() => new Date().toISOString().split('T')[0]);
-  const [customEnd, setCustomEnd] = useState(() => new Date().toISOString().split('T')[0]);
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+  const [customEnd, setCustomEnd] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
 
   const [summary, setSummary] = useState<DashboardSummaryDto | null>(null);
   const [agentReport, setAgentReport] = useState<ReportDto | null>(null);
