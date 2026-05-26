@@ -96,39 +96,38 @@ internal sealed class DashboardReportDocument : IDocument
         });
     }
 
+    #pragma warning disable CS0618 // Grid is deprecated but works correctly for multi-cell layouts
     private void ComposeKpiCards(IContainer container)
     {
         var kpis = _data.Kpis;
-        const int cols = 6;
 
         container.Column(col =>
         {
             col.Item().Text("Key Performance Indicators").FontSize(12).Bold().FontColor(Colors.Grey.Darken2);
-            col.Spacing(4);
-
-            for (var rowStart = 0; rowStart < kpis.Count; rowStart += cols)
+            col.Item().PaddingTop(6).Grid(grid =>
             {
-                var slice = kpis.Skip(rowStart).Take(cols).ToList();
-                col.Item().PaddingTop(4).Row(row =>
+                grid.Columns(6);
+                grid.HorizontalSpacing(8);
+                grid.VerticalSpacing(8);
+
+                foreach (var kpi in kpis)
                 {
-                    foreach (var kpi in slice)
+                    var bgColor = GetKpiColor(kpi.Label);
+                    grid.Item().Background(bgColor + "15").Border(1).BorderColor(bgColor + "40").Padding(8).Column(c =>
                     {
-                        var bgColor = GetKpiColor(kpi.Label);
-                        row.RelativeItem().Background(bgColor + "15").Border(1).BorderColor(bgColor + "40").Padding(8).Column(c =>
+                        c.Item().Text(kpi.Label).FontSize(7.5f).FontColor(Colors.Grey.Darken1).Medium();
+                        c.Item().Text(kpi.Value).FontSize(18).Bold().FontColor(bgColor);
+                        if (kpi.Trend != null)
                         {
-                            c.Item().Text(kpi.Label).FontSize(7.5f).FontColor(Colors.Grey.Darken1).Medium();
-                            c.Item().Text(kpi.Value).FontSize(18).Bold().FontColor(bgColor);
-                            if (kpi.Trend != null)
-                            {
-                                var isPositive = !kpi.Trend.StartsWith('-');
-                                c.Item().Text($"{(isPositive ? "▲" : "▼")} {kpi.Trend}").FontSize(8).FontColor(isPositive ? SemanticColors["emerald"] : SemanticColors["rose"]);
-                            }
-                        });
-                    }
-                });
-            }
+                            var isPositive = !kpi.Trend.StartsWith('-');
+                            c.Item().Text($"{(isPositive ? "▲" : "▼")} {kpi.Trend}").FontSize(8).FontColor(isPositive ? SemanticColors["emerald"] : SemanticColors["rose"]);
+                        }
+                    });
+                }
+            });
         });
     }
+#pragma warning restore CS0618
 
     private void ComposeContactSummary(IContainer container)
     {
@@ -136,24 +135,29 @@ internal sealed class DashboardReportDocument : IDocument
         container.Background(SemanticColors["blue"] + "12").Border(1).BorderColor(SemanticColors["blue"] + "30").Padding(10).Column(col =>
         {
             col.Item().Text("Contact vs No Contact").FontSize(10).Bold().FontColor(Colors.Grey.Darken2);
-            col.Item().PaddingTop(6).Row(row =>
+#pragma warning disable CS0618
+            col.Item().PaddingTop(6).Grid(grid =>
             {
-                row.RelativeItem().Column(inner =>
+                grid.Columns(3);
+                grid.HorizontalSpacing(24);
+
+                grid.Item().Column(inner =>
                 {
                     inner.Item().Text(c.Contacts).FontSize(16).Bold().FontColor(SemanticColors["blue"]);
                     inner.Item().Text("Contacts").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                 });
-                row.RelativeItem().Column(inner =>
+                grid.Item().Column(inner =>
                 {
                     inner.Item().Text(c.NoContacts).FontSize(16).Bold().FontColor(SemanticColors["rose"]);
                     inner.Item().Text("No Contacts").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                 });
-                row.RelativeItem().Column(inner =>
+                grid.Item().Column(inner =>
                 {
                     inner.Item().Text(c.ContactRate).FontSize(16).Bold().FontColor(SemanticColors["violet"]);
                     inner.Item().Text("Contact Rate").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                 });
             });
+#pragma warning restore CS0618
         });
     }
 
