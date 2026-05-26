@@ -60,6 +60,20 @@ export default {
         tertiary: '#000000',
         'inverse-surface': '#313030',
         'pure-surface': '#FFFFFF',
+        'card-value-emerald': '#10B981',
+        'card-value-blue': '#2563EB',
+        'card-value-dark': '#1E293B',
+        'card-value-red': '#EF4444',
+        'card-label': '#64748B',
+        'card-icon-bg': '#F8FAFC',
+        'card-border-light': '#E2E8F0',
+      },
+      textColor: {
+        'card-value-emerald': 'var(--card-value-emerald)',
+        'card-value-blue': 'var(--card-value-blue)',
+        'card-value-dark': 'var(--card-value-dark)',
+        'card-value-red': 'var(--card-value-red)',
+        'card-label': 'var(--card-label)',
       },
       fontFamily: {
         'display-hero': ['Inter', 'sans-serif'],
@@ -83,6 +97,7 @@ export default {
       },
       boxShadow: {
         diffused: '0 20px 40px -15px rgba(0,0,0,0.05)',
+        card: '0 1px 3px rgba(0,0,0,0.06)',
       },
     },
   },

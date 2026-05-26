@@ -118,12 +118,12 @@ export default function RealTimePage() {
 
       <section className="grid grid-cols-3 gap-5 mt-6">
         {[
-          { label: 'Leads Dialed', value: leadsDialed, valueColor: '#1E293B' },
-          { label: 'Leads Contacted', value: leadsContacted, valueColor: '#10B981' },
-          { label: 'Contact Rate', value: contactRateVal, valueColor: '#10B981' },
+          { label: 'Leads Dialed', value: leadsDialed, valueColor: 'var(--card-value-dark)' },
+          { label: 'Leads Contacted', value: leadsContacted, valueColor: 'var(--card-value-emerald)' },
+          { label: 'Contact Rate', value: contactRateVal, valueColor: 'var(--card-value-emerald)' },
         ].map((l) => (
-          <div key={l.label} className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-7 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-            <p className="text-[#64748B] text-[13px] font-medium">{l.label}</p>
+          <div key={l.label} className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card">
+            <p className="text-card-label text-[13px] font-medium">{l.label}</p>
             <p className="text-[2rem] font-bold mt-1 leading-none" style={{ color: l.valueColor }}>
               {loading ? '--' : l.value}
             </p>
@@ -215,13 +215,13 @@ export default function RealTimePage() {
         <h2 className="font-bold text-lg text-primary mb-4">Today&apos;s Running Totals</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {[
-            { label: 'Total Calls', value: totalCalls, valueColor: '#1E293B' },
-            { label: 'Sales Today', value: totalSales, valueColor: '#10B981' },
-            { label: 'Contacts', value: contacts, valueColor: '#10B981' },
-            { label: 'Occupancy', value: occupancy, valueColor: '#2563EB' },
+            { label: 'Total Calls', value: totalCalls, valueColor: 'var(--card-value-dark)' },
+            { label: 'Sales Today', value: totalSales, valueColor: 'var(--card-value-emerald)' },
+            { label: 'Contacts', value: contacts, valueColor: 'var(--card-value-emerald)' },
+            { label: 'Occupancy', value: occupancy, valueColor: 'var(--card-value-blue)' },
           ].map((kpi) => (
-            <div key={kpi.label} className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-7 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-              <p className="text-[#64748B] text-[13px] font-medium">{kpi.label}</p>
+            <div key={kpi.label} className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card">
+              <p className="text-card-label text-[13px] font-medium">{kpi.label}</p>
               <p className="text-[2rem] font-bold mt-1 leading-none" style={{ color: kpi.valueColor }}>
                 {loading ? '--' : kpi.value}
               </p>

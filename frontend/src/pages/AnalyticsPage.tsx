@@ -198,10 +198,10 @@ export default function AnalyticsPage() {
   const contactRateMetric = summary ? findMetric(summary.metrics, 'Contact Rate') : undefined;
 
   const kpiCards = [
-    { title: 'Sales Today', value: salesMetric?.value ?? '--', change: pctChange(salesMetric?.value ?? '0', prevSales?.value), icon: 'payments', valueColor: '#10B981' },
-    { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: 'call-made', valueColor: '#10B981' },
-    { title: 'No Contacts', value: noContactsMetric?.value ?? '--', change: pctChange(noContactsMetric?.value ?? '0', prevNoContacts?.value), icon: 'call-received', valueColor: '#EF4444' },
-    { title: 'Total Calls', value: totalCallsMetric?.value ?? '--', change: pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value), icon: 'call', valueColor: '#1E293B' },
+    { title: 'Sales Today', value: salesMetric?.value ?? '--', change: pctChange(salesMetric?.value ?? '0', prevSales?.value), icon: 'payments', valueColor: 'var(--card-value-emerald)' },
+    { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: 'call-made', valueColor: 'var(--card-value-emerald)' },
+    { title: 'No Contacts', value: noContactsMetric?.value ?? '--', change: pctChange(noContactsMetric?.value ?? '0', prevNoContacts?.value), icon: 'call-received', valueColor: 'var(--card-value-red)' },
+    { title: 'Total Calls', value: totalCallsMetric?.value ?? '--', change: pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value), icon: 'call', valueColor: 'var(--card-value-dark)' },
   ];
 
   const dispoAreaData = useMemo(() => {
@@ -290,12 +290,12 @@ export default function AnalyticsPage() {
 
       <section className="grid grid-cols-3 gap-5">
         {[
-          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', valueColor: '#1E293B' },
-          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', valueColor: '#10B981' },
-          { label: 'Contact Rate', value: contactRateMetric?.value ?? '--%', valueColor: '#10B981' },
+          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', valueColor: 'var(--card-value-dark)' },
+          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', valueColor: 'var(--card-value-emerald)' },
+          { label: 'Contact Rate', value: contactRateMetric?.value ?? '--%', valueColor: 'var(--card-value-emerald)' },
         ].map((l, i) => (
-          <div key={l.label} className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-8 shadow-[0_1px_3px_rgba(0,0,0,0.06)]" style={animateIn({ animationDelay: `${i * 60}ms` })}>
-            <p className="text-[#64748B] text-[13px] font-medium">{l.label}</p>
+          <div key={l.label} className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-8 shadow-card" style={animateIn({ animationDelay: `${i * 60}ms` })}>
+            <p className="text-card-label text-[13px] font-medium">{l.label}</p>
             <p className="text-[2.2rem] font-bold mt-1 leading-none" style={{ color: l.valueColor }}>
               {loading ? '--' : l.value}
             </p>
@@ -307,13 +307,13 @@ export default function AnalyticsPage() {
         {kpiCards.map((card, i) => (
           <div
             key={card.title}
-            className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg py-8 px-7 shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
+            className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg py-8 px-7 shadow-card"
             style={animateIn({ animationDelay: `${i * 80}ms` })}
           >
             <div className="flex justify-between items-start mb-5">
-              <p className="text-[#64748B] text-[13px] font-medium">{card.title}</p>
-              <div className={`p-2.5 bg-[#F8FAFC] dark:bg-gray-800 rounded-lg`}>
-                <Icon name={card.icon} className="text-[#64748B] text-base" />
+              <p className="text-card-label text-[13px] font-medium">{card.title}</p>
+              <div className={`p-2.5 bg-card-icon-bg dark:bg-gray-800 rounded-lg`}>
+                <Icon name={card.icon} className="text-card-label text-base" />
               </div>
             </div>
             {loading ? (
@@ -413,7 +413,7 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-8 shadow-[0_1px_3px_rgba(0,0,0,0.06)]" style={animateIn({ animationDelay: '320ms' })}>
+      <div className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-8 shadow-card" style={animateIn({ animationDelay: '320ms' })}>
         <h3 className="font-bold text-lg text-primary mb-6">Contact vs No Contact</h3>
         {loading ? (
           <div className="h-64 bg-surface-container rounded animate-pulse" />
@@ -425,23 +425,23 @@ export default function AnalyticsPage() {
                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#787774' }} />
                  <YAxis tick={{ fontSize: 11, fill: '#787774' }} />
                  <Tooltip content={<DarkTooltip />} />
-<Bar dataKey="Contact" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={48} />
-                  <Bar dataKey="No Contact" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={48} />
+<Bar dataKey="Contact" fill="var(--card-value-emerald)" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                  <Bar dataKey="No Contact" fill="var(--card-value-red)" radius={[4, 4, 0, 0]} maxBarSize={48} />
                </BarChart>
              </ResponsiveContainer>
             <div className="flex items-center justify-center gap-8">
               <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#10B981' }} />
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: 'var(--card-value-emerald)' }} />
                 <div>
-                  <p className="text-xl font-bold" style={{ color: '#10B981' }}>{contactAreaData[0].Contact}</p>
-                  <p className="text-xs text-[#64748B]">Contact</p>
+                  <p className="text-xl font-bold" style={{ color: 'var(--card-value-emerald)' }}>{contactAreaData[0].Contact}</p>
+                  <p className="text-xs text-card-label">Contact</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#EF4444' }} />
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: 'var(--card-value-red)' }} />
                 <div>
-                  <p className="text-xl font-bold" style={{ color: '#EF4444' }}>{contactAreaData[0]['No Contact']}</p>
-                  <p className="text-xs text-[#64748B]">No Contact</p>
+                  <p className="text-xl font-bold" style={{ color: 'var(--card-value-red)' }}>{contactAreaData[0]['No Contact']}</p>
+                  <p className="text-xs text-card-label">No Contact</p>
                 </div>
               </div>
               {contactAreaData[0].Contact + contactAreaData[0]['No Contact'] > 0 && (

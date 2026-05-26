@@ -35,8 +35,8 @@ internal sealed class DashboardReportDocument : IDocument
         var l when l.Contains("leads dialed") => "#1E293B",
         var l when l.Contains("leads contacted") => "#10B981",
         var l when l.Contains("total call") => "#1E293B",
-        var l when l.Contains("handle time") || l.Contains("aht") => "#4F46E5",
-        var l when l.Contains("occupancy") => "#4F46E5",
+        var l when l.Contains("handle time") || l.Contains("aht") => "#2563EB",
+        var l when l.Contains("occupancy") => "#2563EB",
         _ => "#64748B"
     };
 
@@ -162,7 +162,7 @@ internal sealed class DashboardReportDocument : IDocument
                 });
                 grid.Item().Column(inner =>
                 {
-                    inner.Item().Text(c.ContactRate).FontSize(16).Bold().FontColor("#4F46E5");
+                    inner.Item().Text(c.ContactRate).FontSize(16).Bold().FontColor("#10B981");
                     inner.Item().Text("Contact Rate").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                 });
             });

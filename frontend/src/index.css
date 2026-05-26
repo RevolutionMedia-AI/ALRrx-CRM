@@ -25,6 +25,30 @@ body {
 .dark .bg-surface-container-high { background-color: #1e293b; }
 .dark .shadow-diffused { box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2); }
 .dark .text-muted-slate { color: #6b7280; }
+.dark .text-card-label { color: #9ca3af; }
+.dark .bg-card-icon-bg { background-color: #1f2937; }
+.dark .border-card-border { border-color: #374151; }
+.dark .shadow-card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
+
+:root {
+  --card-value-emerald: #10B981;
+  --card-value-blue: #2563EB;
+  --card-value-dark: #1E293B;
+  --card-value-red: #EF4444;
+  --card-label: #64748B;
+  --card-icon-bg: #F8FAFC;
+  --card-border: #E2E8F0;
+}
+
+.dark {
+  --card-value-emerald: #34D399;
+  --card-value-blue: #60A5FA;
+  --card-value-dark: #F1F5F9;
+  --card-value-red: #F87171;
+  --card-label: #9CA3AF;
+  --card-icon-bg: #1F2937;
+  --card-border: #374151;
+}
 
 .scrollbar-thin {
   scrollbar-width: thin;

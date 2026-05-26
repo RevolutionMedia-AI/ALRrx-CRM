@@ -253,12 +253,12 @@ export default function DashboardPage() {
 
       <section className="grid grid-cols-3 gap-5">
         {[
-          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', valueColor: '#1E293B' },
-          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', valueColor: '#10B981' },
-          { label: 'Contact Rate', value: contactRate?.value ?? '--%', valueColor: '#10B981' },
+          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', valueColor: 'var(--card-value-dark)' },
+          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', valueColor: 'var(--card-value-emerald)' },
+          { label: 'Contact Rate', value: contactRate?.value ?? '--%', valueColor: 'var(--card-value-emerald)' },
         ].map((l) => (
-          <div key={l.label} className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-7 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-            <p className="text-[#64748B] text-[13px] font-medium">{l.label}</p>
+          <div key={l.label} className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card">
+            <p className="text-card-label text-[13px] font-medium">{l.label}</p>
             <p className="text-[2rem] font-bold mt-1 leading-none" style={{ color: l.valueColor }}>
               {summaryLoading ? '--' : l.value}
             </p>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
           value={totalCalls?.value ?? '--'}
           change={totalCalls?.trend}
           icon="call"
-          valueColor="#1E293B"
+          valueColor="var(--card-value-dark)"
           loading={summaryLoading}
         />
         <KpiCard
@@ -280,7 +280,7 @@ export default function DashboardPage() {
           value={aht?.value ?? '--:--'}
           change={aht?.trend}
           icon="timer"
-          valueColor="#2563EB"
+          valueColor="var(--card-value-blue)"
           loading={summaryLoading}
         />
         <KpiCard
@@ -288,7 +288,7 @@ export default function DashboardPage() {
           value={salesToday?.value ?? '--'}
           change={salesToday?.trend}
           icon="monetization_on"
-          valueColor="#10B981"
+          valueColor="var(--card-value-emerald)"
           loading={summaryLoading}
         />
         <KpiCard
@@ -296,7 +296,7 @@ export default function DashboardPage() {
           value={occupancy?.value ? `${occupancy.value}` : '--%'}
           status={occupancy?.trend}
           icon="pie_chart"
-          valueColor="#2563EB"
+          valueColor="var(--card-value-blue)"
           loading={summaryLoading}
         />
       </section>
@@ -526,7 +526,7 @@ export default function DashboardPage() {
 }
 
 function KpiCard({
-  title, value, change, suffix, icon, valueColor = '#1E293B', loading, bar, status,
+  title, value, change, suffix, icon, valueColor = 'var(--card-value-dark)', loading, bar, status,
 }: {
   title: string;
   value: string;
@@ -540,11 +540,11 @@ function KpiCard({
 }) {
   const isPositive = change ? !change.startsWith('-') : true;
   return (
-    <div className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-7 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-transform">
+    <div className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card transition-transform">
       <div className="flex justify-between items-start mb-5">
-        <p className="text-[#64748B] text-[13px] font-medium">{title}</p>
-        <div className="p-2 bg-[#F8FAFC] dark:bg-gray-800 rounded-lg">
-          <span className="material-symbols-outlined text-base text-[#64748B]">{icon}</span>
+        <p className="text-card-label text-[13px] font-medium">{title}</p>
+        <div className="p-2 bg-card-icon-bg dark:bg-gray-800 rounded-lg">
+          <span className="material-symbols-outlined text-base text-card-label">{icon}</span>
         </div>
       </div>
       {loading ? (
