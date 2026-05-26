@@ -102,7 +102,17 @@ app.MapHub<DashboardHub>("/hubs/dashboard");
 using (var scope = app.Services.CreateScope())
 {
     var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
-    await userRepo.EnsureAdminSeededAsync();
+    var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        await userRepo.EnsureAdminSeededAsync();
+        seedLogger.LogInformation("Admin seed completed successfully.");
+    }
+    catch (Exception ex)
+    {
+        seedLogger.LogWarning(ex, "No se pudo crear/verificar tabla alrrx_users. " +
+            "El usuario de BD no tiene permisos CREATE. La app continuará sin seed.");
+    }
 }
 
 app.Run();
