@@ -13,27 +13,45 @@ public sealed class DashboardExportController : ControllerBase
 {
     private readonly ExportDashboardUseCase _exportDashboard;
     private readonly IDashboardExcelService _exportExcel;
+    private readonly ILogger<DashboardExportController> _logger;
 
-    public DashboardExportController(ExportDashboardUseCase exportDashboard, IDashboardExcelService exportExcel)
+    public DashboardExportController(ExportDashboardUseCase exportDashboard, IDashboardExcelService exportExcel, ILogger<DashboardExportController> logger)
     {
         _exportDashboard = exportDashboard;
         _exportExcel = exportExcel;
+        _logger = logger;
     }
 
     [HttpPost("pdf")]
     public async Task<IActionResult> ExportPdf([FromBody] TimeFilterDto filter, CancellationToken ct = default)
     {
-        var pdfBytes = await _exportDashboard.ExecuteAsync(filter, ct);
-        var fileName = $"ALTRX_Dashboard_{DateTime.UtcNow:yyyyMMdd_HHmmss}.pdf";
-        return File(pdfBytes, "application/pdf", fileName);
+        try
+        {
+            var pdfBytes = await _exportDashboard.ExecuteAsync(filter, ct);
+            var fileName = $"ALTRX_Dashboard_{DateTime.UtcNow:yyyyMMdd_HHmmss}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating PDF for period {Period}", filter.Period);
+            return StatusCode(500, new { error = "Error generating PDF", detail = ex.Message });
+        }
     }
 
     [HttpPost("excel")]
     public async Task<IActionResult> ExportExcel([FromBody] TimeFilterDto filter, CancellationToken ct = default)
     {
-        var data = await _exportDashboard.BuildDataAsync(filter, ct);
-        var excelBytes = _exportExcel.GenerateDashboardExcel(data);
-        var fileName = $"ALTRX_Dashboard_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
-        return File(excelBytes, _exportExcel.ContentType, fileName);
+        try
+        {
+            var data = await _exportDashboard.BuildDataAsync(filter, ct);
+            var excelBytes = _exportExcel.GenerateDashboardExcel(data);
+            var fileName = $"ALTRX_Dashboard_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+            return File(excelBytes, _exportExcel.ContentType, fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating Excel for period {Period}", filter.Period);
+            return StatusCode(500, new { error = "Error generating Excel", detail = ex.Message });
+        }
     }
 }
