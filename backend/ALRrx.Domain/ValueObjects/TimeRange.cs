@@ -30,5 +30,9 @@ public readonly record struct TimeRange
     }
 
     public static TimeRange FromCustom(DateTime start, DateTime end)
-        => new(start, end);
+    {
+        var startUtc = new DateTime(start.Year, start.Month, start.Day, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(end.Year, end.Month, end.Day, 23, 59, 59, DateTimeKind.Utc);
+        return new TimeRange(startUtc, endUtc);
+    }
 }

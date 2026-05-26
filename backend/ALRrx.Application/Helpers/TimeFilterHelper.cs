@@ -14,7 +14,11 @@ public static class TimeFilterHelper
         {
             if (!filter.CustomStart.HasValue || !filter.CustomEnd.HasValue)
                 throw new ArgumentException("CustomStart and CustomEnd are required when period is Custom");
-            return TimeRange.FromCustom(filter.CustomStart.Value, filter.CustomEnd.Value);
+
+            var startDate = filter.CustomStart.Value.Date;
+            var endDate = filter.CustomEnd.Value.Date.AddDays(1).AddSeconds(-1);
+
+            return TimeRange.FromCustom(startDate, endDate);
         }
 
         return TimeRange.FromPeriod(period);
