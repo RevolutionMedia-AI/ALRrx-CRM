@@ -116,15 +116,15 @@ export default function RealTimePage() {
         </div>
       )}
 
-      <section className="grid grid-cols-3 gap-4 mt-6">
+      <section className="grid grid-cols-3 gap-5 mt-6">
         {[
-          { label: 'Leads Dialed', value: leadsDialed, bg: 'bg-electric-blue/5 dark:bg-electric-blue/10', border: 'border-electric-blue/15 dark:border-electric-blue/25', textColor: 'text-electric-blue dark:text-blue-300' },
-          { label: 'Leads Contacted', value: leadsContacted, bg: 'bg-emerald-signal/5 dark:bg-emerald-signal/10', border: 'border-emerald-signal/15 dark:border-emerald-signal/25', textColor: 'text-emerald-signal dark:text-emerald-300' },
-          { label: 'Contact Rate', value: contactRateVal, bg: 'bg-violet-500/5 dark:bg-violet-500/10', border: 'border-violet-500/15 dark:border-violet-500/25', textColor: 'text-violet-500 dark:text-violet-300' },
+          { label: 'Leads Dialed', value: leadsDialed, valueColor: '#1E293B' },
+          { label: 'Leads Contacted', value: leadsContacted, valueColor: '#10B981' },
+          { label: 'Contact Rate', value: contactRateVal, valueColor: '#10B981' },
         ].map((l) => (
-          <div key={l.label} className={`${l.bg} ${l.border} border rounded-xl p-5 transition-colors`}>
-            <p className="text-secondary dark:text-gray-400 text-sm">{l.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${l.textColor}`}>
+          <div key={l.label} className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-7 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+            <p className="text-[#64748B] text-[13px] font-medium">{l.label}</p>
+            <p className="text-[2rem] font-bold mt-1 leading-none" style={{ color: l.valueColor }}>
               {loading ? '--' : l.value}
             </p>
           </div>
@@ -213,16 +213,16 @@ export default function RealTimePage() {
 
       <section className="mt-6 mb-8">
         <h2 className="font-bold text-lg text-primary mb-4">Today&apos;s Running Totals</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           {[
-            { label: 'Total Calls', value: totalCalls, color: 'text-electric-blue' },
-            { label: 'Sales Today', value: totalSales, color: 'text-emerald-signal' },
-            { label: 'Contacts', value: contacts, color: 'text-amber-warmth' },
-            { label: 'Occupancy', value: occupancy, color: 'text-violet-500' },
+            { label: 'Total Calls', value: totalCalls, valueColor: '#1E293B' },
+            { label: 'Sales Today', value: totalSales, valueColor: '#10B981' },
+            { label: 'Contacts', value: contacts, valueColor: '#10B981' },
+            { label: 'Occupancy', value: occupancy, valueColor: '#2563EB' },
           ].map((kpi) => (
-            <div key={kpi.label} className="border border-whisper-border rounded-xl p-5">
-              <p className="text-secondary text-sm">{kpi.label}</p>
-              <p className={`text-2xl font-bold mt-1 ${kpi.color}`}>
+            <div key={kpi.label} className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-7 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+              <p className="text-[#64748B] text-[13px] font-medium">{kpi.label}</p>
+              <p className="text-[2rem] font-bold mt-1 leading-none" style={{ color: kpi.valueColor }}>
                 {loading ? '--' : kpi.value}
               </p>
             </div>
@@ -244,7 +244,7 @@ export default function RealTimePage() {
               a.click();
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
-            } catch { setError('Error al generar Excel'); }
+            } catch { setError('Failed to export Excel'); }
             finally { setExportingExcel(false); }
           }}
           disabled={exportingExcel}
@@ -266,7 +266,7 @@ export default function RealTimePage() {
               a.click();
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
-            } catch { setError('Error al generar PDF'); }
+            } catch { setError('Failed to export PDF'); }
             finally { setExportingPdf(false); }
           }}
           disabled={exportingPdf}

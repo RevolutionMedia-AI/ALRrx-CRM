@@ -10,7 +10,7 @@ public sealed class TimeFilterValidator : AbstractValidator<TimeFilterDto>
     {
         RuleFor(x => x.Period)
             .NotEmpty()
-            .Must(p => Enum.TryParse<TimePeriod>(p, out _))
+            .Must(p => Enum.TryParse<TimePeriod>(p, ignoreCase: true, out _))
             .WithMessage("Invalid time period. Valid values: LastHour, Today, ThisWeek, ThisMonth, Custom");
 
         When(x => x.Period == nameof(TimePeriod.Custom), () =>

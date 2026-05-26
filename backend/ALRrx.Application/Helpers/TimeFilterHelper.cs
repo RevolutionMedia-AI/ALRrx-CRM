@@ -7,11 +7,16 @@ public static class TimeFilterHelper
 {
     public static TimeRange BuildTimeRange(TimeFilterDto filter)
     {
-        if (Enum.TryParse<Domain.Enums.TimePeriod>(filter.Period, out var period))
-            return period == Domain.Enums.TimePeriod.Custom
-                ? TimeRange.FromCustom(filter.CustomStart!.Value, filter.CustomEnd!.Value)
-                : TimeRange.FromPeriod(period);
+        if (!Enum.TryParse<Domain.Enums.TimePeriod>(filter.Period, ignoreCase: true, out var period))
+            throw new ArgumentException($"Invalid period value: '{filter.Period}'");
 
-        return TimeRange.FromPeriod(Domain.Enums.TimePeriod.Today);
+        if (period == Domain.Enums.TimePeriod.Custom)
+        {
+            if (!filter.CustomStart.HasValue || !filter.CustomEnd.HasValue)
+                throw new ArgumentException("CustomStart and CustomEnd are required when period is Custom");
+            return TimeRange.FromCustom(filter.CustomStart.Value, filter.CustomEnd.Value);
+        }
+
+        return TimeRange.FromPeriod(period);
     }
 }

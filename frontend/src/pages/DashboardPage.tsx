@@ -251,28 +251,28 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <section className="grid grid-cols-3 gap-4">
+      <section className="grid grid-cols-3 gap-5">
         {[
-          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', bg: 'bg-electric-blue/5 dark:bg-electric-blue/10', border: 'border-electric-blue/15 dark:border-electric-blue/25', textColor: 'text-electric-blue dark:text-blue-300' },
-          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', bg: 'bg-emerald-signal/5 dark:bg-emerald-signal/10', border: 'border-emerald-signal/15 dark:border-emerald-signal/25', textColor: 'text-emerald-signal dark:text-emerald-300' },
-          { label: 'Contact Rate', value: contactRate?.value ?? '--%', bg: 'bg-violet-500/5 dark:bg-violet-500/10', border: 'border-violet-500/15 dark:border-violet-500/25', textColor: 'text-violet-500 dark:text-violet-300' },
+          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', valueColor: '#1E293B' },
+          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', valueColor: '#10B981' },
+          { label: 'Contact Rate', value: contactRate?.value ?? '--%', valueColor: '#10B981' },
         ].map((l) => (
-          <div key={l.label} className={`${l.bg} ${l.border} border rounded-xl p-5 transition-colors`}>
-            <p className="text-secondary dark:text-gray-400 text-sm">{l.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${l.textColor}`}>
+          <div key={l.label} className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-7 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+            <p className="text-[#64748B] text-[13px] font-medium">{l.label}</p>
+            <p className="text-[2rem] font-bold mt-1 leading-none" style={{ color: l.valueColor }}>
               {summaryLoading ? '--' : l.value}
             </p>
           </div>
         ))}
       </section>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <KpiCard
           title="Total Calls"
           value={totalCalls?.value ?? '--'}
           change={totalCalls?.trend}
           icon="call"
-          iconColor="text-electric-blue"
+          valueColor="#1E293B"
           loading={summaryLoading}
         />
         <KpiCard
@@ -280,7 +280,7 @@ export default function DashboardPage() {
           value={aht?.value ?? '--:--'}
           change={aht?.trend}
           icon="timer"
-          iconColor="text-primary"
+          valueColor="#2563EB"
           loading={summaryLoading}
         />
         <KpiCard
@@ -288,7 +288,7 @@ export default function DashboardPage() {
           value={salesToday?.value ?? '--'}
           change={salesToday?.trend}
           icon="monetization_on"
-          iconColor="text-emerald-signal"
+          valueColor="#10B981"
           loading={summaryLoading}
         />
         <KpiCard
@@ -296,7 +296,7 @@ export default function DashboardPage() {
           value={occupancy?.value ? `${occupancy.value}` : '--%'}
           status={occupancy?.trend}
           icon="pie_chart"
-          iconColor="text-primary"
+          valueColor="#2563EB"
           loading={summaryLoading}
         />
       </section>
@@ -526,32 +526,32 @@ export default function DashboardPage() {
 }
 
 function KpiCard({
-  title, value, change, suffix, icon, iconColor, loading, bar, status,
+  title, value, change, suffix, icon, valueColor = '#1E293B', loading, bar, status,
 }: {
   title: string;
   value: string;
   change?: string;
   suffix?: string;
   icon: string;
-  iconColor: string;
+  valueColor?: string;
   loading?: boolean;
   bar?: string;
   status?: string;
 }) {
   const isPositive = change ? !change.startsWith('-') : true;
   return (
-    <div className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-800 rounded-xl p-7 shadow-diffused hover:-translate-y-px transition-transform">
+    <div className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-7 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-transform">
       <div className="flex justify-between items-start mb-5">
-        <p className="text-secondary text-[15px] font-medium">{title}</p>
-        <div className={`p-2 bg-surface-container rounded-lg ${iconColor}`}>
-          <span className="material-symbols-outlined text-base">{icon}</span>
+        <p className="text-[#64748B] text-[13px] font-medium">{title}</p>
+        <div className="p-2 bg-[#F8FAFC] dark:bg-gray-800 rounded-lg">
+          <span className="material-symbols-outlined text-base text-[#64748B]">{icon}</span>
         </div>
       </div>
       {loading ? (
         <div className="h-8 w-24 bg-surface-container rounded animate-pulse" />
       ) : (
         <div className="flex items-baseline gap-3">
-          <h2 className="text-[2.2rem] font-bold text-primary">{value}</h2>
+          <h2 className="text-[2rem] font-bold leading-none tracking-tight" style={{ color: valueColor }}>{value}</h2>
           {suffix && <span className="text-secondary text-sm">{suffix}</span>}
           {change && (
             <span className={`text-sm font-medium flex items-center font-metadata-mono ${isPositive ? 'text-emerald-signal' : 'text-deep-rose'}`}>

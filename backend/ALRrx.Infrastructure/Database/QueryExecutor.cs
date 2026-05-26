@@ -222,7 +222,7 @@ public sealed class QueryExecutor : IQueryService
         if (!_queries.TryGetValue(queryId, out var query))
             throw new KeyNotFoundException($"Query '{queryId}' not found");
 
-        _logger.LogInformation("Executing query: {QueryName}", query.Name);
+        _logger.LogInformation("Executing query: {QueryName} | Start: {Start:yyyy-MM-dd HH:mm:ss} | End: {End:yyyy-MM-dd HH:mm:ss}", query.Name, timeRange.Start, timeRange.End);
 
         await using var connection = (MySqlConnection)await _dbConnection.GetConnectionAsync(ct);
         await using var cmd = new MySqlCommand(query.SqlTemplate, connection);

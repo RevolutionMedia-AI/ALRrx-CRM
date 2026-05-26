@@ -16,13 +16,6 @@ const DISPOSITION_COLORS = [
   '#6B7280', '#78716C',
 ];
 
-const PASTEL_BG: Record<string, string> = {
-  'text-emerald-signal': 'bg-emerald-signal/8',
-  'text-electric-blue': 'bg-electric-blue/8',
-  'text-deep-rose': 'bg-deep-rose/8',
-  'text-amber-warmth': 'bg-amber-warmth/8',
-};
-
 function DarkTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
   if (!active || !payload) return null;
   return (
@@ -205,10 +198,10 @@ export default function AnalyticsPage() {
   const contactRateMetric = summary ? findMetric(summary.metrics, 'Contact Rate') : undefined;
 
   const kpiCards = [
-    { title: 'Sales Today', value: salesMetric?.value ?? '--', change: pctChange(salesMetric?.value ?? '0', prevSales?.value), icon: 'payments', color: 'text-emerald-signal' },
-    { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: 'call-made', color: 'text-electric-blue' },
-    { title: 'No Contacts', value: noContactsMetric?.value ?? '--', change: pctChange(noContactsMetric?.value ?? '0', prevNoContacts?.value), icon: 'call-received', color: 'text-deep-rose' },
-    { title: 'Total Calls', value: totalCallsMetric?.value ?? '--', change: pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value), icon: 'call', color: 'text-amber-warmth' },
+    { title: 'Sales Today', value: salesMetric?.value ?? '--', change: pctChange(salesMetric?.value ?? '0', prevSales?.value), icon: 'payments', valueColor: '#10B981' },
+    { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: 'call-made', valueColor: '#10B981' },
+    { title: 'No Contacts', value: noContactsMetric?.value ?? '--', change: pctChange(noContactsMetric?.value ?? '0', prevNoContacts?.value), icon: 'call-received', valueColor: '#EF4444' },
+    { title: 'Total Calls', value: totalCallsMetric?.value ?? '--', change: pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value), icon: 'call', valueColor: '#1E293B' },
   ];
 
   const dispoAreaData = useMemo(() => {
@@ -297,13 +290,13 @@ export default function AnalyticsPage() {
 
       <section className="grid grid-cols-3 gap-5">
         {[
-          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', bg: 'bg-electric-blue/5 dark:bg-electric-blue/10', border: 'border-electric-blue/15 dark:border-electric-blue/25', textColor: 'text-electric-blue dark:text-blue-300' },
-          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', bg: 'bg-emerald-signal/5 dark:bg-emerald-signal/10', border: 'border-emerald-signal/15 dark:border-emerald-signal/25', textColor: 'text-emerald-signal dark:text-emerald-300' },
-          { label: 'Contact Rate', value: contactRateMetric?.value ?? '--%', bg: 'bg-violet-500/5 dark:bg-violet-500/10', border: 'border-violet-500/15 dark:border-violet-500/25', textColor: 'text-violet-500 dark:text-violet-300' },
+          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', valueColor: '#1E293B' },
+          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', valueColor: '#10B981' },
+          { label: 'Contact Rate', value: contactRateMetric?.value ?? '--%', valueColor: '#10B981' },
         ].map((l, i) => (
-          <div key={l.label} className={`${l.bg} ${l.border} border rounded-xl p-8 transition-colors`} style={animateIn({ animationDelay: `${i * 60}ms` })}>
-            <p className="text-secondary dark:text-gray-400 text-sm">{l.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${l.textColor}`}>
+          <div key={l.label} className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-8 shadow-[0_1px_3px_rgba(0,0,0,0.06)]" style={animateIn({ animationDelay: `${i * 60}ms` })}>
+            <p className="text-[#64748B] text-[13px] font-medium">{l.label}</p>
+            <p className="text-[2.2rem] font-bold mt-1 leading-none" style={{ color: l.valueColor }}>
               {loading ? '--' : l.value}
             </p>
           </div>
@@ -314,20 +307,20 @@ export default function AnalyticsPage() {
         {kpiCards.map((card, i) => (
           <div
             key={card.title}
-            className="border border-whisper-border rounded-xl py-8 px-7"
+            className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg py-8 px-7 shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
             style={animateIn({ animationDelay: `${i * 80}ms` })}
           >
             <div className="flex justify-between items-start mb-5">
-              <p className="text-secondary text-[15px] font-medium">{card.title}</p>
-              <div className={`p-3 rounded-lg ${PASTEL_BG[card.color] || 'bg-surface-container'} ${card.color}`}>
-                <Icon name={card.icon} className="text-lg" />
+              <p className="text-[#64748B] text-[13px] font-medium">{card.title}</p>
+              <div className={`p-2.5 bg-[#F8FAFC] dark:bg-gray-800 rounded-lg`}>
+                <Icon name={card.icon} className="text-[#64748B] text-base" />
               </div>
             </div>
             {loading ? (
               <div className="h-8 w-28 bg-surface-container rounded animate-pulse" />
             ) : (
               <div className="flex items-baseline gap-3">
-                <h2 className="text-[2.2rem] font-bold text-primary leading-none tracking-tight">{card.value}</h2>
+                <h2 className="text-[2.2rem] font-bold leading-none tracking-tight" style={{ color: card.valueColor }}>{card.value}</h2>
                 {card.change && (
                   <span className={`text-sm font-medium flex items-center font-metadata-mono ${
                     card.change.direction === 'up' ? 'text-emerald-signal'
@@ -420,7 +413,7 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="border border-whisper-border rounded-xl p-8" style={animateIn({ animationDelay: '320ms' })}>
+      <div className="bg-white dark:bg-gray-900 border border-[#E2E8F0] dark:border-gray-700 rounded-lg p-8 shadow-[0_1px_3px_rgba(0,0,0,0.06)]" style={animateIn({ animationDelay: '320ms' })}>
         <h3 className="font-bold text-lg text-primary mb-6">Contact vs No Contact</h3>
         {loading ? (
           <div className="h-64 bg-surface-container rounded animate-pulse" />
@@ -432,31 +425,31 @@ export default function AnalyticsPage() {
                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#787774' }} />
                  <YAxis tick={{ fontSize: 11, fill: '#787774' }} />
                  <Tooltip content={<DarkTooltip />} />
-                 <Bar dataKey="Contact" fill="#4f46e5" radius={[4, 4, 0, 0]} maxBarSize={48} />
-                 <Bar dataKey="No Contact" fill="#c4b5fd" radius={[4, 4, 0, 0]} maxBarSize={48} />
+<Bar dataKey="Contact" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                  <Bar dataKey="No Contact" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={48} />
                </BarChart>
              </ResponsiveContainer>
             <div className="flex items-center justify-center gap-8">
               <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#4f46e5' }} />
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#10B981' }} />
                 <div>
-                  <p className="text-xl font-bold text-primary">{contactAreaData[0].Contact}</p>
-                  <p className="text-xs text-secondary">Contact</p>
+                  <p className="text-xl font-bold" style={{ color: '#10B981' }}>{contactAreaData[0].Contact}</p>
+                  <p className="text-xs text-[#64748B]">Contact</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#c4b5fd' }} />
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#EF4444' }} />
                 <div>
-                  <p className="text-xl font-bold text-primary">{contactAreaData[0]['No Contact']}</p>
-                  <p className="text-xs text-secondary">No Contact</p>
+                  <p className="text-xl font-bold" style={{ color: '#EF4444' }}>{contactAreaData[0]['No Contact']}</p>
+                  <p className="text-xs text-[#64748B]">No Contact</p>
                 </div>
               </div>
               {contactAreaData[0].Contact + contactAreaData[0]['No Contact'] > 0 && (
-                <div className="flex flex-col items-center px-4 py-2 rounded-lg bg-electric-blue/5 dark:bg-electric-blue/10">
-                  <p className="text-xl font-bold text-electric-blue">
+                <div className="flex flex-col items-center px-4 py-2 rounded-lg bg-[#F8FAFC] dark:bg-gray-800">
+                  <p className="text-xl font-bold" style={{ color: '#2563EB' }}>
                     {((contactAreaData[0].Contact / (contactAreaData[0].Contact + contactAreaData[0]['No Contact'])) * 100).toFixed(0)}%
                   </p>
-                  <p className="text-[11px] text-secondary">Contact Rate</p>
+                  <p className="text-[11px] text-[#64748B]">Contact Rate</p>
                 </div>
               )}
             </div>
