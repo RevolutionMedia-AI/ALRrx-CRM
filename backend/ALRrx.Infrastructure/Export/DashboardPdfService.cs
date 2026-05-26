@@ -28,12 +28,56 @@ internal sealed class DashboardReportDocument : IDocument
 
     private static readonly Dictionary<string, string> SemanticColors = new()
     {
-        ["emerald"] = "#10B981",
-        ["blue"] = "#3B82F6",
-        ["amber"] = "#F59E0B",
-        ["rose"] = "#E11D48",
-        ["violet"] = "#8B5CF6",
-        ["slate"] = "#64748B",
+        ["volume"] = "#1E293B",
+        ["operation"] = "#4F46E5",
+        ["positive"] = "#10B981",
+        ["negative"] = "#EF4444",
+    };
+
+    private static readonly (string Label, string Category)[] KpiCategories =
+    [
+        ("Leads Dialed", "volume"),
+        ("Total Calls", "volume"),
+        ("Avg Handle Time", "operation"),
+        ("occupancy", "operation"),
+        ("Sales Today", "positive"),
+        ("Leads Contacted", "positive"),
+        ("contact rate", "positive"),
+        ("Contacts", "positive"),
+        ("No Contacts", "negative"),
+    ];
+
+    private static string GetKpiCategory(string label)
+    {
+        var lower = label.ToLower();
+        foreach (var (key, cat) in KpiCategories)
+            if (lower.Contains(key.ToLower())) return cat;
+        if (lower.Contains("sales")) return "positive";
+        if (lower.Contains("no contact")) return "negative";
+        if (lower.Contains("contact") && !lower.Contains("rate")) return "positive";
+        if (lower.Contains("contact rate") || lower.Contains("rate")) return "positive";
+        if (lower.Contains("handle time") || lower.Contains("aht")) return "operation";
+        if (lower.Contains("leads dialed")) return "volume";
+        if (lower.Contains("leads contacted")) return "positive";
+        return "volume";
+    }
+
+    private static string GetCategoryIcon(string category) => category switch
+    {
+        "volume" => "📊",
+        "operation" => "⚙️",
+        "positive" => "✅",
+        "negative" => "⚠️",
+        _ => "📊"
+    };
+
+    private static string GetCategoryTitle(string category) => category switch
+    {
+        "volume" => "Volume & Activity",
+        "operation" => "Operation & Productivity",
+        "positive" => "Positive Results",
+        "negative" => "Losses & Missed Contacts",
+        _ => category
     };
 
     public DashboardReportDocument(DashboardPdfData data)
@@ -96,35 +140,56 @@ internal sealed class DashboardReportDocument : IDocument
         });
     }
 
-    #pragma warning disable CS0618 // Grid is deprecated but works correctly for multi-cell layouts
+    #pragma warning disable CS0618
     private void ComposeKpiCards(IContainer container)
     {
         var kpis = _data.Kpis;
+        var categoryOrder = new[] { "positive", "negative", "volume", "operation" };
+        var grouped = kpis.GroupBy(k => GetKpiCategory(k.Label)).ToDictionary(g => g.Key, g => g.ToList());
 
         container.Column(col =>
         {
-            col.Item().Text("Key Performance Indicators").FontSize(12).Bold().FontColor(Colors.Grey.Darken2);
-            col.Item().PaddingTop(6).Grid(grid =>
+            col.Spacing(10);
+            foreach (var category in categoryOrder)
             {
-                grid.Columns(6);
-                grid.HorizontalSpacing(8);
-                grid.VerticalSpacing(8);
+                if (!grouped.TryGetValue(category, out var items) || items.Count == 0) continue;
+                var color = SemanticColors[category];
 
-                foreach (var kpi in kpis)
+                col.Item().Row(row =>
                 {
-                    var bgColor = GetKpiColor(kpi.Label);
-                    grid.Item().Background(bgColor + "15").Border(1).BorderColor(bgColor + "40").Padding(8).Column(c =>
+                    row.RelativeItem().Column(c =>
                     {
-                        c.Item().Text(kpi.Label).FontSize(7.5f).FontColor(Colors.Grey.Darken1).Medium();
-                        c.Item().Text(kpi.Value).FontSize(18).Bold().FontColor(bgColor);
-                        if (kpi.Trend != null)
+                        c.Item().Row(r =>
                         {
-                            var isPositive = !kpi.Trend.StartsWith('-');
-                            c.Item().Text($"{(isPositive ? "▲" : "▼")} {kpi.Trend}").FontSize(8).FontColor(isPositive ? SemanticColors["emerald"] : SemanticColors["rose"]);
-                        }
+                            r.ConstantItem(8).Height(8).Background(color);
+                            r.RelativeItem().PaddingLeft(6).AlignMiddle().Text(GetCategoryTitle(category)).FontSize(9).SemiBold().FontColor(color);
+                        });
+                        c.Item().PaddingTop(4).Grid(grid =>
+                        {
+                            grid.Columns(items.Count <= 3 ? items.Count : 3);
+                            grid.HorizontalSpacing(8);
+                            grid.VerticalSpacing(6);
+
+                            foreach (var kpi in items)
+                            {
+                                var isSales = kpi.Label.ToLower().Contains("sales");
+                                var fontSize = isSales ? 22 : 18;
+                                grid.Item().Background(color + "10").Border(1).BorderColor(color + "30").Padding(8).Column(inner =>
+                                {
+                                    inner.Item().Text(kpi.Label).FontSize(7).FontColor(Colors.Grey.Darken1).Medium();
+                                    inner.Item().Text(kpi.Value).FontSize(fontSize).Bold().FontColor(color);
+                                    if (kpi.Trend != null)
+                                    {
+                                        var isPositive = !kpi.Trend.StartsWith('-');
+                                        inner.Item().Text($"{(isPositive ? "▲" : "▼")} {kpi.Trend}").FontSize(8)
+                                            .FontColor(isPositive ? SemanticColors["positive"] : SemanticColors["negative"]);
+                                    }
+                                });
+                            }
+                        });
                     });
-                }
-            });
+                });
+            }
         });
     }
 #pragma warning restore CS0618
@@ -132,7 +197,7 @@ internal sealed class DashboardReportDocument : IDocument
     private void ComposeContactSummary(IContainer container)
     {
         var c = _data.ContactData!;
-        container.Background(SemanticColors["blue"] + "12").Border(1).BorderColor(SemanticColors["blue"] + "30").Padding(10).Column(col =>
+        container.Background(SemanticColors["positive"] + "08").Border(1).BorderColor(SemanticColors["positive"] + "30").Padding(10).Column(col =>
         {
             col.Item().Text("Contact vs No Contact").FontSize(10).Bold().FontColor(Colors.Grey.Darken2);
 #pragma warning disable CS0618
@@ -143,17 +208,17 @@ internal sealed class DashboardReportDocument : IDocument
 
                 grid.Item().Column(inner =>
                 {
-                    inner.Item().Text(c.Contacts).FontSize(16).Bold().FontColor(SemanticColors["blue"]);
+                    inner.Item().Text(c.Contacts).FontSize(16).Bold().FontColor(SemanticColors["positive"]);
                     inner.Item().Text("Contacts").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                 });
                 grid.Item().Column(inner =>
                 {
-                    inner.Item().Text(c.NoContacts).FontSize(16).Bold().FontColor(SemanticColors["rose"]);
+                    inner.Item().Text(c.NoContacts).FontSize(16).Bold().FontColor(SemanticColors["negative"]);
                     inner.Item().Text("No Contacts").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                 });
                 grid.Item().Column(inner =>
                 {
-                    inner.Item().Text(c.ContactRate).FontSize(16).Bold().FontColor(SemanticColors["violet"]);
+                    inner.Item().Text(c.ContactRate).FontSize(16).Bold().FontColor(SemanticColors["operation"]);
                     inner.Item().Text("Contact Rate").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                 });
             });
@@ -255,17 +320,4 @@ internal sealed class DashboardReportDocument : IDocument
         });
     }
 
-    private static string GetKpiColor(string label) => label.ToLower() switch
-    {
-        var l when l.Contains("sales") => SemanticColors["emerald"],
-        var l when l.Contains("contact") && !l.Contains("no") && !l.Contains("rate") => SemanticColors["blue"],
-        var l when l.Contains("no contact") => SemanticColors["rose"],
-        var l when l.Contains("total call") => SemanticColors["amber"],
-        var l when l.Contains("handle time") || l.Contains("aht") => SemanticColors["blue"],
-        var l when l.Contains("occupancy") => SemanticColors["violet"],
-        var l when l.Contains("contact rate") || l.Contains("rate") => SemanticColors["violet"],
-        var l when l.Contains("leads dialed") => SemanticColors["blue"],
-        var l when l.Contains("leads contacted") => SemanticColors["emerald"],
-        _ => SemanticColors["slate"],
-    };
-}
+    }
