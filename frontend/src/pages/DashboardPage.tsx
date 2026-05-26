@@ -109,6 +109,7 @@ export default function DashboardPage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const filter = (p: Period): TimeFilterDto => {
+    console.log('filter called | customStart:', customStart, '| customEnd:', customEnd);
     if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${customStart}T00:00:00`, customEnd: `${customEnd}T23:59:59` };
     return { period: PERIOD_API[p] };
   };
