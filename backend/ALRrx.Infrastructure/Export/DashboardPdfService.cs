@@ -238,16 +238,19 @@ internal sealed class DashboardReportDocument : IDocument
 
     private void ComposeFooter(IContainer container)
     {
-        container.PaddingTop(8).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
-        container.Row(row =>
+        container.Column(col =>
         {
-            row.RelativeItem().Text("RevolutionMedia Reports — ALTRX Dashboard").FontSize(7).FontColor(Colors.Grey.Lighten1);
-            row.RelativeItem().AlignRight().Text(text =>
+            col.Item().PaddingTop(8).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+            col.Item().Row(row =>
             {
-                text.Span("Page ").FontSize(7).FontColor(Colors.Grey.Lighten1);
-                text.CurrentPageNumber().FontSize(7).FontColor(Colors.Grey.Lighten1);
-                text.Span(" / ").FontSize(7).FontColor(Colors.Grey.Lighten1);
-                text.TotalPages().FontSize(7).FontColor(Colors.Grey.Lighten1);
+                row.RelativeItem().Text("RevolutionMedia Reports — ALTRX Dashboard").FontSize(7).FontColor(Colors.Grey.Lighten1);
+                row.RelativeItem().AlignRight().Text(text =>
+                {
+                    text.Span("Page ").FontSize(7).FontColor(Colors.Grey.Lighten1);
+                    text.CurrentPageNumber().FontSize(7).FontColor(Colors.Grey.Lighten1);
+                    text.Span(" / ").FontSize(7).FontColor(Colors.Grey.Lighten1);
+                    text.TotalPages().FontSize(7).FontColor(Colors.Grey.Lighten1);
+                });
             });
         });
     }
