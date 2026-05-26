@@ -33,7 +33,7 @@ public sealed class DashboardController : ControllerBase
         [FromQuery] DateTime? customEnd = null,
         CancellationToken ct = default)
     {
-        _logger.LogInformation("DashboardSummary request | period: {Period} | customStart: {CustomStart} | customEnd: {CustomEnd}", period, customStart, customEnd);
+        _logger.LogInformation(">>> DASHBOARD REQUEST >>> period: {Period} | customStart: {CustomStart:dd/MM/yyyy HH:mm:ss} | customEnd: {CustomEnd:dd/MM/yyyy HH:mm:ss}", period, customStart, customEnd);
 
         var filter = new TimeFilterDto
         {
@@ -41,6 +41,8 @@ public sealed class DashboardController : ControllerBase
             CustomStart = customStart,
             CustomEnd = customEnd
         };
+
+        _logger.LogInformation(">>> FILTER CREATED >>> Period: {Period} | CustomStart: {CustomStart:dd/MM/yyyy HH:mm:ss} | CustomEnd: {CustomEnd:dd/MM/yyyy HH:mm:ss}", filter.Period, filter.CustomStart, filter.CustomEnd);
 
         var validationResult = await _validator.ValidateAsync(filter, ct);
         if (!validationResult.IsValid)
