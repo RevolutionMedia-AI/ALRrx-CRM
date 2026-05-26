@@ -121,7 +121,7 @@ internal sealed class DashboardReportDocument : IDocument
                 {
                     var color = GetKpiColor(kpi.Label);
                     var fontSize = GetKpiFontSize(kpi.Label);
-                    grid.Item().Background(color + "15").Border(1).BorderColor(color + "40").Padding(8).Column(c =>
+                    grid.Item().Background("#F8F9FA").Border(1).BorderColor(color + "40").Padding(8).Column(c =>
                     {
                         c.Item().Text(kpi.Label).FontSize(7.5f).FontColor(Colors.Grey.Darken1).Medium();
                         c.Item().Text(kpi.Value).FontSize(fontSize).Bold().FontColor(color);
@@ -141,7 +141,7 @@ internal sealed class DashboardReportDocument : IDocument
     private void ComposeContactSummary(IContainer container)
     {
         var c = _data.ContactData!;
-        container.Background("#10B981" + "08").Border(1).BorderColor("#10B981" + "30").Padding(10).Column(col =>
+        container.Background("#F8F9FA").Border(1).BorderColor("#10B981" + "30").Padding(10).Column(col =>
         {
             col.Item().Text("Contact vs No Contact").FontSize(10).Bold().FontColor(Colors.Grey.Darken2);
 #pragma warning disable CS0618
