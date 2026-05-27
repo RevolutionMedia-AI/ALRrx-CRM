@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
+import PeriodComparisonModal from '../components/PeriodComparisonModal';
 
 type Period = 'Today' | 'Week' | 'Month' | 'Custom';
 const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth', Custom: 'Custom' };
@@ -128,6 +129,7 @@ export default function AnalyticsPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [showPeriodComparison, setShowPeriodComparison] = useState(false);
 
   const filter = (p: Period): TimeFilterDto => {
     if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${customStart}T00:00:00`, customEnd: `${customEnd}T23:59:59` };
@@ -519,6 +521,13 @@ export default function AnalyticsPage() {
 
       <div className="flex justify-end gap-3" style={animateIn({ animationDelay: '480ms' })}>
         <button
+          onClick={() => setShowPeriodComparison(true)}
+          className="bg-electric-blue text-white px-4 py-2 rounded-[6px] font-medium text-sm hover:scale-[0.98] transition-transform flex items-center gap-2"
+        >
+          <span className="material-symbols-outlined text-sm">compare_arrows</span>
+          Period Comparison
+        </button>
+        <button
           onClick={async () => {
             setExportingExcel(true);
             try {
@@ -566,6 +575,8 @@ export default function AnalyticsPage() {
           {exportingPdf ? 'Generating...' : 'Export PDF'}
         </button>
       </div>
+
+      <PeriodComparisonModal isOpen={showPeriodComparison} onClose={() => setShowPeriodComparison(false)} />
     </>
   );
 }

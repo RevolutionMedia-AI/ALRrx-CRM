@@ -53,3 +53,10 @@ export async function exportDashboardExcel(filter: TimeFilterDto): Promise<Blob>
   });
   return data;
 }
+
+export async function exportPeriodComparisonExcel(period1: TimeFilterDto, period2: TimeFilterDto): Promise<Blob> {
+  const { data } = await client.post('/period-comparison/excel', { period1, period2 }, {
+    responseType: 'blob',
+  });
+  return data;
+}

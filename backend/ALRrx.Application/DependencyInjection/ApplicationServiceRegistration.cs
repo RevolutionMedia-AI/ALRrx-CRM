@@ -18,6 +18,7 @@ public static class ApplicationServiceRegistration
         services.AddScoped<ExportReportUseCase>();
         services.AddScoped<GetAvailableQueriesUseCase>();
         services.AddScoped<ExportDashboardUseCase>();
+        services.AddScoped<PeriodComparisonUseCase>();
 
         return services;
     }
