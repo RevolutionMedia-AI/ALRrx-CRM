@@ -3,6 +3,10 @@ using ALRrx.Application.UseCases;
 using ALRrx.Infrastructure.Export;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using InfraKpiRow = ALRrx.Infrastructure.Export.KpiRow;
+using InfraDispositionRow = ALRrx.Infrastructure.Export.DispositionRow;
+using InfraAgentComparisonRow = ALRrx.Infrastructure.Export.AgentComparisonRow;
+using InfraContactComparison = ALRrx.Infrastructure.Export.ContactComparison;
 
 namespace ALRrx.Api.Controllers;
 
@@ -36,10 +40,10 @@ public sealed class PeriodComparisonController : ControllerBase
             {
                 Period1Label = result.Period1Label,
                 Period2Label = result.Period2Label,
-                Period1Kpis = result.Period1Kpis,
-                Period2Kpis = result.Period2Kpis,
-                KpiChanges = result.KpiChanges,
-                Agents = result.Agents.Select(a => new AgentComparisonRow
+                Period1Kpis = result.Period1Kpis.Select(k => new InfraKpiRow { Label = k.Label, Value = k.Value, Color = k.Color }).ToList(),
+                Period2Kpis = result.Period2Kpis.Select(k => new InfraKpiRow { Label = k.Label, Value = k.Value, Color = k.Color }).ToList(),
+                KpiChanges = result.KpiChanges.Select(k => new InfraKpiRow { Label = k.Label, Value = k.Value, Color = k.Color }).ToList(),
+                Agents = result.Agents.Select(a => new InfraAgentComparisonRow
                 {
                     Name = a.Name,
                     User = a.User,
@@ -50,9 +54,17 @@ public sealed class PeriodComparisonController : ControllerBase
                     Period2Sales = a.Period2Sales,
                     SalesChangePct = a.SalesChangePct
                 }).ToList(),
-                Period1Dispositions = result.Period1Dispositions,
-                Period2Dispositions = result.Period2Dispositions,
-                ContactComparison = result.ContactComparison
+                Period1Dispositions = result.Period1Dispositions.Select(d => new InfraDispositionRow { Status = d.Status, Total = d.Total, Percentage = d.Percentage }).ToList(),
+                Period2Dispositions = result.Period2Dispositions.Select(d => new InfraDispositionRow { Status = d.Status, Total = d.Total, Percentage = d.Percentage }).ToList(),
+                ContactComparison = result.ContactComparison != null ? new InfraContactComparison
+                {
+                    Period1Contacts = result.ContactComparison.Period1Contacts,
+                    Period2Contacts = result.ContactComparison.Period2Contacts,
+                    Period1NoContacts = result.ContactComparison.Period1NoContacts,
+                    Period2NoContacts = result.ContactComparison.Period2NoContacts,
+                    Period1Rate = result.ContactComparison.Period1Rate,
+                    Period2Rate = result.ContactComparison.Period2Rate
+                } : null
             };
 
             var excelBytes = _excelService.GenerateComparisonExcel(excelData);

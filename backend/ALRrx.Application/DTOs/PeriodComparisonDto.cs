@@ -19,6 +19,21 @@ public sealed record PeriodComparisonResponseDto
     public ContactComparison? ContactComparison { get; init; }
 }
 
+public sealed class KpiRow
+{
+    public string Label { get; init; } = "";
+    public string Value { get; init; } = "";
+    public string? Trend { get; init; }
+    public string Color { get; init; } = "#3B82F6";
+}
+
+public sealed class DispositionRow
+{
+    public string Status { get; init; } = "";
+    public string Total { get; init; } = "0";
+    public string Percentage { get; init; } = "0";
+}
+
 public sealed class AgentComparisonRow
 {
     public string Name { get; init; } = "";

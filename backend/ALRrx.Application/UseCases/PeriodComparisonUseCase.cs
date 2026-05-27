@@ -1,6 +1,10 @@
 using ALRrx.Application.DTOs;
 using ALRrx.Application.Helpers;
+using ALRrx.Domain.Entities;
 using ALRrx.Domain.Interfaces;
+using DtoKpiRow = ALRrx.Application.DTOs.KpiRow;
+using DtoDispositionRow = ALRrx.Application.DTOs.DispositionRow;
+using AgentRow = ALRrx.Application.UseCases.AgentRow;
 
 namespace ALRrx.Application.UseCases;
 
@@ -18,7 +22,7 @@ public sealed class PeriodComparisonUseCase
         var range1 = TimeFilterHelper.BuildTimeRange(filter1);
         var range2 = TimeFilterHelper.BuildTimeRange(filter2);
 
-        var period1Tasks = await Task.WhenAll(
+        var period1Results = await Task.WhenAll(
             _queryService.ExecuteQueryAsync("ventas_hoy", range1, ct),
             _queryService.ExecuteQueryAsync("contact_vs_nocontact", range1, ct),
             _queryService.ExecuteQueryAsync("dispositions", range1, ct),
@@ -26,7 +30,7 @@ public sealed class PeriodComparisonUseCase
             _queryService.ExecuteQueryAsync("leads_contact_rate", range1, ct)
         );
 
-        var period2Tasks = await Task.WhenAll(
+        var period2Results = await Task.WhenAll(
             _queryService.ExecuteQueryAsync("ventas_hoy", range2, ct),
             _queryService.ExecuteQueryAsync("contact_vs_nocontact", range2, ct),
             _queryService.ExecuteQueryAsync("dispositions", range2, ct),
@@ -34,18 +38,18 @@ public sealed class PeriodComparisonUseCase
             _queryService.ExecuteQueryAsync("leads_contact_rate", range2, ct)
         );
 
-        var period1Kpis = BuildKpis(period1Tasks);
-        var period2Kpis = BuildKpis(period2Tasks);
+        var period1Kpis = BuildKpis(period1Results);
+        var period2Kpis = BuildKpis(period2Results);
         var kpiChanges = CalculateKpiChanges(period1Kpis, period2Kpis);
 
-        var agents1 = BuildAgentRows(period1Tasks[3].Rows);
-        var agents2 = BuildAgentRows(period2Tasks[3].Rows);
+        var agents1 = BuildAgentRows(period1Results[3].Rows);
+        var agents2 = BuildAgentRows(period2Results[3].Rows);
         var agentComparisons = BuildAgentComparisons(agents1, agents2);
 
-        var period1Dispositions = BuildDispositionRows(period1Tasks[2].Rows);
-        var period2Dispositions = BuildDispositionRows(period2Tasks[2].Rows);
+        var period1Dispositions = BuildDispositionRows(period1Results[2].Rows);
+        var period2Dispositions = BuildDispositionRows(period2Results[2].Rows);
 
-        var contactComparison = BuildContactComparison(period1Tasks[1].Rows, period2Tasks[1].Rows);
+        var contactComparison = BuildContactComparison(period1Results[1].Rows, period2Results[1].Rows);
 
         return new PeriodComparisonResponseDto
         {
@@ -61,38 +65,38 @@ public sealed class PeriodComparisonUseCase
         };
     }
 
-    private static List<KpiRow> BuildKpis(Task<QueryResult>[] tasks)
+    private static List<DtoKpiRow> BuildKpis(ReportResult[] results)
     {
-        var kpis = new List<KpiRow>();
+        var kpis = new List<DtoKpiRow>();
 
-        if (tasks[0].Rows.Length > 0)
+        if (results[0].Rows.Length > 0)
         {
-            var r = tasks[0].Rows[0];
-            kpis.Add(new KpiRow { Label = "Sales Today", Value = r.GetValueOrDefault("Sales_Today")?.ToString() ?? "0", Color = "#10B981" });
+            var r = results[0].Rows[0];
+            kpis.Add(new DtoKpiRow { Label = "Sales Today", Value = r.GetValueOrDefault("Sales_Today")?.ToString() ?? "0", Color = "#10B981" });
         }
 
-        if (tasks[1].Rows.Length > 0)
+        if (results[1].Rows.Length > 0)
         {
-            var r = tasks[1].Rows[0];
-            kpis.Add(new KpiRow { Label = "Contacts", Value = r.GetValueOrDefault("Contact")?.ToString() ?? "0", Color = "#3B82F6" });
-            kpis.Add(new KpiRow { Label = "No Contacts", Value = r.GetValueOrDefault("No_Contact")?.ToString() ?? "0", Color = "#E11D48" });
-            kpis.Add(new KpiRow { Label = "Total Calls", Value = r.GetValueOrDefault("Total_Calls")?.ToString() ?? "0", Color = "#F59E0B" });
+            var r = results[1].Rows[0];
+            kpis.Add(new DtoKpiRow { Label = "Contacts", Value = r.GetValueOrDefault("Contact")?.ToString() ?? "0", Color = "#3B82F6" });
+            kpis.Add(new DtoKpiRow { Label = "No Contacts", Value = r.GetValueOrDefault("No_Contact")?.ToString() ?? "0", Color = "#E11D48" });
+            kpis.Add(new DtoKpiRow { Label = "Total Calls", Value = r.GetValueOrDefault("Total_Calls")?.ToString() ?? "0", Color = "#F59E0B" });
         }
 
-        if (tasks[4].Rows.Length > 0)
+        if (results[4].Rows.Length > 0)
         {
-            var r = tasks[4].Rows[0];
-            kpis.Add(new KpiRow { Label = "Leads Dialed", Value = r.GetValueOrDefault("Total_Dialed_Leads")?.ToString() ?? "0", Color = "#3B82F6" });
-            kpis.Add(new KpiRow { Label = "Leads Contacted", Value = r.GetValueOrDefault("Contacted_Leads")?.ToString() ?? "0", Color = "#10B981" });
-            kpis.Add(new KpiRow { Label = "Contact Rate", Value = $"{r.GetValueOrDefault("Contact_Rate") ?? 0}%", Color = "#8B5CF6" });
+            var r = results[4].Rows[0];
+            kpis.Add(new DtoKpiRow { Label = "Leads Dialed", Value = r.GetValueOrDefault("Total_Dialed_Leads")?.ToString() ?? "0", Color = "#3B82F6" });
+            kpis.Add(new DtoKpiRow { Label = "Leads Contacted", Value = r.GetValueOrDefault("Contacted_Leads")?.ToString() ?? "0", Color = "#10B981" });
+            kpis.Add(new DtoKpiRow { Label = "Contact Rate", Value = $"{r.GetValueOrDefault("Contact_Rate") ?? 0}%", Color = "#8B5CF6" });
         }
 
         return kpis;
     }
 
-    private static List<KpiRow> CalculateKpiChanges(List<KpiRow> period1, List<KpiRow> period2)
+    private static List<DtoKpiRow> CalculateKpiChanges(List<DtoKpiRow> period1, List<DtoKpiRow> period2)
     {
-        var changes = new List<KpiRow>();
+        var changes = new List<DtoKpiRow>();
         foreach (var p1 in period1)
         {
             var p2 = period2.FirstOrDefault(k => k.Label == p1.Label);
@@ -103,7 +107,7 @@ public sealed class PeriodComparisonUseCase
             var change = v1 != 0 ? ((v2 - v1) / v1 * 100) : 0;
             var direction = change >= 0 ? "+" : "";
 
-            changes.Add(new KpiRow
+            changes.Add(new DtoKpiRow
             {
                 Label = p1.Label,
                 Value = $"{direction}{change:F1}%",
@@ -143,7 +147,7 @@ public sealed class PeriodComparisonUseCase
         return result;
     }
 
-    private static List<AgentRow> BuildAgentRows(QueryResultRow[] rows)
+    private static List<AgentRow> BuildAgentRows(Dictionary<string, object?>[] rows)
     {
         return rows.Select(r => new AgentRow
         {
@@ -154,9 +158,9 @@ public sealed class PeriodComparisonUseCase
         }).ToList();
     }
 
-    private static List<DispositionRow> BuildDispositionRows(QueryResultRow[] rows)
+    private static List<DtoDispositionRow> BuildDispositionRows(Dictionary<string, object?>[] rows)
     {
-        return rows.Select(r => new DispositionRow
+        return rows.Select(r => new DtoDispositionRow
         {
             Status = r.GetValueOrDefault("Disposition")?.ToString() ?? "",
             Total = r.GetValueOrDefault("Total")?.ToString() ?? "0",
@@ -164,7 +168,7 @@ public sealed class PeriodComparisonUseCase
         }).ToList();
     }
 
-    private static ContactComparison? BuildContactComparison(QueryResultRow[] rows1, QueryResultRow[] rows2)
+    private static ContactComparison? BuildContactComparison(Dictionary<string, object?>[] rows1, Dictionary<string, object?>[] rows2)
     {
         if (rows1.Length == 0 || rows2.Length == 0) return null;
 

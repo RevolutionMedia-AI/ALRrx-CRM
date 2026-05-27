@@ -5,6 +5,18 @@ import {
 import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 import PeriodComparisonModal from '../components/PeriodComparisonModal';
+import {
+  PaymentSuccess01Icon,
+  CallOutgoing01Icon,
+  CallReceived02Icon,
+  Call02Icon,
+  AnalyticsUpIcon,
+  AnalyticsDownIcon,
+  MinusSignCircleIcon,
+  UngroupItemsIcon,
+  ArrowUp02Icon,
+  ArrowDown02Icon,
+} from 'hugeicons-react';
 
 type Period = 'Today' | 'Week' | 'Month' | 'Custom';
 const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth', Custom: 'Custom' };
@@ -33,30 +45,7 @@ function DarkTooltip({ active, payload, label }: { active?: boolean; payload?: A
   );
 }
 
-function Icon({ name, className = '' }: { name: string; className?: string }) {
-  const paths: Record<string, string> = {
-    payments: 'M2 8a2 2 0 012-2h12a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2zm2 0v8h12V8zm3 4a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z',
-    'call-made': 'M9.143 4.545a.714.714 0 01.714.714v9.089l2.555-2.555a.714.714 0 011.01 1.01l-3.75 3.75a.714.714 0 01-1.01 0l-3.75-3.75a.714.714 0 111.01-1.01L8.43 14.35V5.259a.714.714 0 01.714-.714z',
-    'call-received': 'M6.857 4.545a.714.714 0 01.714.714v9.089l2.555-2.555a.714.714 0 011.01 1.01l-3.75 3.75a.714.714 0 01-1.01 0l-3.75-3.75a.714.714 0 111.01-1.01L6.143 14.35V5.259a.714.714 0 01.714-.714z',
-    call: 'M7.073 2.5c.313.09.59.27.797.518l2.317 2.788a1.25 1.25 0 01-.175 1.725l-1.112.928a.179.179 0 00-.05.216c.27.568.664 1.093 1.163 1.53l2.356 2.06a.179.179 0 00.221.024l1.132-.672a1.25 1.25 0 011.627.305l1.87 2.452c.213.28.309.64.269.995a1.477 1.477 0 01-.695 1.066l-.485.32c-.77.508-1.703.705-2.636.557-1.581-.25-3.333-1.206-5.255-2.867C5.517 12.09 4.071 9.99 3.356 7.79c-.347-1.07-.384-2.177.212-3.146l.38-.622c.25-.409.68-.66 1.148-.672.278-.009.55.064.78.208l.507.313c.296.183.539.445.69.762v-.001z',
-    'trending-up': 'M1.47 11.97a.75.75 0 011.06 0L6 15.44l3.72-3.72a.75.75 0 011.06 0l2.47 2.47V11.5a.75.75 0 011.5 0v5a.75.75 0 01-.75.75h-5a.75.75 0 010-1.5h2.69L9.78 13.2l-3.72 3.72a.75.75 0 01-1.06 0L1.47 13.03a.75.75 0 010-1.06z',
-    'trending-down': 'M1.47 4.03a.75.75 0 011.06 0L6 7.44l3.72-3.72a.75.75 0 011.06 0l2.47 2.47V4.5a.75.75 0 011.5 0v5a.75.75 0 01-.75.75h-5a.75.75 0 010-1.5h2.69L9.78 6.2l-3.72 3.72a.75.75 0 01-1.06 0L1.47 5.09a.75.75 0 010-1.06z',
-    'minus-small': 'M3.75 8a.75.75 0 01.75-.75h6.5a.75.75 0 010 1.5h-6.5A.75.75 0 013.75 8z',
-    'unfold-more': 'M8 1.5a.5.5 0 01.5.5v10.793l2.646-2.647a.5.5 0 11.708.708l-3.5 3.5a.5.5 0 01-.708 0l-3.5-3.5a.5.5 0 11.708-.708L7.5 12.793V2a.5.5 0 01.5-.5z',
-    'chevron-up': 'M8 3.5a.5.5 0 01.5.5v8.793l2.646-2.647a.5.5 0 11.708.708l-3.5 3.5a.5.5 0 01-.708 0l-3.5-3.5a.5.5 0 11.708-.708L7.5 12.793V4a.5.5 0 01.5-.5z',
-    'chevron-down': 'M8 12.5a.5.5 0 01-.5-.5V3.207L4.854 5.854a.5.5 0 11-.708-.708l3.5-3.5a.5.5 0 01.708 0l3.5 3.5a.5.5 0 11-.708.708L8.5 3.207V12a.5.5 0 01-.5.5z',
-    download: 'M8 1.5a.5.5 0 01.5.5v7.793l2.146-2.147a.5.5 0 11.708.708l-3 3a.5.5 0 01-.708 0l-3-3a.5.5 0 11.708-.708L7.5 9.793V2a.5.5 0 01.5-.5zM2 13a.5.5 0 01.5.5v.5a.5.5 0 00.5.5h9a.5.5 0 00.5-.5v-.5a.5.5 0 011 0v.5a1.5 1.5 0 01-1.5 1.5H3A1.5 1.5 0 011.5 14v-.5A.5.5 0 012 13z',
-    'chart-pie': 'M8.5 1.5a.5.5 0 00-.5.5v5.5a.5.5 0 00.5.5H14a.5.5 0 00.5-.5A6.5 6.5 0 008.5 1.5zm.5 5.5V2.522A5.5 5.5 0 0113.478 7H9zM7.5 3.038V8a.5.5 0 00.5.5h4.962A5.5 5.5 0 117.5 3.037z',
-    'chart-bar': 'M1 13a1 1 0 011-1h1a1 1 0 011 1v1a1 1 0 01-1 1H2a1 1 0 01-1-1zm4-4a1 1 0 011-1h1a1 1 0 011 1v5a1 1 0 01-1 1H6a1 1 0 01-1-1zm4-4a1 1 0 011-1h1a1 1 0 011 1v9a1 1 0 01-1 1h-1a1 1 0 01-1-1z',
-    table: 'M2 3a1 1 0 011-1h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1zm1 0v2h10V3zm0 3v2h4V6zm0 3v2h4V9zm5-3v2h5V6zm0 3v2h5V9z',
-  };
-  const d = paths[name] || paths.table;
-  return (
-    <svg className={className} width="1em" height="1em" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d={d} />
-    </svg>
-  );
-}
+
 
 function previousPeriod(p: Period): TimeFilterDto {
   switch (p) {
@@ -188,13 +177,10 @@ export default function AnalyticsPage() {
   }, [agentReport, sortKey, sortDir]);
 
   const sortArrow = (key: SortKey) => {
-    if (sortKey !== key) return <Icon name="unfold-more" className="text-muted-slate ml-1" />;
-    return (
-      <Icon
-        name={sortDir === 'asc' ? 'chevron-up' : 'chevron-down'}
-        className="ml-1"
-      />
-    );
+    if (sortKey !== key) return <UngroupItemsIcon size={14} className="text-muted-slate ml-1" />;
+    return sortDir === 'asc'
+      ? <ArrowUp02Icon size={14} className="ml-1" />
+      : <ArrowDown02Icon size={14} className="ml-1" />;
   };
 
   const salesMetric = summary ? findMetric(summary.metrics, 'Sales Today') : undefined;
@@ -212,10 +198,10 @@ export default function AnalyticsPage() {
   const contactRateMetric = summary ? findMetric(summary.metrics, 'Contact Rate') : undefined;
 
   const kpiCards = [
-    { title: 'Sales Today', value: salesMetric?.value ?? '--', change: pctChange(salesMetric?.value ?? '0', prevSales?.value), icon: 'payments', valueColor: 'var(--card-value-emerald)' },
-    { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: 'call-made', valueColor: 'var(--card-value-emerald)' },
-    { title: 'No Contacts', value: noContactsMetric?.value ?? '--', change: pctChange(noContactsMetric?.value ?? '0', prevNoContacts?.value), icon: 'call-received', valueColor: 'var(--card-value-red)' },
-    { title: 'Total Calls', value: totalCallsMetric?.value ?? '--', change: pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value), icon: 'call', valueColor: 'var(--card-value-dark)' },
+    { title: 'Sales Today', value: salesMetric?.value ?? '--', change: pctChange(salesMetric?.value ?? '0', prevSales?.value), icon: PaymentSuccess01Icon, valueColor: 'var(--card-value-emerald)' },
+    { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: CallOutgoing01Icon, valueColor: 'var(--card-value-emerald)' },
+    { title: 'No Contacts', value: noContactsMetric?.value ?? '--', change: pctChange(noContactsMetric?.value ?? '0', prevNoContacts?.value), icon: CallReceived02Icon, valueColor: 'var(--card-value-red)' },
+    { title: 'Total Calls', value: totalCallsMetric?.value ?? '--', change: pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value), icon: Call02Icon, valueColor: 'var(--card-value-dark)' },
   ];
 
   const dispoAreaData = useMemo(() => {
@@ -327,7 +313,7 @@ export default function AnalyticsPage() {
             <div className="flex justify-between items-start mb-5">
               <p className="text-card-label text-[13px] font-medium">{card.title}</p>
 <div className={`p-4 bg-card-icon-bg dark:bg-gray-800 rounded-xl`}>
-                  <Icon name={card.icon} className="text-card-label text-xl" />
+                  <card.icon size={20} className="text-card-label" />
               </div>
             </div>
             {loading ? (
@@ -341,12 +327,9 @@ export default function AnalyticsPage() {
                     : card.change.direction === 'down' ? 'text-deep-rose'
                     : 'text-muted-slate'
                   }`}>
-                    <Icon
-                      name={card.change.direction === 'up' ? 'trending-up'
-                        : card.change.direction === 'down' ? 'trending-down'
-                        : 'minus-small'}
-                      className="text-[15px]"
-                    />
+                    {card.change.direction === 'up' ? <AnalyticsUpIcon size={15} />
+                        : card.change.direction === 'down' ? <AnalyticsDownIcon size={15} />
+                        : <MinusSignCircleIcon size={15} />}
                     {card.change.pct}
                   </span>
                 )}
