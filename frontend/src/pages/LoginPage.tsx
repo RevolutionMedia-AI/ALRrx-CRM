@@ -70,13 +70,13 @@ function GoogleButton() {
   return (
     <>
       {error && (
-        <div className="bg-deep-rose/10 border border-deep-rose/20 rounded-lg px-4 py-3 text-deep-rose text-sm mb-6">
+        <div className="bg-deep-rose/10 dark:bg-deep-rose/20 border border-deep-rose/20 dark:border-deep-rose/30 rounded-lg px-4 py-3 text-deep-rose text-sm mb-6">
           {error}
         </div>
       )}
       <button
         onClick={() => handleGoogle()}
-        className="w-full bg-pure-surface border border-whisper-border text-on-surface font-bold text-lg py-4 rounded-lg hover:bg-surface-container-low active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-sm"
+        className="w-full bg-pure-surface dark:bg-gray-800 border border-whisper-border dark:border-gray-700 text-on-surface dark:text-gray-100 font-bold text-lg py-4 rounded-lg hover:bg-surface-container-low dark:hover:bg-gray-700 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-sm"
       >
         <GoogleIcon />
         Continue with Google
@@ -107,10 +107,10 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-canvas-white px-4">
+      <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 px-4">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-electric-blue border-t-transparent rounded-full animate-spin" />
-          <p className="text-secondary text-sm">Loading...</p>
+          <p className="text-secondary dark:text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -118,62 +118,62 @@ export default function LoginPage() {
 
   if (!clientId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-canvas-white overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 overflow-hidden">
 
         <div className="fixed inset-0 z-0 data-grid pointer-events-none"></div>
 
         <div className="fixed inset-0 z-10 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-0 w-full h-14 border-b border-whisper-border bg-pure-surface/60 backdrop-blur-md flex items-center px-6 gap-4 font-metadata-mono text-sm">
+          <div className="absolute top-0 left-0 w-full h-14 border-b border-whisper-border dark:border-gray-800 bg-pure-surface/60 dark:bg-gray-900/60 backdrop-blur-md flex items-center px-6 gap-4 font-metadata-mono text-sm">
             <span className="text-electric-blue italic font-bold text-lg">fx</span>
-            <div className="h-6 w-px bg-whisper-border"></div>
-            <span className="text-secondary opacity-60 flex-1 truncate">
+            <div className="h-6 w-px bg-whisper-border dark:bg-gray-800"></div>
+            <span className="text-secondary dark:text-gray-400 opacity-60 flex-1 truncate">
               =QUERY(DataMatrix, "SELECT * WHERE status = 'active' AND user = 'current'", 1)
             </span>
           </div>
 
-          <div className="absolute top-14 left-0 w-12 h-full border-r border-whisper-border bg-surface-container-lowest/40 flex flex-col items-center pt-4 gap-[24px] text-outline text-xs font-metadata-mono">
+          <div className="absolute top-14 left-0 w-12 h-full border-r border-whisper-border dark:border-gray-800 bg-surface-container-lowest/40 dark:bg-gray-900/40 flex flex-col items-center pt-4 gap-[24px] text-outline text-xs font-metadata-mono">
             <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
             <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
             <span>11</span><span>12</span><span>13</span><span>14</span><span>15</span>
           </div>
 
-          <div className="absolute top-14 left-12 w-full h-8 border-b border-whisper-border bg-surface-container-lowest/40 flex items-center pl-8 gap-[32px] text-outline text-xs font-metadata-mono">
+          <div className="absolute top-14 left-12 w-full h-8 border-b border-whisper-border dark:border-gray-800 bg-surface-container-lowest/40 dark:bg-gray-900/40 flex items-center pl-8 gap-[32px] text-outline text-xs font-metadata-mono">
             <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span>
             <span>F</span><span>G</span><span>H</span><span>I</span><span>J</span>
             <span>K</span><span>L</span><span>M</span><span>N</span>
           </div>
 
           <div className="absolute top-[25%] right-[20%] opacity-5">
-            <span className="material-symbols-outlined text-primary" style={{ fontSize: '180px' }}>view_column</span>
+            <span className="material-symbols-outlined text-primary dark:text-gray-100" style={{ fontSize: '180px' }}>view_column</span>
           </div>
           <div className="absolute bottom-[15%] left-[15%] opacity-5">
-            <span className="material-symbols-outlined text-primary" style={{ fontSize: '240px' }}>table_chart</span>
+            <span className="material-symbols-outlined text-primary dark:text-gray-100" style={{ fontSize: '240px' }}>table_chart</span>
           </div>
         </div>
 
         <main className="relative z-20 min-h-screen w-full flex items-center justify-center p-gutter-mobile">
           <div className="w-full max-w-[480px] space-y-8">
-            <div className="bg-pure-surface diffused-shadow-lg border border-whisper-border p-10 md:p-12 rounded-xl relative overflow-hidden group">
+            <div className="bg-pure-surface dark:bg-gray-900 diffused-shadow-lg border border-whisper-border dark:border-gray-700 p-10 md:p-12 rounded-xl relative overflow-hidden group">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-electric-blue via-emerald-signal to-electric-blue"></div>
 
               <div className="mb-10 text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-primary text-on-primary rounded-lg mb-6 group-hover:scale-105 transition-transform duration-500">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-primary dark:bg-gray-700 text-on-primary dark:text-gray-100 rounded-lg mb-6 group-hover:scale-105 transition-transform duration-500">
                   <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
                     table_chart
                   </span>
                 </div>
 
                 <h1 className="font-display-hero text-headline-lg tracking-tighter uppercase mb-2">
-                  <span className="block">RevolutionMedia</span>
-                  <span className="block text-secondary opacity-50 font-light pl-16">Reports</span>
-                  <span className="block text-secondary opacity-50 font-light">Platform</span>
+                  <span className="block text-primary dark:text-gray-100">RevolutionMedia</span>
+                  <span className="block text-secondary dark:text-gray-400 opacity-50 font-light pl-16">Reports</span>
+                  <span className="block text-secondary dark:text-gray-400 opacity-50 font-light">Platform</span>
                 </h1>
-                <p className="text-secondary">
+                <p className="text-secondary dark:text-gray-400">
                   Sign in to your account
                 </p>
               </div>
 
-              <div className="bg-deep-rose/10 border border-deep-rose/20 rounded-lg px-4 py-3 text-deep-rose text-sm mb-6">
+              <div className="bg-deep-rose/10 border border-deep-rose/20 dark:bg-deep-rose/20 dark:border-deep-rose/30 rounded-lg px-4 py-3 text-deep-rose text-sm mb-6">
                 Google Sign-In is not configured. Set <code className="text-electric-blue bg-electric-blue/10 px-1 rounded text-xs">Google__ClientId</code> in Northflank backend environment.
               </div>
             </div>
@@ -185,43 +185,43 @@ export default function LoginPage() {
 
   return (
     <GoogleOAuthProvider clientId={clientId}>
-      <div className="min-h-screen flex items-center justify-center bg-canvas-white overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-canvas-white dark:bg-gray-950 overflow-hidden">
 
         <div className="fixed inset-0 z-0 data-grid pointer-events-none"></div>
 
         <div className="fixed inset-0 z-10 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-0 w-full h-14 border-b border-whisper-border bg-pure-surface/60 backdrop-blur-md flex items-center px-6 gap-4 font-metadata-mono text-sm">
+          <div className="absolute top-0 left-0 w-full h-14 border-b border-whisper-border dark:border-gray-800 bg-pure-surface/60 dark:bg-gray-900/60 backdrop-blur-md flex items-center px-6 gap-4 font-metadata-mono text-sm">
             <span className="text-electric-blue italic font-bold text-lg">fx</span>
-            <div className="h-6 w-px bg-whisper-border"></div>
-            <span className="text-secondary opacity-60 flex-1 truncate">
+            <div className="h-6 w-px bg-whisper-border dark:bg-gray-800"></div>
+            <span className="text-secondary dark:text-gray-400 opacity-60 flex-1 truncate">
               =QUERY(Users, "SELECT * WHERE domain = '@revolutionmedia.ai'", 1)
             </span>
           </div>
 
-          <div className="absolute top-14 left-0 w-12 h-full border-r border-whisper-border bg-surface-container-lowest/40 flex flex-col items-center pt-4 gap-[24px] text-outline text-xs font-metadata-mono">
+          <div className="absolute top-14 left-0 w-12 h-full border-r border-whisper-border dark:border-gray-800 bg-surface-container-lowest/40 dark:bg-gray-900/40 flex flex-col items-center pt-4 gap-[24px] text-outline text-xs font-metadata-mono">
             <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
             <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
             <span>11</span><span>12</span><span>13</span><span>14</span><span>15</span>
           </div>
 
-          <div className="absolute top-14 left-12 w-full h-8 border-b border-whisper-border bg-surface-container-lowest/40 flex items-center pl-8 gap-[32px] text-outline text-xs font-metadata-mono">
+          <div className="absolute top-14 left-12 w-full h-8 border-b border-whisper-border dark:border-gray-800 bg-surface-container-lowest/40 dark:bg-gray-900/40 flex items-center pl-8 gap-[32px] text-outline text-xs font-metadata-mono">
             <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span>
             <span>F</span><span>G</span><span>H</span><span>I</span><span>J</span>
             <span>K</span><span>L</span><span>M</span><span>N</span>
           </div>
 
           <div className="absolute top-[25%] right-[20%] opacity-5">
-            <span className="material-symbols-outlined text-primary" style={{ fontSize: '180px' }}>view_column</span>
+            <span className="material-symbols-outlined text-primary dark:text-gray-100" style={{ fontSize: '180px' }}>view_column</span>
           </div>
           <div className="absolute bottom-[15%] left-[15%] opacity-5">
-            <span className="material-symbols-outlined text-primary" style={{ fontSize: '240px' }}>table_chart</span>
+            <span className="material-symbols-outlined text-primary dark:text-gray-100" style={{ fontSize: '240px' }}>table_chart</span>
           </div>
         </div>
 
         <main className="relative z-20 min-h-screen w-full flex items-center justify-center p-gutter-mobile">
           <div className={`w-full max-w-[480px] space-y-8 transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
 
-            <div className="bg-pure-surface diffused-shadow-lg border border-whisper-border p-10 md:p-12 rounded-xl relative overflow-hidden group">
+            <div className="bg-pure-surface dark:bg-gray-900 diffused-shadow-lg border border-whisper-border dark:border-gray-700 p-10 md:p-12 rounded-xl relative overflow-hidden group">
 
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-electric-blue via-emerald-signal to-electric-blue"></div>
 
@@ -229,11 +229,11 @@ export default function LoginPage() {
                 <img src={logoSrc} alt="Revolution Logo" className="h-12 mb-6 mx-auto" />
 
                 <h1 className="font-display-hero text-headline-lg tracking-tighter uppercase mb-2">
-                  <span className="block">RevolutionMedia</span>
-                  <span className="block text-secondary opacity-50 font-light pl-16">Reports</span>
-                  <span className="block text-secondary opacity-50 font-light">Platform</span>
+                  <span className="block text-primary dark:text-gray-100">RevolutionMedia</span>
+                  <span className="block text-secondary dark:text-gray-400 opacity-50 font-light pl-16">Reports</span>
+                  <span className="block text-secondary dark:text-gray-400 opacity-50 font-light">Platform</span>
                 </h1>
-                <p className="text-secondary">
+                <p className="text-secondary dark:text-gray-400">
                   Sign in to your account
                 </p>
               </div>
@@ -244,14 +244,14 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <p className="text-center text-muted-slate text-xs mt-6">
-                Only <span className="font-medium text-secondary">@revolutionmedia.ai</span> accounts are allowed
+              <p className="text-center text-muted-slate dark:text-gray-500 text-xs mt-6">
+                Only <span className="font-medium text-secondary dark:text-gray-400">@revolutionmedia.ai</span> accounts are allowed
               </p>
 
             </div>
 
             <footer className="flex items-center justify-center px-4">
-              <p className="text-metadata-mono text-outline">
+              <p className="text-metadata-mono text-outline dark:text-gray-600">
                 © 2024 RevolutionMedia
               </p>
             </footer>
