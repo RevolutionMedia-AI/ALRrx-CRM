@@ -146,15 +146,12 @@ export default function DashboardPage() {
       setStaffingLoading(false);
       setCallsLoading(false);
     }
-  }, []);
+  }, [customStart, customEnd]);
 
   useEffect(() => {
-    console.log('useEffect triggered | period:', period);
+    console.log('useEffect triggered | period:', period, '| customStart:', customStart, '| customEnd:', customEnd);
     loadAll(period);
-    // TEMPORARILY DISABLED FOR DEBUGGING
-    // intervalRef.current = setInterval(() => loadAll(period), 30000);
-    // return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [period]);
+  }, [period, customStart, customEnd]);
 
   const totalCalls = summary ? findMetric(summary.metrics, 'Total Calls') : undefined;
   const salesToday = summary ? findMetric(summary.metrics, 'Sales Today') : undefined;
