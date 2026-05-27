@@ -14,12 +14,52 @@ public sealed class AuthController : ControllerBase
     private readonly IUserRepository _users;
     private readonly IAuthService _auth;
     private readonly IConfiguration _config;
+    private readonly IWebHostEnvironment _env;
 
-    public AuthController(IUserRepository users, IAuthService auth, IConfiguration config)
+    public AuthController(IUserRepository users, IAuthService auth, IConfiguration config, IWebHostEnvironment env)
     {
         _users = users;
         _auth = auth;
         _config = config;
+        _env = env;
+    }
+
+    /// <summary>
+    /// DEV ONLY — returns a real Admin JWT without credentials.
+    /// Returns 404 in any environment that is not Development.
+    /// </summary>
+    [HttpPost("dev-login")]
+    public ActionResult<LoginResponse> DevLogin()
+    {
+        if (!_env.IsDevelopment())
+            return NotFound();
+
+        var devUser = new Domain.Entities.AuthUser
+        {
+            Id = 0,
+            Email = "dev@local.test",
+            PasswordHash = string.Empty,
+            FullName = "Dev (local)",
+            Role = Domain.Enums.UserRole.Admin,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var token = _auth.GenerateToken(devUser);
+
+        return Ok(new LoginResponse
+        {
+            Token = token,
+            User = new UserInfoDto
+            {
+                Id = devUser.Id,
+                Email = devUser.Email,
+                FullName = devUser.FullName,
+                Role = devUser.Role.ToString(),
+                IsActive = devUser.IsActive,
+                CreatedAt = devUser.CreatedAt
+            }
+        });
     }
 
     [HttpPost("google")]
