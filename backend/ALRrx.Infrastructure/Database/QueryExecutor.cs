@@ -154,10 +154,21 @@ public sealed class QueryExecutor : IQueryService
                     status AS Disposition,
                     COUNT(*) AS Total,
                     ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) AS Percentage
-                FROM vicidial_log vl
-                JOIN vicidial_users vu ON vl.user = vu.user
-                WHERE DATE(vl.call_date) BETWEEN @Start AND @End
-                AND vu.user_group = 'ALTRX'
+                FROM (
+                    SELECT vl.status, vl.call_date
+                    FROM vicidial_log vl
+                    JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE DATE(vl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+
+                    UNION ALL
+
+                    SELECT cl.status, cl.call_date
+                    FROM vicidial_closer_log cl
+                    JOIN vicidial_users vu ON cl.user = vu.user
+                    WHERE DATE(cl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+                ) calls
                 GROUP BY status
                 ORDER BY Total DESC
                 """
@@ -177,10 +188,21 @@ public sealed class QueryExecutor : IQueryService
                         WHEN status NOT IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY')
                         THEN 1 ELSE 0 END) AS No_Contact,
                     COUNT(*) AS Total_Calls
-                FROM vicidial_log vl
-                JOIN vicidial_users vu ON vl.user = vu.user
-                WHERE DATE(vl.call_date) BETWEEN @Start AND @End
-                AND vu.user_group = 'ALTRX'
+                FROM (
+                    SELECT vl.status, vl.call_date
+                    FROM vicidial_log vl
+                    JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE DATE(vl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+
+                    UNION ALL
+
+                    SELECT cl.status, cl.call_date
+                    FROM vicidial_closer_log cl
+                    JOIN vicidial_users vu ON cl.user = vu.user
+                    WHERE DATE(cl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+                ) calls
                 """
         },
         ["leads_contact_rate"] = new QueryDefinition
@@ -202,8 +224,15 @@ public sealed class QueryExecutor : IQueryService
                             THEN lead_id
                         END) * 100.0 / COUNT(DISTINCT lead_id)
                     , 1) AS Contact_Rate
-                FROM vicidial_log
-                WHERE DATE(call_date) BETWEEN @Start AND @End
+                FROM (
+                    SELECT lead_id, status FROM vicidial_log
+                    WHERE DATE(call_date) BETWEEN @Start AND @End
+
+                    UNION ALL
+
+                    SELECT lead_id, status FROM vicidial_closer_log
+                    WHERE DATE(call_date) BETWEEN @Start AND @End
+                ) calls
                 """
         }
     };
