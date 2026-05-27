@@ -109,13 +109,11 @@ export default function DashboardPage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const filter = (p: Period, cs: string, ce: string): TimeFilterDto => {
-    console.log('filter called | period:', p, '| customStart:', cs, '| customEnd:', ce);
     if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${cs}T00:00:00`, customEnd: `${ce}T23:59:59` };
     return { period: PERIOD_API[p] };
   };
 
   const loadAll = useCallback(async (p: Period) => {
-    console.log('loadAll started | p:', p);
     setSummaryLoading(true);
     setAgentLoading(true);
     setStaffingLoading(true);
@@ -123,7 +121,6 @@ export default function DashboardPage() {
     setError(null);
     try {
       const filterResult = filter(p, customStart, customEnd);
-      console.log('loadAll calling API with filter:', filterResult);
       const s = await getDashboardSummary(filterResult);
       setSummary(s);
       const [a, st, c, d, ct] = await Promise.all([
@@ -149,8 +146,12 @@ export default function DashboardPage() {
   }, [customStart, customEnd]);
 
   useEffect(() => {
-    console.log('useEffect triggered | period:', period, '| customStart:', customStart, '| customEnd:', customEnd);
     loadAll(period);
+
+    if (period !== 'Custom') {
+      intervalRef.current = setInterval(() => loadAll(period), 30000);
+      return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    }
   }, [period, customStart, customEnd]);
 
   const totalCalls = summary ? findMetric(summary.metrics, 'Total Calls') : undefined;
