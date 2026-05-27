@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
 } from 'recharts';
 import { getDashboardSummary, getReport, getStaffing, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
@@ -562,23 +562,27 @@ function KpiCard({
 }) {
   const isPositive = change ? !change.startsWith('-') : true;
   return (
-    <div className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card transition-transform">
+    <div className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card transition-transform relative">
       <div className="flex justify-between items-start mb-5">
         <p className="text-card-label text-[13px] font-medium">{title}</p>
-        <div className="p-2 bg-card-icon-bg dark:bg-gray-800 rounded-lg">
-          <span className="material-symbols-outlined text-base text-card-label">{icon}</span>
+        <div className="p-5 bg-card-icon-bg dark:bg-gray-800 rounded-xl">
+          <span className="material-symbols-outlined text-3xl text-card-label">{icon}</span>
         </div>
       </div>
       {loading ? (
         <div className="h-8 w-24 bg-surface-container rounded animate-pulse" />
       ) : (
-        <div className="flex items-baseline gap-3">
+        <div className="flex items-center gap-3">
           <h2 className="text-[2rem] font-bold leading-none tracking-tight" style={{ color: valueColor }}>{value}</h2>
           {suffix && <span className="text-secondary text-sm">{suffix}</span>}
+        </div>
+      )}
+      {(change || status) && !loading && (
+        <div className="absolute bottom-4 right-4 flex items-center gap-1.5">
           {change && (
-            <span className={`text-sm font-medium flex items-center font-metadata-mono ${isPositive ? 'text-emerald-signal' : 'text-deep-rose'}`}>
-              <span className="material-symbols-outlined text-[16px]">{isPositive ? 'trending_up' : 'trending_down'}</span>
-              <span>{change}</span>
+            <span className={`flex items-center font-medium font-metadata-mono ${isPositive ? 'text-emerald-signal' : 'text-deep-rose'}`}>
+              <span className="material-symbols-outlined text-2xl">{isPositive ? 'trending_up' : 'trending_down'}</span>
+              <span className="text-sm">{change}</span>
             </span>
           )}
           {status && (

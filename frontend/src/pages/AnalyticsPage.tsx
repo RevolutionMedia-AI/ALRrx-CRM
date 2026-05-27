@@ -437,8 +437,8 @@ export default function AnalyticsPage() {
                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#787774' }} />
                  <YAxis tick={{ fontSize: 11, fill: '#787774' }} />
                  <Tooltip content={<DarkTooltip />} />
-<Bar dataKey="Contact" fill="var(--card-value-emerald)" radius={[4, 4, 0, 0]} maxBarSize={48} />
-                  <Bar dataKey="No Contact" fill="var(--card-value-red)" radius={[4, 4, 0, 0]} maxBarSize={48} />
+<Bar dataKey="Contact" fill="var(--card-value-emerald)" radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false} />
+                  <Bar dataKey="No Contact" fill="var(--card-value-red)" radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false} />
                </BarChart>
              </ResponsiveContainer>
             <div className="flex items-center justify-center gap-8">
