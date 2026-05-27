@@ -115,20 +115,23 @@ export default function DashboardPage() {
   };
 
   const loadAll = useCallback(async (p: Period) => {
+    console.log('loadAll started | p:', p, '| current customStart:', customStart, '| current customEnd:', customEnd);
     setSummaryLoading(true);
     setAgentLoading(true);
     setStaffingLoading(true);
     setCallsLoading(true);
     setError(null);
     try {
-      const s = await getDashboardSummary(filter(p));
+      const filterResult = filter(p);
+      console.log('loadAll calling API with filter:', filterResult);
+      const s = await getDashboardSummary(filterResult);
       setSummary(s);
       const [a, st, c, d, ct] = await Promise.all([
-        getReport('agent_performance', filter(p)).catch(() => null),
+        getReport('agent_performance', filterResult).catch(() => null),
         getStaffing().catch(() => null),
-        getReport('all_calls', filter(p)).catch(() => null),
-        getReport('dispositions', filter(p)).catch(() => null),
-        getReport('contact_vs_nocontact', filter(p)).catch(() => null),
+        getReport('all_calls', filterResult).catch(() => null),
+        getReport('dispositions', filterResult).catch(() => null),
+        getReport('contact_vs_nocontact', filterResult).catch(() => null),
       ]);
       setAgentReport(a);
       setStaffingReport(st);
@@ -143,7 +146,7 @@ export default function DashboardPage() {
       setStaffingLoading(false);
       setCallsLoading(false);
     }
-  }, []);
+  }, [customStart, customEnd]);
 
   useEffect(() => {
     console.log('useEffect triggered | period:', period, '| customStart:', customStart, '| customEnd:', customEnd);
