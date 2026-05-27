@@ -75,7 +75,7 @@ public sealed class PeriodComparisonExcelService : IPeriodComparisonExcelService
 
         var dataStartRow = chartRow + 2;
         ws.Cells[dataStartRow, 1].Value = "Period";
-        ws.Cells[dataStartRow, 2].Value = "Sales Today";
+        ws.Cells[dataStartRow, 2].Value = "Sales period";
         ws.Cells[dataStartRow, 3].Value = "Contacts";
         ws.Cells[dataStartRow, 4].Value = "Total Calls";
 
