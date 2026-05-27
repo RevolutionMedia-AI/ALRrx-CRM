@@ -19,12 +19,14 @@ public readonly record struct TimeRange
     public static TimeRange FromPeriod(TimePeriod period)
     {
         var now = DateTime.UtcNow;
+        var todayStart = now.Date;
+        var todayEnd = todayStart.AddDays(1).AddSeconds(-1);
         return period switch
         {
             TimePeriod.LastHour => new TimeRange(now.AddHours(-1), now),
-            TimePeriod.Today => new TimeRange(now.Date, now),
-            TimePeriod.ThisWeek => new TimeRange(now.Date.AddDays(-(int)now.DayOfWeek), now),
-            TimePeriod.ThisMonth => new TimeRange(new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), now),
+            TimePeriod.Today => new TimeRange(todayStart, todayEnd),
+            TimePeriod.ThisWeek => new TimeRange(now.Date.AddDays(-(int)now.DayOfWeek), todayEnd),
+            TimePeriod.ThisMonth => new TimeRange(new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), todayEnd),
             _ => throw new ArgumentOutOfRangeException(nameof(period))
         };
     }
