@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell,
 } from 'recharts';
 import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
@@ -416,28 +417,39 @@ export default function AnalyticsPage() {
           <div className="h-64 bg-surface-container rounded animate-pulse" />
         ) : contactAreaData.length > 0 ? (
           <div className="flex flex-col gap-4">
-<ResponsiveContainer width="100%" height={260}>
-               <BarChart data={contactAreaData}>
-                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#787774' }} />
-                 <YAxis tick={{ fontSize: 11, fill: '#787774' }} />
-                 <Tooltip content={<DarkTooltip />} />
-<Bar dataKey="Contact" fill="var(--card-value-emerald)" radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false} />
-                  <Bar dataKey="No Contact" fill="var(--card-value-red)" radius={[4, 4, 0, 0]} maxBarSize={48} isAnimationActive={false} />
-               </BarChart>
-             </ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={260}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Contact', value: contactAreaData[0].Contact, color: '#10b981' },
+                    { name: 'No Contact', value: contactAreaData[0]['No Contact'], color: '#ef4444' },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  dataKey="value"
+                  isAnimationActive={false}
+                >
+                  <Cell fill="#10b981" />
+                  <Cell fill="#ef4444" />
+                </Pie>
+                <Tooltip content={<DarkTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
             <div className="flex items-center justify-center gap-8">
               <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: 'var(--card-value-emerald)' }} />
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#10b981' }} />
                 <div>
-                  <p className="text-xl font-bold" style={{ color: 'var(--card-value-emerald)' }}>{contactAreaData[0].Contact}</p>
+                  <p className="text-xl font-bold" style={{ color: '#10b981' }}>{contactAreaData[0].Contact}</p>
                   <p className="text-xs text-card-label">Contact</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: 'var(--card-value-red)' }} />
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: '#ef4444' }} />
                 <div>
-                  <p className="text-xl font-bold" style={{ color: 'var(--card-value-red)' }}>{contactAreaData[0]['No Contact']}</p>
+                  <p className="text-xl font-bold" style={{ color: '#ef4444' }}>{contactAreaData[0]['No Contact']}</p>
                   <p className="text-xs text-card-label">No Contact</p>
                 </div>
               </div>

@@ -48,25 +48,47 @@ public sealed class QueryExecutor : IQueryService
             Category = "Agents",
             SqlTemplate = """
                 SELECT
-                    vl.user AS `User`,
-                    vu.full_name AS Name,
-                    COUNT(*) AS Calls_Handled,
-                    SUM(CASE WHEN vl.status = 'SALE' THEN 1 ELSE 0 END) AS Sales_Made,
-                    SUM(CASE
-                        WHEN vl.status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY')
-                        THEN 1 ELSE 0 END) AS Contacts,
-                    ROUND(
-                        SUM(CASE WHEN vl.status = 'SALE' THEN 1 ELSE 0 END) * 100.0 /
-                        NULLIF(SUM(CASE
+                    user AS `User`,
+                    full_name AS Name,
+                    SUM(Calls_Handled) AS Calls_Handled,
+                    SUM(Sales_Made) AS Sales_Made,
+                    SUM(Contacts) AS Contacts,
+                    ROUND(SUM(Sales_Made) * 100.0 / NULLIF(SUM(Contacts), 0), 2) AS Conversion_Percentage,
+                    SEC_TO_TIME(AVG(AHT)) AS AHT
+                FROM (
+                    SELECT
+                        vl.user,
+                        vu.full_name,
+                        COUNT(*) AS Calls_Handled,
+                        SUM(CASE WHEN vl.status = 'SALE' THEN 1 ELSE 0 END) AS Sales_Made,
+                        SUM(CASE
                             WHEN vl.status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY')
-                            THEN 1 ELSE 0 END), 0)
-                    , 2) AS Conversion_Percentage,
-                    SEC_TO_TIME(AVG(vl.length_in_sec)) AS AHT
-                FROM vicidial_log vl
-                JOIN vicidial_users vu ON vl.user = vu.user
-                WHERE DATE(vl.call_date) BETWEEN @Start AND @End
-                AND vu.user_group = 'ALTRX'
-                GROUP BY vl.user, vu.full_name
+                            THEN 1 ELSE 0 END) AS Contacts,
+                        AVG(vl.length_in_sec) AS AHT
+                    FROM vicidial_log vl
+                    JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE DATE(vl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+                    GROUP BY vl.user, vu.full_name
+
+                    UNION ALL
+
+                    SELECT
+                        cl.user,
+                        vu.full_name,
+                        COUNT(*) AS Calls_Handled,
+                        SUM(CASE WHEN cl.status = 'SALE' THEN 1 ELSE 0 END) AS Sales_Made,
+                        SUM(CASE
+                            WHEN cl.status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY')
+                            THEN 1 ELSE 0 END) AS Contacts,
+                        AVG(cl.length_in_sec) AS AHT
+                    FROM vicidial_closer_log cl
+                    JOIN vicidial_users vu ON cl.user = vu.user
+                    WHERE DATE(cl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+                    GROUP BY cl.user, vu.full_name
+                ) combined
+                GROUP BY user, full_name
                 ORDER BY Sales_Made DESC
                 """
         },
