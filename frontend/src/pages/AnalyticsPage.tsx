@@ -324,8 +324,8 @@ export default function AnalyticsPage() {
           >
             <div className="flex justify-between items-start mb-5">
               <p className="text-card-label text-[13px] font-medium">{card.title}</p>
-              <div className={`p-2.5 bg-card-icon-bg dark:bg-gray-800 rounded-lg`}>
-                <Icon name={card.icon} className="text-card-label text-base" />
+              <div className={`p-3 bg-card-icon-bg dark:bg-gray-800 rounded-xl`}>
+                <Icon name={card.icon} className="text-card-label text-lg" />
               </div>
             </div>
             {loading ? (

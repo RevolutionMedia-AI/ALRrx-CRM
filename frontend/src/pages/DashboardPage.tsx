@@ -565,8 +565,8 @@ function KpiCard({
     <div className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card transition-transform relative">
       <div className="flex justify-between items-start mb-5">
         <p className="text-card-label text-[13px] font-medium">{title}</p>
-        <div className="p-5 bg-card-icon-bg dark:bg-gray-800 rounded-xl">
-          <span className="material-symbols-outlined text-3xl text-card-label">{icon}</span>
+        <div className="p-2 bg-card-icon-bg dark:bg-gray-800 rounded-lg">
+          <span className="material-symbols-outlined text-base text-card-label">{icon}</span>
         </div>
       </div>
       {loading ? (
