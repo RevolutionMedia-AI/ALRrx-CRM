@@ -164,10 +164,9 @@ export default function LoginPage() {
                 </div>
 
                 <h1 className="font-display-hero text-headline-lg tracking-tighter uppercase mb-2">
-                  RevolutionMedia Reports
-                  <span className="text-secondary opacity-50 font-light">
-                    Platform
-                  </span>
+                  <span className="block">RevolutionMedia</span>
+                  <span className="block text-secondary opacity-50 font-light pl-16">Reports</span>
+                  <span className="block text-secondary opacity-50 font-light">Platform</span>
                 </h1>
                 <p className="text-secondary">
                   Sign in to your account
@@ -230,10 +229,9 @@ export default function LoginPage() {
                 <img src={logoSrc} alt="Revolution Logo" className="h-12 mb-6 mx-auto" />
 
                 <h1 className="font-display-hero text-headline-lg tracking-tighter uppercase mb-2">
-                  RevolutionMedia Reports
-                  <span className="text-secondary opacity-50 font-light">
-                    Platform
-                  </span>
+                  <span className="block">RevolutionMedia</span>
+                  <span className="block text-secondary opacity-50 font-light pl-16">Reports</span>
+                  <span className="block text-secondary opacity-50 font-light">Platform</span>
                 </h1>
                 <p className="text-secondary">
                   Sign in to your account
