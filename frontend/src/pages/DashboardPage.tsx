@@ -108,21 +108,21 @@ export default function DashboardPage() {
   const [exportingExcel, setExportingExcel] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const filter = (p: Period): TimeFilterDto => {
-    console.log('filter called | customStart:', customStart, '| customEnd:', customEnd);
-    if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${customStart}T00:00:00`, customEnd: `${customEnd}T23:59:59` };
+  const filter = (p: Period, cs: string, ce: string): TimeFilterDto => {
+    console.log('filter called | period:', p, '| customStart:', cs, '| customEnd:', ce);
+    if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${cs}T00:00:00`, customEnd: `${ce}T23:59:59` };
     return { period: PERIOD_API[p] };
   };
 
   const loadAll = useCallback(async (p: Period) => {
-    console.log('loadAll started | p:', p, '| current customStart:', customStart, '| current customEnd:', customEnd);
+    console.log('loadAll started | p:', p);
     setSummaryLoading(true);
     setAgentLoading(true);
     setStaffingLoading(true);
     setCallsLoading(true);
     setError(null);
     try {
-      const filterResult = filter(p);
+      const filterResult = filter(p, customStart, customEnd);
       console.log('loadAll calling API with filter:', filterResult);
       const s = await getDashboardSummary(filterResult);
       setSummary(s);
@@ -146,15 +146,15 @@ export default function DashboardPage() {
       setStaffingLoading(false);
       setCallsLoading(false);
     }
-  }, [customStart, customEnd]);
+  }, []);
 
   useEffect(() => {
-    console.log('useEffect triggered | period:', period, '| customStart:', customStart, '| customEnd:', customEnd);
+    console.log('useEffect triggered | period:', period);
     loadAll(period);
     // TEMPORARILY DISABLED FOR DEBUGGING
     // intervalRef.current = setInterval(() => loadAll(period), 30000);
     // return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [period, customStart, customEnd]);
+  }, [period]);
 
   const totalCalls = summary ? findMetric(summary.metrics, 'Total Calls') : undefined;
   const salesToday = summary ? findMetric(summary.metrics, 'Sales Today') : undefined;
@@ -189,7 +189,7 @@ export default function DashboardPage() {
   const handleExportPdf = async () => {
     setExportingPdf(true);
     try {
-      const blob = await exportDashboardPdf(filter(period));
+      const blob = await exportDashboardPdf(filter(period, customStart, customEnd));
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -518,7 +518,7 @@ export default function DashboardPage() {
           onClick={async () => {
             setExportingExcel(true);
             try {
-              const blob = await exportDashboardExcel(filter(period));
+              const blob = await exportDashboardExcel(filter(period, customStart, customEnd));
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
