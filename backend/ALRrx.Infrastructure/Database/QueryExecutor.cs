@@ -17,27 +17,45 @@ public sealed class QueryExecutor : IQueryService
         {
             Id = "ventas_hoy",
             Name = "Sales Today",
-            Description = "Total sales count for the period",
+            Description = "Total sales count for the period (includes all SALE variants + archive tables)",
             Category = "Dashboard",
             SqlTemplate = """
                 SELECT COUNT(*) AS Sales_Today
                 FROM (
-                    SELECT vl.status, vl.call_date
+                    SELECT vl.lead_id
                     FROM vicidial_log vl
-                    JOIN vicidial_users vu ON vl.user = vu.user
-                    WHERE DATE(vl.call_date) BETWEEN @Start AND @End
-                    AND vl.status = 'SALE'
-                    AND vu.user_group = 'ALTRX'
+                    INNER JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE vu.user_group = 'ALTRX'
+                    AND (UPPER(vl.status) LIKE 'SALE%' OR UPPER(vl.status) = 'UPSELL' OR UPPER(vl.status) = 'XFER-SALE')
+                    AND DATE(vl.call_date) BETWEEN @Start AND @End
 
                     UNION ALL
 
-                    SELECT cl.status, cl.call_date
+                    SELECT cl.lead_id
                     FROM vicidial_closer_log cl
-                    JOIN vicidial_users vu ON cl.user = vu.user
-                    WHERE DATE(cl.call_date) BETWEEN @Start AND @End
-                    AND cl.status = 'SALE'
-                    AND vu.user_group = 'ALTRX'
-                ) calls
+                    INNER JOIN vicidial_users vu ON cl.user = vu.user
+                    WHERE vu.user_group = 'ALTRX'
+                    AND (UPPER(cl.status) LIKE 'SALE%' OR UPPER(cl.status) = 'UPSELL' OR UPPER(cl.status) = 'XFER-SALE')
+                    AND DATE(cl.call_date) BETWEEN @Start AND @End
+
+                    UNION ALL
+
+                    SELECT vla.lead_id
+                    FROM vicidial_log_archive vla
+                    INNER JOIN vicidial_users vu ON vla.user = vu.user
+                    WHERE vu.user_group = 'ALTRX'
+                    AND (UPPER(vla.status) LIKE 'SALE%' OR UPPER(vla.status) = 'UPSELL' OR UPPER(vla.status) = 'XFER-SALE')
+                    AND DATE(vla.call_date) BETWEEN @Start AND @End
+
+                    UNION ALL
+
+                    SELECT cla.lead_id
+                    FROM vicidial_closer_log_archive cla
+                    INNER JOIN vicidial_users vu ON cla.user = vu.user
+                    WHERE vu.user_group = 'ALTRX'
+                    AND (UPPER(cla.status) LIKE 'SALE%' OR UPPER(cla.status) = 'UPSELL' OR UPPER(cla.status) = 'XFER-SALE')
+                    AND DATE(cla.call_date) BETWEEN @Start AND @End
+                ) AS todas_las_ventas
                 """
         },
         ["agent_performance"] = new QueryDefinition
@@ -60,7 +78,10 @@ public sealed class QueryExecutor : IQueryService
                         vl.user,
                         vu.full_name,
                         COUNT(*) AS Calls_Handled,
-                        SUM(CASE WHEN vl.status = 'SALE' THEN 1 ELSE 0 END) AS Sales_Made,
+                        SUM(CASE
+                            WHEN UPPER(vl.status) LIKE 'SALE%' OR UPPER(vl.status) = 'UPSELL' OR UPPER(vl.status) = 'XFER-SALE'
+                            THEN 1 ELSE 0
+                        END) AS Sales_Made,
                         SUM(CASE
                             WHEN vl.status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY')
                             THEN 1 ELSE 0 END) AS Contacts,
@@ -77,7 +98,10 @@ public sealed class QueryExecutor : IQueryService
                         cl.user,
                         vu.full_name,
                         COUNT(*) AS Calls_Handled,
-                        SUM(CASE WHEN cl.status = 'SALE' THEN 1 ELSE 0 END) AS Sales_Made,
+                        SUM(CASE
+                            WHEN UPPER(cl.status) LIKE 'SALE%' OR UPPER(cl.status) = 'UPSELL' OR UPPER(cl.status) = 'XFER-SALE'
+                            THEN 1 ELSE 0
+                        END) AS Sales_Made,
                         SUM(CASE
                             WHEN cl.status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY')
                             THEN 1 ELSE 0 END) AS Contacts,
