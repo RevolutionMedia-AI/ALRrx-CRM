@@ -2,10 +2,10 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
 } from 'recharts';
-import { getDashboardSummary, getReport, getStaffing, exportDashboardPdf, exportDashboardExcel } from '../services/api';
+import { getDashboardSummary, getReport, getStaffing, exportDashboardPdf, exportDashboardExcel, getGoogleSheetsSales } from '../services/api';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 import { useAuth } from '../context/AuthContext';
-import GoogleSheetsSalesTable, { GoogleSheetsKpiCards } from '../components/GoogleSheetsSalesTable';
+import GoogleSheetsSalesTable from '../components/GoogleSheetsSalesTable';
 
 type Period = 'Today' | 'Week' | 'Month' | 'Custom';
 
@@ -274,55 +274,88 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <section className="grid grid-cols-3 gap-5">
-        {[
-          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', valueColor: 'var(--card-value-dark)' },
-          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', valueColor: 'var(--card-value-emerald)' },
-          { label: 'Contact Rate', value: contactRate?.value ?? '--%', valueColor: 'var(--card-value-emerald)' },
-        ].map((l) => (
-          <div key={l.label} className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card">
-            <p className="text-card-label text-[13px] font-medium">{l.label}</p>
-            <p className="text-[2rem] font-bold mt-1 leading-none" style={{ color: l.valueColor }}>
-              {summaryLoading ? '--' : l.value}
-            </p>
-          </div>
-        ))}
+      {/* ========== FILA 1: ACTIVIDAD DE MARCACIÓN (4 cards) ========== */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="material-symbols-outlined text-electric-blue text-lg">dialpad</span>
+          <h2 className="text-xs font-bold text-secondary uppercase tracking-wider">Actividad de Marcación</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <KpiCard
+            title="Leads Dialed"
+            value={leadsDialed?.value ?? '--'}
+            icon="phone_forwarded"
+            valueColor="var(--card-value-dark)"
+            loading={summaryLoading}
+          />
+          <KpiCard
+            title="Leads Contacted"
+            value={leadsContacted?.value ?? '--'}
+            icon="contact_page"
+            valueColor="var(--card-value-emerald)"
+            loading={summaryLoading}
+          />
+          <KpiCard
+            title="Total Calls"
+            value={totalCalls?.value ?? '--'}
+            change={totalCalls?.trend}
+            icon="call"
+            valueColor="var(--card-value-dark)"
+            loading={summaryLoading}
+          />
+          <KpiCard
+            title="Contact Rate"
+            value={contactRate?.value ?? '--%'}
+            icon="percent"
+            valueColor="var(--card-value-emerald)"
+            loading={summaryLoading}
+          />
+        </div>
       </section>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        <KpiCard
-          title="Total Calls"
-          value={totalCalls?.value ?? '--'}
-          change={totalCalls?.trend}
-          icon="call"
-          valueColor="var(--card-value-dark)"
-          loading={summaryLoading}
-        />
-        <KpiCard
-          title="Avg Handle Time"
-          value={aht?.value ?? '--:--'}
-          change={aht?.trend}
-          icon="timer"
-          valueColor="var(--card-value-blue)"
-          loading={summaryLoading}
-        />
-        <KpiCard
-          title={PERIOD_LABEL[period]}
-          value={salesToday?.value ?? '--'}
-          change={salesToday?.trend}
-          icon="monetization_on"
-          valueColor="var(--card-value-emerald)"
-          loading={summaryLoading}
-        />
-        <KpiCard
-          title="Occupancy"
-          value={occupancy?.value ? `${occupancy.value}` : '--%'}
-          status={occupancy?.trend}
-          icon="pie_chart"
-          valueColor="var(--card-value-blue)"
-          loading={summaryLoading}
-        />
-        <GoogleSheetsKpiCards filter={filter(period, customStart, customEnd)} />
+      {/* ========== FILA 2: PRODUCTIVIDAD OPERATIVA (2 cards) ========== */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="material-symbols-outlined text-electric-blue text-lg">speed</span>
+          <h2 className="text-xs font-bold text-secondary uppercase tracking-wider">Productividad Operativa</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <KpiCard
+            title="Avg Handle Time"
+            value={aht?.value ?? '--:--'}
+            change={aht?.trend}
+            icon="timer"
+            valueColor="var(--card-value-blue)"
+            loading={summaryLoading}
+          />
+          <KpiCard
+            title="Occupancy"
+            value={occupancy?.value ? `${occupancy.value}%` : '--%'}
+            status={occupancy?.trend}
+            icon="pie_chart"
+            valueColor="var(--card-value-blue)"
+            loading={summaryLoading}
+          />
+        </div>
+      </section>
+
+      {/* ========== FILA 3: RESULTADOS COMERCIALES (2 cards) ========== */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="material-symbols-outlined text-emerald-signal text-lg">monetization_on</span>
+          <h2 className="text-xs font-bold text-secondary uppercase tracking-wider">Resultados Comerciales</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <KpiCard
+            title="Total Revenue"
+            value={salesToday?.value ?? '--'}
+            change={salesToday?.trend}
+            icon="payments"
+            valueColor="var(--card-value-emerald)"
+            loading={summaryLoading}
+          />
+          <LastSaleKpiCard filter={filter(period, customStart, customEnd)} />
+        </div>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -623,6 +656,81 @@ function StatusBar({ label, count, total, color }: { label: string; count: numbe
       <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
         <div className={`${color} h-full rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
+    </div>
+  );
+}
+
+function LastSaleKpiCard({ filter }: { filter: TimeFilterDto }) {
+  const [lastSale, setLastSale] = useState<{ amount: number; sellerName: string; timestamp: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [elapsed, setElapsed] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getGoogleSheetsSales(filter);
+        if (!cancelled) setLastSale(data?.lastSale ?? null);
+      } catch {
+        if (!cancelled) setLastSale(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    const id = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [filter.period, filter.customStart, filter.customEnd]);
+
+  useEffect(() => {
+    if (!lastSale?.timestamp) { setElapsed(''); return; }
+    const update = () => {
+      const diff = Math.floor((Date.now() - new Date(lastSale.timestamp).getTime()) / 1000);
+      if (diff < 60) setElapsed(`hace ${diff}s`);
+      else if (diff < 3600) setElapsed(`hace ${Math.floor(diff / 60)}m`);
+      else if (diff < 86400) setElapsed(`hace ${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`);
+      else setElapsed(`hace ${Math.floor(diff / 86400)}d`);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [lastSale?.timestamp]);
+
+  const amountStr = lastSale
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(lastSale.amount)
+    : '--';
+
+  return (
+    <div className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card transition-transform relative">
+      <div className="flex justify-between items-start mb-5">
+        <p className="text-card-label text-[13px] font-medium">Last Sale</p>
+        <div className="p-2 bg-card-icon-bg dark:bg-gray-800 rounded-lg">
+          <span className="material-symbols-outlined text-base text-amber-warmth">trending_up</span>
+        </div>
+      </div>
+      {loading ? (
+        <div className="h-8 w-32 bg-surface-container rounded animate-pulse" />
+      ) : (
+        <div className="flex items-center gap-3">
+          <h2 className="text-[2rem] font-bold leading-none tracking-tight" style={{ color: 'var(--card-value-amber)' }}>{amountStr}</h2>
+        </div>
+      )}
+      {!loading && lastSale && (
+        <div className="mt-3 space-y-0.5">
+          <p className="text-sm text-primary font-medium truncate">{lastSale.sellerName}</p>
+          <p className="text-[11px] text-secondary font-metadata-mono">
+            {elapsed && <span className="text-amber-warmth font-semibold">{elapsed}</span>}
+            {elapsed && ' · '}
+            {new Date(lastSale.timestamp).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}
+            {' · '}
+            {new Date(lastSale.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+          </p>
+        </div>
+      )}
+      {!loading && !lastSale && (
+        <p className="text-[11px] text-muted-slate mt-3">Sin ventas registradas en este período</p>
+      )}
     </div>
   );
 }
