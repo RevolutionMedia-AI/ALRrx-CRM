@@ -28,6 +28,9 @@ internal sealed class DashboardReportDocument : IDocument
 
     private static string GetKpiColor(string label) => label.ToLower() switch
     {
+        var l when l.Contains("google sheets sales") => "#10B981",
+        var l when l.Contains("google sheets count") => "#3B82F6",
+        var l when l.Contains("last gs sale") => "#F59E0B",
         var l when l.Contains("sales") => "#10B981",
         var l when l.Contains("no contact") => "#EF4444",
         var l when l.Contains("contact rate") || l.Contains("rate") => "#10B981",
@@ -41,7 +44,7 @@ internal sealed class DashboardReportDocument : IDocument
     };
 
     private static float GetKpiFontSize(string label) =>
-        label.ToLower().Contains("sales") ? 22 : 18;
+        label.ToLower().Contains("sales") || label.ToLower().Contains("last gs") ? 22 : 18;
 
     public DashboardReportDocument(DashboardPdfData data)
     {
@@ -96,6 +99,8 @@ internal sealed class DashboardReportDocument : IDocument
             col.Item().Element(ComposeKpiCards);
             if (_data.ContactData != null)
                 col.Item().Element(ComposeContactSummary);
+            if (_data.GoogleSheets.Sales.Count > 0)
+                col.Item().Element(ComposeGoogleSheetsSection);
             if (_data.Dispositions.Count > 0)
                 col.Item().Element(ComposeDispositionsTable);
             if (_data.Agents.Count > 0)
@@ -242,6 +247,74 @@ internal sealed class DashboardReportDocument : IDocument
                     table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignCenter().Text(a.Aht).FontSize(8).FontColor(Colors.Grey.Darken1);
                 }
             });
+        });
+    }
+
+    private void ComposeGoogleSheetsSection(IContainer container)
+    {
+        var gs = _data.GoogleSheets;
+        container.Background("#F0FDF4").Border(1).BorderColor("#10B981" + "40").Padding(10).Column(col =>
+        {
+            col.Item().Text("Google Sheets Sales (Forms)").FontSize(11).Bold().FontColor("#10B981");
+
+            col.Item().PaddingTop(6).Row(row =>
+            {
+                row.RelativeItem().Column(c =>
+                {
+                    c.Item().Text($"${gs.TotalSales:F0}").FontSize(20).Bold().FontColor("#10B981");
+                    c.Item().Text("Total Sales").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
+                });
+                row.RelativeItem().Column(c =>
+                {
+                    c.Item().Text(gs.TotalCount.ToString()).FontSize(20).Bold().FontColor("#3B82F6");
+                    c.Item().Text("Total Count").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
+                });
+                if (gs.LastSale != null)
+                {
+                    row.RelativeItem().Column(c =>
+                    {
+                        c.Item().Text($"${gs.LastSale.Amount:F0}").FontSize(20).Bold().FontColor("#F59E0B");
+                        c.Item().Text($"Last Sale: {gs.LastSale.SellerName}").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
+                        c.Item().Text(gs.LastSale.Timestamp.ToString("yyyy-MM-dd HH:mm")).FontSize(7).FontColor(Colors.Grey.Darken1);
+                    });
+                }
+            });
+
+            if (gs.Sales.Count > 0)
+            {
+                col.Item().PaddingTop(8).Table(table =>
+                {
+                    table.ColumnsDefinition(c =>
+                    {
+                        c.RelativeColumn(1.5f);
+                        c.RelativeColumn(2);
+                        c.RelativeColumn(2);
+                        c.RelativeColumn(2);
+                        c.RelativeColumn(1);
+                    });
+
+                    table.Header(header =>
+                    {
+                        header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).Text("Date").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                        header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).Text("Seller").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                        header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).Text("Email").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                        header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).Text("Package").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                        header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).AlignRight().Text("Amount").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                    });
+
+                    var topSales = gs.Sales.Take(20).ToList();
+                    for (var i = 0; i < topSales.Count; i++)
+                    {
+                        var sale = topSales[i];
+                        var bg = i % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
+                        table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).Text(sale.Timestamp.ToString("yyyy-MM-dd HH:mm")).FontSize(7.5f).FontColor(Colors.Grey.Darken1);
+                        table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).Text(sale.SellerName).FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken1);
+                        table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).Text(sale.CustomerEmail).FontSize(7).FontColor(Colors.Grey.Darken1);
+                        table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).Text(sale.Package).FontSize(7.5f).FontColor(Colors.Grey.Darken1);
+                        table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignRight().Text($"${sale.Amount:F0}").FontSize(8).SemiBold().FontColor("#10B981");
+                    }
+                });
+            }
         });
     }
 
