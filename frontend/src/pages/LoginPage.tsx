@@ -165,8 +165,8 @@ export default function LoginPage() {
 
                 <h1 className="font-display-hero text-headline-lg tracking-tighter uppercase mb-2 leading-[0.95]">
                   <span className="block text-primary dark:text-white dark:font-extrabold">RevolutionMedia</span>
-                  <span className="block text-primary dark:text-white dark:font-extrabold pl-12 mt-1">Reports</span>
-                  <span className="block text-primary dark:text-white dark:font-extrabold pl-20 mt-1">Platform</span>
+                  <span className="block text-primary dark:text-white dark:font-extrabold pl-16 mt-1">Report</span>
+                  <span className="block text-primary dark:text-white dark:font-extrabold pl-10 mt-1">Platform</span>
                 </h1>
                 <p className="text-secondary dark:text-gray-400">
                   Sign in to your account
@@ -230,8 +230,8 @@ export default function LoginPage() {
 
                 <h1 className="font-display-hero text-headline-lg tracking-tighter uppercase mb-2 leading-[0.95]">
                   <span className="block text-primary dark:text-white dark:font-extrabold">RevolutionMedia</span>
-                  <span className="block text-primary dark:text-white dark:font-extrabold pl-12 mt-1">Reports</span>
-                  <span className="block text-primary dark:text-white dark:font-extrabold pl-20 mt-1">Platform</span>
+                  <span className="block text-primary dark:text-white dark:font-extrabold pl-16 mt-1">Report</span>
+                  <span className="block text-primary dark:text-white dark:font-extrabold pl-10 mt-1">Platform</span>
                 </h1>
                 <p className="text-secondary dark:text-gray-400">
                   Sign in to your account
