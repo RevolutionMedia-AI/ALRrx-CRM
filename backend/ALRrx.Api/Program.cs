@@ -66,6 +66,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
+builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
 
 var cfg = builder.Configuration;

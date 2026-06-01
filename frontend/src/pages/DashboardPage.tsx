@@ -5,6 +5,7 @@ import {
 import { getDashboardSummary, getReport, getStaffing, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 import { useAuth } from '../context/AuthContext';
+import GoogleSheetsSalesTable from '../components/GoogleSheetsSalesTable';
 
 type Period = 'Today' | 'Week' | 'Month' | 'Custom';
 
@@ -510,6 +511,8 @@ export default function DashboardPage() {
           <div className="p-6 text-sm text-muted-slate text-center">Click sync to load calls</div>
         )}
       </section>
+
+      <GoogleSheetsSalesTable filter={filter(period, customStart, customEnd)} periodLabel={period} />
 
       <div className="flex justify-end gap-3">
         <button

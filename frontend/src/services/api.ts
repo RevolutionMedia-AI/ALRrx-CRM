@@ -5,6 +5,7 @@ import type {
   ReportDto,
   ExportRequestDto,
   TimeFilterDto,
+  SalesSummary,
 } from '../types';
 
 export async function getDashboardSummary(filter: TimeFilterDto): Promise<DashboardSummaryDto> {
@@ -58,5 +59,19 @@ export async function exportPeriodComparisonExcel(period1: TimeFilterDto, period
   const { data } = await client.post('/period-comparison/excel', { period1, period2 }, {
     responseType: 'blob',
   });
+  return data;
+}
+
+export async function getGoogleSheetsSales(
+  filter: TimeFilterDto,
+  seller?: string,
+  pkg?: string
+): Promise<SalesSummary> {
+  const params: Record<string, string> = { period: filter.period };
+  if (filter.customStart) params.customStart = filter.customStart;
+  if (filter.customEnd) params.customEnd = filter.customEnd;
+  if (seller && seller !== 'all') params.seller = seller;
+  if (pkg && pkg !== 'all') params.package = pkg;
+  const { data } = await client.get<SalesSummary>('/dashboard/google-sheets/sales', { params });
   return data;
 }

@@ -52,3 +52,21 @@ export interface ExportRequestDto {
   format: string;
   timeFilter: TimeFilterDto;
 }
+
+export interface SaleRecord {
+  timestamp: string;
+  sellerName: string;
+  saleDate: string;
+  customerEmail: string;
+  package: string;
+  amount: number;
+}
+
+export interface SalesSummary {
+  totalSales: number;
+  totalCount: number;
+  lastSale: SaleRecord | null;
+  allSales: SaleRecord[];
+  availableSellers: string[];
+  availablePackages: string[];
+}

@@ -4,6 +4,7 @@ using ALRrx.Domain.Interfaces;
 using ALRrx.Domain.ValueObjects;
 using ALRrx.Infrastructure.Database;
 using ALRrx.Infrastructure.Export;
+using ALRrx.Infrastructure.Import;
 using ALRrx.Infrastructure.Ssh;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,10 +24,16 @@ public static class InfrastructureServiceRegistration
         services.AddSingleton<IDashboardPdfService, DashboardPdfService>();
         services.AddSingleton<IDashboardExcelService, DashboardExcelService>();
         services.AddSingleton<IPeriodComparisonExcelService, PeriodComparisonExcelService>();
+        services.AddSingleton<IGoogleSheetsImportService, GoogleSheetsImportService>();
 
         services.AddSingleton<IReportExportService, ExcelExportService>();
         services.AddSingleton<IReportExportService, CsvExportService>();
         services.AddSingleton<IReportExportService, PdfExportService>();
+
+        services.AddHttpClient("GoogleSheets", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
 
         return services;
     }
