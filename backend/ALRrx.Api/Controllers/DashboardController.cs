@@ -94,8 +94,8 @@ public sealed class DashboardController : ControllerBase
             {
                 TotalSales = filtered.Sum(s => s.Amount),
                 TotalCount = filtered.Count(),
-                LastSale = filtered.OrderByDescending(s => s.SaleDate).FirstOrDefault(),
-                AllSales = filtered.OrderByDescending(s => s.SaleDate).ToList(),
+                LastSale = filtered.OrderByDescending(s => s.Timestamp).FirstOrDefault(),
+                AllSales = filtered.OrderByDescending(s => s.Timestamp).ToList(),
                 AvailableSellers = allSales.Select(s => s.SellerName).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x).ToList(),
                 AvailablePackages = allSales.Select(s => s.Package).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x).ToList()
             };

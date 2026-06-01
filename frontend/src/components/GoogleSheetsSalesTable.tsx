@@ -26,6 +26,18 @@ function formatDate(iso: string): string {
   }
 }
 
+function formatDateTime(iso: string): string {
+  if (!iso) return '--';
+  try {
+    const d = new Date(iso);
+    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${dateStr} ${timeStr}`;
+  } catch {
+    return '--';
+  }
+}
+
 export function GoogleSheetsKpiCards({ filter }: { filter: TimeFilterDto }) {
   const [data, setData] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +74,7 @@ export function GoogleSheetsKpiCards({ filter }: { filter: TimeFilterDto }) {
       <KpiTile
         label="Última Venta"
         value={loading || !data?.lastSale ? '--' : formatCurrency(data.lastSale.amount)}
-        subtitle={loading || !data?.lastSale ? '' : `${data.lastSale.sellerName} · ${formatDate(data.lastSale.saleDate)}`}
+        subtitle={loading || !data?.lastSale ? '' : `${data.lastSale.sellerName} · ${formatDateTime(data.lastSale.timestamp)}`}
         icon="trending_up"
         color="text-amber-warmth"
       />
