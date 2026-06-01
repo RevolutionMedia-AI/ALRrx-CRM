@@ -5,6 +5,7 @@ import type { SalesSummary, TimeFilterDto } from '../types';
 interface GoogleSheetsSalesTableProps {
   filter: TimeFilterDto;
   periodLabel: string;
+  onDataLoaded?: (data: SalesSummary) => void;
 }
 
 function formatCurrency(amount: number): string {
@@ -25,7 +26,51 @@ function formatDate(iso: string): string {
   }
 }
 
-export default function GoogleSheetsSalesTable({ filter, periodLabel }: GoogleSheetsSalesTableProps) {
+export function GoogleSheetsKpiCards({ filter }: { filter: TimeFilterDto }) {
+  const [data, setData] = useState<SalesSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const result = await getGoogleSheetsSales(filter);
+      setData(result);
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    intervalRef.current = setInterval(load, 30000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [filter.period, filter.customStart, filter.customEnd]);
+
+  return (
+    <div className="contents">
+      <KpiTile
+        label="Total de Ventas"
+        value={loading ? '--' : formatCurrency(data?.totalSales ?? 0)}
+        icon="payments"
+        color="text-emerald-signal"
+      />
+      <KpiTile
+        label="Última Venta"
+        value={loading || !data?.lastSale ? '--' : formatCurrency(data.lastSale.amount)}
+        subtitle={loading || !data?.lastSale ? '' : `${data.lastSale.sellerName} · ${formatDate(data.lastSale.saleDate)}`}
+        icon="trending_up"
+        color="text-amber-warmth"
+      />
+    </div>
+  );
+}
+
+export default function GoogleSheetsSalesTable({ filter, periodLabel, onDataLoaded }: GoogleSheetsSalesTableProps) {
   const [data, setData] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [sellerFilter, setSellerFilter] = useState('all');
@@ -37,6 +82,7 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel }: GoogleSh
       setLoading(true);
       const result = await getGoogleSheetsSales(filter, sellerFilter, packageFilter);
       setData(result);
+      onDataLoaded?.(result);
     } catch {
       setData(null);
     } finally {
@@ -65,6 +111,10 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel }: GoogleSh
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-signal animate-pulse" />
               <span>Sincronizado desde Google Forms · Auto-refresca cada 30s</span>
             </p>
+          </div>
+          <div className="bg-surface-container-low border border-whisper-border rounded-lg px-4 py-2 text-right">
+            <p className="text-[11px] font-medium text-secondary uppercase tracking-wider">Cantidad</p>
+            <p className="text-lg font-bold text-electric-blue">{loading ? '--' : String(data?.totalCount ?? 0)}</p>
           </div>
         </div>
 
@@ -101,28 +151,6 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel }: GoogleSh
             ))}
           </select>
         </div>
-      </div>
-
-      <div className="p-6 border-b border-whisper-border grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiTile
-          label="Total de Ventas"
-          value={loading ? '--' : formatCurrency(data?.totalSales ?? 0)}
-          icon="payments"
-          color="text-emerald-signal"
-        />
-        <KpiTile
-          label="Cantidad de Ventas"
-          value={loading ? '--' : String(data?.totalCount ?? 0)}
-          icon="shopping_bag"
-          color="text-electric-blue"
-        />
-        <KpiTile
-          label="Última Venta"
-          value={loading || !data?.lastSale ? '--' : formatCurrency(data.lastSale.amount)}
-          subtitle={loading || !data?.lastSale ? '' : `${data.lastSale.sellerName} · ${formatDate(data.lastSale.saleDate)}`}
-          icon="trending_up"
-          color="text-amber-warmth"
-        />
       </div>
 
       <div>
@@ -187,13 +215,21 @@ function KpiTile({
   label, value, subtitle, icon, color,
 }: { label: string; value: string; subtitle?: string; icon: string; color: string }) {
   return (
-    <div className="bg-surface-container-low border border-whisper-border rounded-lg p-5">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[11px] font-medium text-secondary uppercase tracking-wider">{label}</p>
-        <span className={`material-symbols-outlined text-lg ${color}`}>{icon}</span>
+    <div className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card">
+      <div className="flex justify-between items-start mb-5">
+        <p className="text-card-label text-[13px] font-medium">{label}</p>
+        <div className="p-2 bg-card-icon-bg dark:bg-gray-800 rounded-lg">
+          <span className={`material-symbols-outlined text-base ${color}`}>{icon}</span>
+        </div>
       </div>
-      <p className={`text-[1.75rem] font-bold leading-none ${color}`}>{value}</p>
-      {subtitle && <p className="text-xs text-secondary mt-2 font-metadata-mono">{subtitle}</p>}
+      {value === '--' ? (
+        <div className="h-8 w-32 bg-surface-container rounded animate-pulse" />
+      ) : (
+        <div className="flex items-center gap-3">
+          <h2 className={`text-[2rem] font-bold leading-none tracking-tight ${color}`}>{value}</h2>
+        </div>
+      )}
+      {subtitle && <p className="text-xs text-secondary mt-3 font-metadata-mono">{subtitle}</p>}
     </div>
   );
 }

@@ -77,9 +77,9 @@ public class GoogleSheetsImportService : IGoogleSheetsImportService
                     var record = new SaleRecord
                     {
                         Timestamp = ParseDate(csv.GetField("Timestamp")),
-                        SellerName = csv.GetField("Your name")?.Trim() ?? "",
-                        SaleDate = ParseDate(csv.GetField("Date of sale")),
-                        CustomerEmail = csv.GetField("Customer's email")?.Trim() ?? "",
+                        SellerName = csv.GetField("Your name:")?.Trim() ?? "",
+                        SaleDate = ParseDate(csv.GetField("Date of sale:")),
+                        CustomerEmail = csv.GetField("Customer's email:")?.Trim() ?? "",
                         Package = csv.GetField("Package Sold")?.Trim() ?? "",
                         Amount = ParseAmount(csv.GetField("Sale Amount: (ex. $498)")),
                     };

@@ -5,7 +5,7 @@ import {
 import { getDashboardSummary, getReport, getStaffing, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 import { useAuth } from '../context/AuthContext';
-import GoogleSheetsSalesTable from '../components/GoogleSheetsSalesTable';
+import GoogleSheetsSalesTable, { GoogleSheetsKpiCards } from '../components/GoogleSheetsSalesTable';
 
 type Period = 'Today' | 'Week' | 'Month' | 'Custom';
 
@@ -289,7 +289,7 @@ export default function DashboardPage() {
         ))}
       </section>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         <KpiCard
           title="Total Calls"
           value={totalCalls?.value ?? '--'}
@@ -322,6 +322,7 @@ export default function DashboardPage() {
           valueColor="var(--card-value-blue)"
           loading={summaryLoading}
         />
+        <GoogleSheetsKpiCards filter={filter(period, customStart, customEnd)} />
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
