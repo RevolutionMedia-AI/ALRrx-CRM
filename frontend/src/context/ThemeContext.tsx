@@ -16,7 +16,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    if (window.location.pathname === '/login') {
+    if (window.location.pathname === '/login' || window.location.pathname === '/crm-login') {
       document.documentElement.classList.remove('dark');
     } else {
       document.documentElement.classList.toggle('dark', isDark);
