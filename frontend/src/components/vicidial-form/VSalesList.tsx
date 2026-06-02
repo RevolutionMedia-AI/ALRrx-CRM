@@ -22,18 +22,6 @@ function formatDate(iso: string): string {
   }
 }
 
-function formatDateTime(iso: string): string {
-  if (!iso) return '--';
-  try {
-    return new Date(iso).toLocaleString('en-US', {
-      month: 'short', day: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: false,
-    });
-  } catch {
-    return '--';
-  }
-}
-
 export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
   const [sales, setSales] = useState<VicidialSaleDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -135,12 +123,6 @@ export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
               ))}
             </tbody>
           </table>
-          {sales.length > 0 && (
-            <div className="px-6 py-3 text-center text-[11px] text-muted-slate border-t border-whisper-border dark:border-gray-700">
-              Showing {sales.length} registered sale{sales.length === 1 ? '' : 's'}
-              {sales[0]?.createdAt && ` · Last updated: ${formatDateTime(sales[0].createdAt)}`}
-            </div>
-          )}
         </div>
       )}
     </section>

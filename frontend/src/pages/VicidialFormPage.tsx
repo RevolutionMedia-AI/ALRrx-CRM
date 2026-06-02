@@ -40,9 +40,6 @@ export default function VicidialFormPage() {
             onSubmitted={handleRefresh}
           />
           <VSalesList salesRep={salesRep} refreshKey={refreshKey} />
-          <p className="text-[11px] text-muted-slate text-center pt-2">
-            This page is isolated from the main CRM. If you need more features, contact the administrator.
-          </p>
         </div>
       </main>
     </div>
