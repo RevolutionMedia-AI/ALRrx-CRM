@@ -7,10 +7,10 @@ namespace ALRrx.Infrastructure.Database;
 
 public sealed class VicidialSalesRepository : IVicidialSalesRepository
 {
-    private readonly IDatabaseConnection _dbConnection;
+    private readonly FormDbConnectionFactory _dbConnection;
     private readonly ILogger<VicidialSalesRepository> _logger;
 
-    public VicidialSalesRepository(IDatabaseConnection dbConnection, ILogger<VicidialSalesRepository> logger)
+    public VicidialSalesRepository(FormDbConnectionFactory dbConnection, ILogger<VicidialSalesRepository> logger)
     {
         _dbConnection = dbConnection;
         _logger = logger;

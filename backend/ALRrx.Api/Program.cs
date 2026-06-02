@@ -87,7 +87,16 @@ var connectionConfig = new ConnectionConfig
     DatabasePassword = cfg["Database:Password"] ?? throw new InvalidOperationException("DB_PASSWORD is required"),
 };
 
-builder.Services.AddInfrastructure(connectionConfig);
+var formConnectionConfig = new FormConnectionConfig
+{
+    Host = cfg["FormDatabase:Host"] ?? "",
+    Port = int.Parse(cfg["FormDatabase:Port"] ?? "3306"),
+    Database = cfg["FormDatabase:Name"] ?? "",
+    User = cfg["FormDatabase:User"] ?? "",
+    Password = cfg["FormDatabase:Password"] ?? "",
+};
+
+builder.Services.AddInfrastructure(connectionConfig, formConnectionConfig);
 builder.Services.AddApplication();
 
 builder.Services.AddSingleton<IAuthService, ALRrx.Infrastructure.Auth.AuthService>();

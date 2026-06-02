@@ -12,12 +12,17 @@ namespace ALRrx.Infrastructure.DependencyInjection;
 
 public static class InfrastructureServiceRegistration
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, ConnectionConfig connectionConfig)
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        ConnectionConfig connectionConfig,
+        FormConnectionConfig formConnectionConfig)
     {
         services.AddSingleton(connectionConfig);
+        services.AddSingleton(formConnectionConfig);
 
         services.AddSingleton<ISshTunnelService, SshTunnelService>();
         services.AddSingleton<IDatabaseConnection, MariaDbConnectionFactory>();
+        services.AddSingleton<FormDbConnectionFactory>();
         services.AddSingleton<IQueryService, QueryExecutor>();
         services.AddSingleton<IUserRepository, UserRepository>();
         services.AddSingleton<MutationExecutor>();
