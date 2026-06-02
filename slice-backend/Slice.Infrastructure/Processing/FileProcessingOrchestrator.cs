@@ -1,4 +1,4 @@
-using System.Threading.Channels;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Slice.Application.Interfaces;
 using Slice.Domain.Entities;
@@ -7,9 +7,14 @@ using Slice.Domain.Interfaces;
 
 namespace Slice.Infrastructure.Processing;
 
+/// <summary>
+/// Coordinates the full pipeline: save to temp → parse Excel → merge → export.
+/// Each uploaded batch runs as a fire-and-forget background task so the HTTP
+/// request returns immediately with a <see cref="ProcessingJob"/> ID to poll.
+/// </summary>
 public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
 {
-    // Maximum simultaneous Excel files per batch
+    /// <summary>Maximum Excel files processed in parallel per batch.</summary>
     private const int MaxConcurrentFiles = 12;
 
     private readonly IZipExtractionService _zipExtractor;
@@ -35,6 +40,7 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task<Guid> EnqueueAsync(
         IReadOnlyList<Stream> fileStreams,
         IReadOnlyList<string> fileNames,
@@ -50,15 +56,16 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
             TotalFiles = fileStreams.Count,
         };
 
-        // Save temp files before releasing the request streams
+        // Copy uploaded streams to temp files before releasing the HTTP request.
         var tempPaths = new List<string>(fileStreams.Count);
         for (int i = 0; i < fileStreams.Count; i++)
         {
-            var ext = Path.GetExtension(fileNames[i]);
+            var ext      = Path.GetExtension(fileNames[i]);
             var tempPath = Path.Combine(Path.GetTempPath(), "slice", job.Id.ToString(), $"file_{i}{ext}");
             Directory.CreateDirectory(Path.GetDirectoryName(tempPath)!);
 
-            await using var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
+            await using var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write,
+                FileShare.None, bufferSize: 81920, useAsync: true);
             await fileStreams[i].CopyToAsync(fs, ct);
             tempPaths.Add(tempPath);
         }
@@ -66,28 +73,32 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         job.SourceFiles = tempPaths;
         await _jobRepo.SaveAsync(job);
 
-        // Fire-and-forget background processing
+        // Fire-and-forget: processing continues after the HTTP response is returned.
         _ = ProcessFilesInternalAsync(job, tempPaths, CancellationToken.None);
 
         return job.Id;
     }
 
+    /// <inheritdoc/>
     public async Task<Guid> EnqueueZipAsync(Stream zipStream, string ownerEmail, CancellationToken ct = default)
     {
         var job = new ProcessingJob { CreatedByEmail = ownerEmail };
         await _jobRepo.SaveAsync(job);
 
-        // Save ZIP to temp first to free the HTTP request stream
+        // Persist the ZIP to a temp file so the HTTP request stream can be released.
         var tempZip = Path.Combine(Path.GetTempPath(), "slice", job.Id.ToString(), "upload.zip");
         Directory.CreateDirectory(Path.GetDirectoryName(tempZip)!);
 
-        await using (var fs = new FileStream(tempZip, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
+        await using (var fs = new FileStream(tempZip, FileMode.Create, FileAccess.Write,
+                         FileShare.None, bufferSize: 81920, useAsync: true))
             await zipStream.CopyToAsync(fs, ct);
 
         _ = ProcessZipInternalAsync(job, tempZip, CancellationToken.None);
 
         return job.Id;
     }
+
+    // ─── Internal pipeline ────────────────────────────────────────────────────
 
     private async Task ProcessZipInternalAsync(ProcessingJob job, string zipPath, CancellationToken ct)
     {
@@ -96,26 +107,23 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
             job.Status = JobStatus.Extracting;
             await _jobRepo.UpdateAsync(job);
 
-            await using var zipStream = new FileStream(zipPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, true);
+            await using var zipStream = new FileStream(zipPath, FileMode.Open,
+                FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true);
             var extractedFiles = await _zipExtractor.ExtractAsync(zipStream, job.Id.ToString(), ct);
 
             if (extractedFiles.Count == 0)
             {
-                job.Status = JobStatus.Failed;
-                job.ErrorMessage = "No Excel files found in ZIP.";
-                await _jobRepo.UpdateAsync(job);
+                await FailJobAsync(job, "No Excel files found in ZIP.");
                 return;
             }
 
             if (extractedFiles.Count > MaxConcurrentFiles)
             {
-                job.Status = JobStatus.Failed;
-                job.ErrorMessage = $"ZIP contains {extractedFiles.Count} files; maximum is {MaxConcurrentFiles}.";
-                await _jobRepo.UpdateAsync(job);
+                await FailJobAsync(job, $"ZIP contains {extractedFiles.Count} files; maximum is {MaxConcurrentFiles}.");
                 return;
             }
 
-            job.TotalFiles = extractedFiles.Count;
+            job.TotalFiles  = extractedFiles.Count;
             job.SourceFiles = extractedFiles.ToList();
             await _jobRepo.UpdateAsync(job);
 
@@ -124,9 +132,7 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         catch (Exception ex)
         {
             _logger.LogError(ex, "ZIP processing failed for job {JobId}", job.Id);
-            job.Status = JobStatus.Failed;
-            job.ErrorMessage = ex.Message;
-            await _jobRepo.UpdateAsync(job);
+            await FailJobAsync(job, ex.Message);
         }
         finally
         {
@@ -139,57 +145,37 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         job.Status = JobStatus.Processing;
         await _jobRepo.UpdateAsync(job);
 
-        // Parse files using a channel for bounded parallelism
-        var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(MaxConcurrentFiles)
-        {
-            FullMode = BoundedChannelFullMode.Wait,
-            SingleReader = false,
-            SingleWriter = true,
-        });
+        var parsedReports = new ConcurrentBag<SliceReport>();
 
-        var parsedReports = new System.Collections.Concurrent.ConcurrentBag<SliceReport>();
-        var semaphore = new SemaphoreSlim(MaxConcurrentFiles, MaxConcurrentFiles);
+        // processedCount is incremented atomically so the job status bar stays accurate
+        // even when multiple files finish near-simultaneously.
+        var processedCount = 0;
 
-        var producerTask = Task.Run(async () =>
-        {
-            foreach (var path in filePaths)
-                await channel.Writer.WriteAsync(path, ct);
-            channel.Writer.Complete();
-        }, ct);
-
-        var consumerTasks = Enumerable.Range(0, Math.Min(filePaths.Count, MaxConcurrentFiles))
-            .Select(_ => Task.Run(async () =>
+        await Parallel.ForEachAsync(
+            filePaths,
+            new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentFiles, CancellationToken = ct },
+            async (path, token) =>
             {
-                await foreach (var path in channel.Reader.ReadAllAsync(ct))
+                try
                 {
-                    await semaphore.WaitAsync(ct);
-                    try
-                    {
-                        var report = await _excelParser.ParseAsync(path, ct);
-                        if (report != null) parsedReports.Add(report);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to parse {File}", path);
-                    }
-                    finally
-                    {
-                        job.ProcessedFiles++;
-                        await _jobRepo.UpdateAsync(job);
-                        semaphore.Release();
-                        TryDeleteFile(path);
-                    }
+                    var report = await _excelParser.ParseAsync(path, token);
+                    if (report != null) parsedReports.Add(report);
                 }
-            }, ct))
-            .ToList();
-
-        await Task.WhenAll([producerTask, .. consumerTasks]);
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse {File}", path);
+                }
+                finally
+                {
+                    job.ProcessedFiles = Interlocked.Increment(ref processedCount);
+                    await _jobRepo.UpdateAsync(job);
+                    TryDeleteFile(path);
+                }
+            });
 
         if (parsedReports.IsEmpty)
         {
-            job.Status = JobStatus.Failed;
-            job.ErrorMessage = "No valid Slice report data found in any uploaded file.";
-            await _jobRepo.UpdateAsync(job);
+            await FailJobAsync(job, "No valid Slice report data found in any uploaded file.");
             return;
         }
 
@@ -199,24 +185,31 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         var merged = _mergeService.Merge(parsedReports);
         merged.GeneratedByEmail = job.CreatedByEmail;
 
-        var xlsxPath = await _mergeService.ExportXlsxAsync(merged, ct);
-        var csvPath = await _mergeService.ExportCsvAsync(merged, ct);
-        merged.MergedXlsxPath = xlsxPath;
-        merged.MergedCsvPath = csvPath;
+        merged.MergedXlsxPath = await _mergeService.ExportXlsxAsync(merged, ct);
+        merged.MergedCsvPath  = await _mergeService.ExportCsvAsync(merged, ct);
 
         await _reportRepo.SaveAsync(merged);
 
-        job.Status = JobStatus.Completed;
+        job.Status      = JobStatus.Completed;
         job.CompletedAt = DateTime.UtcNow;
-        job.ReportId = merged.Id;
+        job.ReportId    = merged.Id;
         await _jobRepo.UpdateAsync(job);
 
         _logger.LogInformation("Job {JobId} completed. Report {ReportId} created.", job.Id, merged.Id);
     }
 
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    private async Task FailJobAsync(ProcessingJob job, string message)
+    {
+        job.Status       = JobStatus.Failed;
+        job.ErrorMessage = message;
+        await _jobRepo.UpdateAsync(job);
+    }
+
     private static void TryDeleteFile(string path)
     {
         try { if (File.Exists(path)) File.Delete(path); }
-        catch { /* best effort */ }
+        catch { /* best-effort cleanup */ }
     }
 }

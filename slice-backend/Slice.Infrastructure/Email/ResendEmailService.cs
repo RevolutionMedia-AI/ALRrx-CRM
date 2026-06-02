@@ -7,11 +7,16 @@ using Slice.Domain.Interfaces;
 
 namespace Slice.Infrastructure.Email;
 
+/// <summary>
+/// Sends transactional emails via the <see href="https://resend.com">Resend API</see>.
+/// Configuration is read from <c>appsettings.json → Resend:ApiKey</c> and <c>Resend:FromEmail</c>.
+/// The HTTP client is provided by the named factory entry <c>"Resend"</c> (registered in DI).
+/// </summary>
 public sealed class ResendEmailService : IEmailService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IConfiguration _config;
-    private readonly IReportRepository _reportRepo;
+    private readonly IConfiguration     _config;
+    private readonly IReportRepository  _reportRepo;
     private readonly ILogger<ResendEmailService> _logger;
 
     public ResendEmailService(
@@ -21,24 +26,30 @@ public sealed class ResendEmailService : IEmailService
         ILogger<ResendEmailService> logger)
     {
         _httpClientFactory = httpClientFactory;
-        _config = config;
-        _reportRepo = reportRepo;
-        _logger = logger;
+        _config            = config;
+        _reportRepo        = reportRepo;
+        _logger            = logger;
     }
 
-    public async Task SendReportAsync(string toEmail, string subject, string htmlBody,
-        string? attachmentPath = null, CancellationToken ct = default)
+    /// <inheritdoc/>
+    public async Task SendReportAsync(
+        string toEmail,
+        string subject,
+        string htmlBody,
+        string? attachmentPath = null,
+        CancellationToken ct = default)
     {
         var client = _httpClientFactory.CreateClient("Resend");
 
         var payload = new ResendEmailPayload
         {
-            From = _config["Resend:FromEmail"]!,
-            To = [toEmail],
+            From    = _config["Resend:FromEmail"]!,
+            To      = [toEmail],
             Subject = subject,
-            Html = htmlBody,
+            Html    = htmlBody,
         };
 
+        // Attach the XLSX file if a valid path is provided.
         if (!string.IsNullOrEmpty(attachmentPath) && File.Exists(attachmentPath))
         {
             var bytes = await File.ReadAllBytesAsync(attachmentPath, ct);
@@ -47,7 +58,7 @@ public sealed class ResendEmailService : IEmailService
                 new ResendAttachment
                 {
                     Filename = Path.GetFileName(attachmentPath),
-                    Content = Convert.ToBase64String(bytes)
+                    Content  = Convert.ToBase64String(bytes),
                 }
             ];
         }
@@ -64,16 +75,27 @@ public sealed class ResendEmailService : IEmailService
         _logger.LogInformation("Email sent to {To} via Resend", toEmail);
     }
 
+    /// <inheritdoc/>
     public async Task SendMetricsEmailAsync(string toEmail, string reportId, CancellationToken ct = default)
     {
         var report = await _reportRepo.GetByIdAsync(reportId)
             ?? throw new KeyNotFoundException($"Report {reportId} not found");
 
         var html = BuildMetricsHtml(report);
-        await SendReportAsync(toEmail, $"Slice Daily Report — {report.ReportDate:yyyy-MM-dd}", html,
-            report.MergedXlsxPath, ct);
+        await SendReportAsync(
+            toEmail,
+            subject:        $"Slice Daily Report — {report.ReportDate:yyyy-MM-dd}",
+            htmlBody:       html,
+            attachmentPath: report.MergedXlsxPath,
+            ct);
     }
 
+    // ─── HTML template ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Builds a responsive HTML email with a Daily Global summary table
+    /// and the Slice brand header.
+    /// </summary>
     private static string BuildMetricsHtml(SliceReport report)
     {
         var rows = string.Join("", report.DailyGlobal.Select(g =>
@@ -123,18 +145,23 @@ public sealed class ResendEmailService : IEmailService
             """;
     }
 
+    // ─── Resend API payload models ────────────────────────────────────────────
+
+    /// <summary>Request body sent to the Resend <c>POST /emails</c> endpoint.</summary>
     private sealed class ResendEmailPayload
     {
-        public string From { get; set; } = string.Empty;
-        public List<string> To { get; set; } = [];
-        public string Subject { get; set; } = string.Empty;
-        public string Html { get; set; } = string.Empty;
+        public string             From        { get; set; } = string.Empty;
+        public List<string>       To          { get; set; } = [];
+        public string             Subject     { get; set; } = string.Empty;
+        public string             Html        { get; set; } = string.Empty;
         public List<ResendAttachment>? Attachments { get; set; }
     }
 
+    /// <summary>A single base-64-encoded file attachment for the Resend API.</summary>
     private sealed class ResendAttachment
     {
         public string Filename { get; set; } = string.Empty;
-        public string Content { get; set; } = string.Empty;
+        /// <summary>Base-64 encoded file content.</summary>
+        public string Content  { get; set; } = string.Empty;
     }
 }

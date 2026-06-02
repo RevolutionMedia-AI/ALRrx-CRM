@@ -1,27 +1,38 @@
+using System.Net.Http.Headers;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Slice.Application.DTOs;
 using Slice.Application.Interfaces;
 using Slice.Domain.Entities;
-using Slice.Infrastructure.Repositories;
+using Slice.Domain.Interfaces;
 
 namespace Slice.Api.Controllers;
 
+/// <summary>
+/// Handles user authentication via Google OAuth and email/password,
+/// plus user registration and profile retrieval.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public sealed class AuthController : ControllerBase
 {
     private readonly IAuthService _auth;
-    private readonly InMemoryUserRepository _users;
-    private readonly IConfiguration _config;
+    private readonly IUserRepository _users;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IValidator<LoginRequest> _loginValidator;
     private readonly IValidator<RegisterRequest> _registerValidator;
     private readonly ILogger<AuthController> _logger;
 
+    // Cached at construction time to avoid re-parsing config on every request.
+    private readonly HashSet<string> _allowedEmails;
+    private readonly HashSet<string> _allowedDomains;
+    private readonly UserConfig[] _userConfigs;
+
     public AuthController(
         IAuthService auth,
-        InMemoryUserRepository users,
+        IUserRepository users,
+        IHttpClientFactory httpClientFactory,
         IConfiguration config,
         IValidator<LoginRequest> loginValidator,
         IValidator<RegisterRequest> registerValidator,
@@ -29,15 +40,23 @@ public sealed class AuthController : ControllerBase
     {
         _auth = auth;
         _users = users;
-        _config = config;
+        _httpClientFactory = httpClientFactory;
         _loginValidator = loginValidator;
         _registerValidator = registerValidator;
         _logger = logger;
+
+        _allowedEmails = new HashSet<string>(
+            config.GetSection("Slice:AllowedEmails").Get<string[]>() ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        _allowedDomains = new HashSet<string>(
+            config.GetSection("Slice:AllowedDomains").Get<string[]>() ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        _userConfigs = config.GetSection("Slice:Users").Get<UserConfig[]>() ?? [];
     }
 
     /// <summary>
     /// Autenticación con Google OAuth.
-    /// El cliente envía el access_token de Google; el servidor lo valida contra
+    /// El cliente envía su access_token de Google; el servidor lo valida contra
     /// la API de userinfo de Google y emite un JWT propio si el email está autorizado.
     /// </summary>
     [HttpPost("google")]
@@ -49,12 +68,15 @@ public sealed class AuthController : ControllerBase
         GoogleUserInfo? userInfo;
         try
         {
-            using var http = new HttpClient();
-            http.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", request.AccessToken);
+            var client = _httpClientFactory.CreateClient("Google");
+            using var googleRequest = new HttpRequestMessage(HttpMethod.Get, "userinfo");
+            googleRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", request.AccessToken);
+            using var googleResponse = await client.SendAsync(googleRequest, HttpCompletionOption.ResponseHeadersRead, ct);
 
-            userInfo = await http.GetFromJsonAsync<GoogleUserInfo>(
-                "https://www.googleapis.com/oauth2/v3/userinfo", ct);
+            if (!googleResponse.IsSuccessStatusCode)
+                return Unauthorized(new { error = "Invalid Google token." });
+
+            userInfo = await googleResponse.Content.ReadFromJsonAsync<GoogleUserInfo>(ct);
         }
         catch (Exception ex)
         {
@@ -71,7 +93,7 @@ public sealed class AuthController : ControllerBase
             return StatusCode(403, new { error = "This Google account is not authorized to access Slice." });
         }
 
-        // Find or auto-provision the user (Google users don't need a password)
+        // Find or auto-provision the user (Google users don't need a password).
         var user = _users.FindByEmail(userInfo.Email);
         if (user == null)
         {
@@ -147,6 +169,9 @@ public sealed class AuthController : ControllerBase
         return Created(string.Empty, new UserInfoDto(user.Id, user.Email, user.FullName, user.Role, user.CreatedAt));
     }
 
+    /// <summary>
+    /// Retorna el perfil del usuario autenticado actualmente.
+    /// </summary>
     [HttpGet("me")]
     [Authorize]
     public IActionResult Me()
@@ -161,18 +186,14 @@ public sealed class AuthController : ControllerBase
 
     private bool IsEmailAllowed(string email)
     {
-        var allowed = _config.GetSection("Slice:AllowedEmails").Get<string[]>() ?? [];
-        var allowedDomains = _config.GetSection("Slice:AllowedDomains").Get<string[]>() ?? [];
+        if (_allowedEmails.Contains(email)) return true;
         var domain = email.Contains('@') ? email.Split('@')[1] : string.Empty;
-
-        return allowed.Any(a => a.Equals(email, StringComparison.OrdinalIgnoreCase))
-            || allowedDomains.Any(d => d.Equals(domain, StringComparison.OrdinalIgnoreCase));
+        return _allowedDomains.Contains(domain);
     }
 
     private string ResolveRole(string email)
     {
-        var users = _config.GetSection("Slice:Users").Get<UserConfig[]>() ?? [];
-        var match = users.FirstOrDefault(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+        var match = _userConfigs.FirstOrDefault(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
         return match?.Role ?? "Viewer";
     }
 

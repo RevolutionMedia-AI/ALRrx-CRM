@@ -2,6 +2,11 @@ using System.Text.Json;
 
 namespace Slice.Api.Middleware;
 
+/// <summary>
+/// Global exception handler that converts unhandled exceptions to structured JSON error responses.
+/// Maps <see cref="KeyNotFoundException"/> → 404, <see cref="InvalidOperationException"/> → 400,
+/// <see cref="UnauthorizedAccessException"/> → 403, and all others → 500.
+/// </summary>
 public sealed class ExceptionMiddleware
 {
     private readonly RequestDelegate _next;
