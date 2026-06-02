@@ -1,6 +1,5 @@
 import axios from 'axios';
 import type { VicidialSaleRequest, VicidialSaleDto } from '../types';
-import { client } from './httpClient';
 
 export const vicidialClient = axios.create({ baseURL: '/api', timeout: 30000 });
 
@@ -26,6 +25,6 @@ export async function listAllVicidialSales(from?: string, to?: string, limit = 5
   const params: Record<string, string | number> = { limit };
   if (from) params.from = from;
   if (to) params.to = to;
-  const { data } = await client.get<VicidialSaleDto[]>('/vicidial-form/admin/sales', { params });
+  const { data } = await vicidialClient.get<VicidialSaleDto[]>('/vicidial-form/sales', { params });
   return data;
 }

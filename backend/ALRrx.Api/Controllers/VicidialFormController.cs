@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using ALRrx.Application.DTOs;
 using ALRrx.Application.UseCases;
 using Microsoft.AspNetCore.Authorization;
@@ -47,15 +46,12 @@ public sealed class VicidialFormController : ControllerBase
 
     [HttpGet("sales")]
     public async Task<ActionResult<List<VicidialSaleDto>>> ListSales(
-        [FromQuery, Required] string salesRep,
+        [FromQuery] string? salesRep = null,
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null,
         [FromQuery] int limit = 50,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(salesRep))
-            return BadRequest(new { error = "salesRep query parameter is required" });
-
         try
         {
             var rows = await _list.ExecuteAsync(salesRep, from, to, limit, ct);

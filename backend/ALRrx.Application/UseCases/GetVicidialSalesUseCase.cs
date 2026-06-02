@@ -16,15 +16,20 @@ public sealed class GetVicidialSalesUseCase
     }
 
     public async Task<List<VicidialSaleDto>> ExecuteAsync(
-        string salesRep,
+        string? salesRep,
         DateTime? from,
         DateTime? to,
         int limit = 50,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(salesRep))
-            throw new ArgumentException("SalesRep is required");
+        if (salesRep != null && string.IsNullOrWhiteSpace(salesRep))
+            throw new ArgumentException("SalesRep cannot be empty");
 
-        return await _repo.GetBySalesRepAsync(salesRep.Trim(), from, to, Math.Clamp(limit, 1, 200), ct);
+        var clamped = Math.Clamp(limit, 1, 1000);
+
+        if (string.IsNullOrWhiteSpace(salesRep))
+            return await _repo.GetAllAsync(from, to, clamped, ct);
+
+        return await _repo.GetBySalesRepAsync(salesRep.Trim(), from, to, clamped, ct);
     }
 }
