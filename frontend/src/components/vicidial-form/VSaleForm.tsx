@@ -45,13 +45,13 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
     setError(null);
     setSuccess(null);
 
-    if (!salesRep.trim()) return setError('Nombre del agente es requerido');
-    if (!clientName.trim()) return setError('Nombre del cliente es requerido');
-    if (!clientPhone.trim()) return setError('Teléfono del cliente es requerido');
-    if (!clientEmail.trim()) return setError('Email del cliente es requerido');
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clientEmail.trim())) return setError('Email del cliente no es válido');
+    if (!salesRep.trim()) return setError('Agent name is required');
+    if (!clientName.trim()) return setError('Client name is required');
+    if (!clientPhone.trim()) return setError('Client phone is required');
+    if (!clientEmail.trim()) return setError('Client email is required');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clientEmail.trim())) return setError('Client email is invalid');
     const amountNum = Number(amount);
-    if (!amount || isNaN(amountNum) || amountNum <= 0) return setError('Monto debe ser mayor a 0');
+    if (!amount || isNaN(amountNum) || amountNum <= 0) return setError('Amount must be greater than 0');
 
     const payload: VicidialSaleRequest = {
       salesRep: salesRep.trim(),
@@ -66,14 +66,14 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
     setSubmitting(true);
     try {
       const res = await submitVicidialSale(payload);
-      setSuccess(`Venta #${res.id} registrada correctamente`);
+      setSuccess(`Sale #${res.id} registered successfully`);
       reset();
       onSubmitted();
     } catch (err: unknown) {
       const data = err && typeof err === 'object' && 'response' in err
         ? (err as { response?: { data?: { error?: string } } }).response?.data
         : undefined;
-      setError(data?.error ?? 'No se pudo registrar la venta');
+      setError(data?.error ?? 'Could not register the sale');
     } finally {
       setSubmitting(false);
     }
@@ -86,25 +86,25 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
     >
       <div className="flex items-center gap-2 mb-4">
         <span className="material-symbols-outlined text-electric-blue">person_add</span>
-        <h2 className="text-lg font-bold text-primary dark:text-gray-100">Registrar Venta</h2>
+        <h2 className="text-lg font-bold text-primary dark:text-gray-100">Register Sale</h2>
       </div>
 
       <div className="space-y-5">
         <fieldset className="border border-whisper-border dark:border-gray-700 rounded-xl p-4">
           <legend className="text-[11px] font-semibold uppercase tracking-wider text-secondary dark:text-gray-400 px-2">
-            Datos del Agente
+            Agent Information
           </legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Nombre del agente" required>
+            <Field label="Agent Name" required>
               <input
                 type="text"
                 value={salesRep}
                 onChange={(e) => onSalesRepChange(e.target.value)}
-                placeholder="Ej. Juan Pérez"
+                placeholder="E.g. John Doe"
                 className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
               />
             </Field>
-            <Field label="Fecha de venta" required>
+            <Field label="Sale Date" required>
               <input
                 type="datetime-local"
                 value={saleDate}
@@ -117,10 +117,10 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
 
         <fieldset className="border border-whisper-border dark:border-gray-700 rounded-xl p-4">
           <legend className="text-[11px] font-semibold uppercase tracking-wider text-secondary dark:text-gray-400 px-2">
-            Datos del Cliente
+            Client Information
           </legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Teléfono del cliente" required>
+            <Field label="Client Phone" required>
               <input
                 type="tel"
                 value={clientPhone}
@@ -129,25 +129,25 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
                 className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
               />
             </Field>
-            <Field label="Nombre del cliente" required>
+            <Field label="Client Name" required>
               <input
                 type="text"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                placeholder="Nombre completo"
+                placeholder="Full name"
                 className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
               />
             </Field>
-            <Field label="Email del cliente" required>
+            <Field label="Client Email" required>
               <input
                 type="email"
                 value={clientEmail}
                 onChange={(e) => setClientEmail(e.target.value)}
-                placeholder="cliente@correo.com"
+                placeholder="client@email.com"
                 className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
               />
             </Field>
-            <Field label="Bundle seleccionado" required>
+            <Field label="Selected Bundle" required>
               <select
                 value={bundle}
                 onChange={(e) => setBundle(e.target.value as BundleOption)}
@@ -158,7 +158,7 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
                 ))}
               </select>
             </Field>
-            <Field label="Monto total (USD)" required full>
+            <Field label="Total Amount (USD)" required full>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary dark:text-gray-400 text-sm">$</span>
                 <input
@@ -197,12 +197,12 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
             {submitting ? (
               <>
                 <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
-                <span>Registrando...</span>
+                <span>Registering...</span>
               </>
             ) : (
               <>
                 <span className="material-symbols-outlined text-[20px]">save</span>
-                <span>Registrar Venta</span>
+                <span>Register Sale</span>
               </>
             )}
           </button>

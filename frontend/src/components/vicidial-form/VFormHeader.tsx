@@ -12,16 +12,16 @@ export default function VicidialFormHeader({ onClose }: VicidialFormHeaderProps)
           <img src={RevolutionLogo} alt="RevolutionMedia" className="h-9 w-9" />
           <div>
             <h1 className="text-base font-bold text-primary dark:text-gray-100 leading-tight">ALTRX Sales Form</h1>
-            <p className="text-[11px] text-secondary dark:text-gray-400 leading-tight">Registrar venta desde Vicidial</p>
+            <p className="text-[11px] text-secondary dark:text-gray-400 leading-tight">Register a sale from Vicidial</p>
           </div>
         </div>
         <button
           onClick={onClose}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary dark:text-gray-300 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors"
-          title="Cerrar pestaña"
+          title="Close tab"
         >
           <span className="material-symbols-outlined text-[20px]">close</span>
-          <span className="hidden sm:inline">Cerrar</span>
+          <span className="hidden sm:inline">Close</span>
         </button>
       </div>
     </header>

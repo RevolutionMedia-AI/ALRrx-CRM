@@ -56,7 +56,7 @@ export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
           const msg = err && typeof err === 'object' && 'response' in err
             ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
             : undefined;
-          setError(msg ?? 'No se pudieron cargar tus ventas registradas');
+          setError(msg ?? 'Could not load your registered sales');
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -73,7 +73,7 @@ export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
       <header className="px-6 py-4 border-b border-whisper-border dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-emerald-signal">receipt_long</span>
-          <h2 className="text-base font-bold text-primary dark:text-gray-100">Mis Ventas Registradas</h2>
+          <h2 className="text-base font-bold text-primary dark:text-gray-100">My Registered Sales</h2>
           <span className="text-[11px] text-secondary dark:text-gray-400">({sales.length})</span>
         </div>
         <div className="flex items-center gap-3">
@@ -86,7 +86,7 @@ export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
 
       {!salesRep.trim() ? (
         <div className="px-6 py-10 text-center text-sm text-muted-slate">
-          Ingresa tu nombre en el formulario para ver tus ventas registradas.
+          Enter your name in the form to see your registered sales.
         </div>
       ) : loading ? (
         <div className="p-6 space-y-3 animate-pulse">
@@ -98,18 +98,18 @@ export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
         <div className="px-6 py-6 text-deep-rose text-sm">{error}</div>
       ) : sales.length === 0 ? (
         <div className="px-6 py-10 text-center text-sm text-muted-slate">
-          Aún no has registrado ventas.
+          You haven't registered any sales yet.
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-surface-container-low dark:bg-gray-800 border-b border-whisper-border dark:border-gray-700 text-[11px] uppercase tracking-wider text-secondary dark:text-gray-400 font-metadata-mono">
-                <th className="p-3 font-medium">Fecha</th>
-                <th className="p-3 font-medium">Cliente</th>
+                <th className="p-3 font-medium">Date</th>
+                <th className="p-3 font-medium">Client</th>
                 <th className="p-3 font-medium">Email</th>
                 <th className="p-3 font-medium">Bundle</th>
-                <th className="p-3 font-medium text-right">Monto</th>
+                <th className="p-3 font-medium text-right">Amount</th>
               </tr>
             </thead>
             <tbody className="text-sm">
@@ -137,8 +137,8 @@ export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
           </table>
           {sales.length > 0 && (
             <div className="px-6 py-3 text-center text-[11px] text-muted-slate border-t border-whisper-border dark:border-gray-700">
-              Mostrando {sales.length} venta{sales.length === 1 ? '' : 's'} registrada{sales.length === 1 ? '' : 's'}
-              {sales[0]?.createdAt && ` · Última actualización: ${formatDateTime(sales[0].createdAt)}`}
+              Showing {sales.length} registered sale{sales.length === 1 ? '' : 's'}
+              {sales[0]?.createdAt && ` · Last updated: ${formatDateTime(sales[0].createdAt)}`}
             </div>
           )}
         </div>

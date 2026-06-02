@@ -17,6 +17,10 @@ export default function VicidialFormPage() {
     }
   }, [salesRep]);
 
+  useEffect(() => {
+    document.title = 'ALTRX Sales Form';
+  }, []);
+
   const handleClose = () => {
     window.close();
   };
@@ -37,7 +41,7 @@ export default function VicidialFormPage() {
           />
           <VSalesList salesRep={salesRep} refreshKey={refreshKey} />
           <p className="text-[11px] text-muted-slate text-center pt-2">
-            Esta página está aislada del CRM principal. Si necesitas más funciones, contacta al administrador.
+            This page is isolated from the main CRM. If you need more features, contact the administrator.
           </p>
         </div>
       </main>
