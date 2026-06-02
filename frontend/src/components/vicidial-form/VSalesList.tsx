@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listVicidialSales } from '../../services/vicidialFormApi';
 import type { VicidialSaleDto } from '../../types';
+import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
 interface VSalesListProps {
   salesRep: string;
@@ -41,10 +42,7 @@ export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
         if (!cancelled) setSales(data);
       } catch (err: unknown) {
         if (!cancelled) {
-          const msg = err && typeof err === 'object' && 'response' in err
-            ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
-            : undefined;
-          setError(msg ?? 'Could not load your registered sales');
+          setError(extractErrorMessage(err, 'Could not load your registered sales'));
         }
       } finally {
         if (!cancelled) setLoading(false);

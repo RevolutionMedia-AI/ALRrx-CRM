@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { submitVicidialSale } from '../../services/vicidialFormApi';
 import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest } from '../../types';
+import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
 interface VSaleFormProps {
   salesRep: string;
@@ -70,10 +71,7 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
       reset();
       onSubmitted();
     } catch (err: unknown) {
-      const data = err && typeof err === 'object' && 'response' in err
-        ? (err as { response?: { data?: { error?: string } } }).response?.data
-        : undefined;
-      setError(data?.error ?? 'Could not register the sale');
+      setError(extractErrorMessage(err, 'Could not register the sale'));
     } finally {
       setSubmitting(false);
     }
