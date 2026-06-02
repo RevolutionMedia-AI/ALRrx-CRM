@@ -70,3 +70,44 @@ export interface SalesSummary {
   availableSellers: string[];
   availablePackages: string[];
 }
+
+export const BUNDLE_OPTIONS = [
+  'GLP-1 1 Month',
+  'GLP-1 3 Months',
+  'GLP-1 6 Months',
+  'GLP-1 12 Months',
+  'GLP-1/GIP 1 Month',
+  'GLP-1/GIP 3 Months',
+  'GLP-1/GIP 6 Months',
+  'GLP-1/GIP 12 Months',
+] as const;
+
+export type BundleOption = typeof BUNDLE_OPTIONS[number];
+
+export interface VicidialSaleRequest {
+  salesRep: string;
+  saleDate: string;
+  clientPhone: string;
+  clientName: string;
+  clientEmail: string;
+  bundle: BundleOption;
+  amount: number;
+}
+
+export interface VicidialSaleDto {
+  id: number;
+  salesRep: string;
+  saleDate: string;
+  clientPhone: string;
+  clientName: string;
+  clientEmail: string;
+  bundle: string;
+  amount: number;
+  createdAt: string;
+}
+
+export interface VicidialAuthResponse {
+  token: string;
+  expiresAt: string;
+  formName: string;
+}
