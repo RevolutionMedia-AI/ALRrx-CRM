@@ -1,23 +1,15 @@
 import { useEffect, useState } from 'react';
 import VFormHeader from '../components/vicidial-form/VFormHeader';
-import VFormAuth from '../components/vicidial-form/VFormAuth';
 import VSaleForm from '../components/vicidial-form/VSaleForm';
 import VSalesList from '../components/vicidial-form/VSalesList';
-import { getStoredVicidialToken } from '../services/vicidialFormApi';
 
 const SALES_REP_STORAGE_KEY = 'vicidial_form_sales_rep';
 
 export default function VicidialFormPage() {
-  const [authenticated, setAuthenticated] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [salesRep, setSalesRep] = useState(() => {
     return sessionStorage.getItem(SALES_REP_STORAGE_KEY) ?? '';
   });
-
-  useEffect(() => {
-    const stored = getStoredVicidialToken();
-    setAuthenticated(stored !== null);
-  }, []);
 
   useEffect(() => {
     if (salesRep) {
@@ -37,21 +29,17 @@ export default function VicidialFormPage() {
     <div className="bg-canvas-white dark:bg-gray-950 min-h-screen text-on-surface dark:text-gray-100 transition-colors">
       <VFormHeader onClose={handleClose} />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        {!authenticated ? (
-          <VFormAuth onAuthenticated={() => setAuthenticated(true)} />
-        ) : (
-          <div className="space-y-6">
-            <VSaleForm
-              salesRep={salesRep}
-              onSalesRepChange={setSalesRep}
-              onSubmitted={handleRefresh}
-            />
-            <VSalesList salesRep={salesRep} refreshKey={refreshKey} />
-            <p className="text-[11px] text-muted-slate text-center pt-2">
-              Esta página está aislada del CRM principal. Si necesitas más funciones, contacta al administrador.
-            </p>
-          </div>
-        )}
+        <div className="space-y-6">
+          <VSaleForm
+            salesRep={salesRep}
+            onSalesRepChange={setSalesRep}
+            onSubmitted={handleRefresh}
+          />
+          <VSalesList salesRep={salesRep} refreshKey={refreshKey} />
+          <p className="text-[11px] text-muted-slate text-center pt-2">
+            Esta página está aislada del CRM principal. Si necesitas más funciones, contacta al administrador.
+          </p>
+        </div>
       </main>
     </div>
   );
