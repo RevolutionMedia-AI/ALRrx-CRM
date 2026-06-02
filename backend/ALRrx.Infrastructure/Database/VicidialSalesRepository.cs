@@ -71,22 +71,17 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
 
     public async Task<List<VicidialSaleDto>> GetBySalesRepAsync(string salesRep, DateTime? from, DateTime? to, int limit, CancellationToken ct = default)
     {
-        var sql = """
-            SELECT Id, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt
-            FROM vicidial_form_sales
-            WHERE SalesRep = @SalesRep
-            """;
-
+        var clampedLimit = Math.Clamp(limit, 1, 1000);
+        var sql = "SELECT Id, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt FROM vicidial_form_sales WHERE SalesRep = @SalesRep";
         if (from.HasValue) sql += " AND SaleDate >= @From";
         if (to.HasValue) sql += " AND SaleDate < @To";
-        sql += " ORDER BY SaleDate DESC LIMIT @Limit";
+        sql += $" ORDER BY SaleDate DESC LIMIT {clampedLimit}";
 
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(sql, connection);
-        cmd.Parameters.AddWithValue("@SalesRep", salesRep);
-        cmd.Parameters.AddWithValue("@Limit", limit);
-        if (from.HasValue) cmd.Parameters.AddWithValue("@From", from.Value);
-        if (to.HasValue) cmd.Parameters.AddWithValue("@To", to.Value);
+        cmd.Parameters.Add("@SalesRep", MySqlDbType.VarChar).Value = salesRep;
+        if (from.HasValue) cmd.Parameters.Add("@From", MySqlDbType.DateTime).Value = from.Value;
+        if (to.HasValue) cmd.Parameters.Add("@To", MySqlDbType.DateTime).Value = to.Value;
 
         var results = new List<VicidialSaleDto>();
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -110,39 +105,45 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
 
     public async Task<List<VicidialSaleDto>> GetAllAsync(DateTime? from, DateTime? to, int limit, CancellationToken ct = default)
     {
-        var sql = """
-            SELECT Id, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt
-            FROM vicidial_form_sales
-            WHERE 1=1
-            """;
-
+        var clampedLimit = Math.Clamp(limit, 1, 1000);
+        var sql = "SELECT Id, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt FROM vicidial_form_sales WHERE 1=1";
         if (from.HasValue) sql += " AND SaleDate >= @From";
         if (to.HasValue) sql += " AND SaleDate < @To";
-        sql += " ORDER BY SaleDate DESC LIMIT @Limit";
+        sql += $" ORDER BY SaleDate DESC LIMIT {clampedLimit}";
+
+        _logger.LogInformation("Vicidial GetAllAsync SQL: {Sql}", sql);
 
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(sql, connection);
-        cmd.Parameters.AddWithValue("@Limit", limit);
-        if (from.HasValue) cmd.Parameters.AddWithValue("@From", from.Value);
-        if (to.HasValue) cmd.Parameters.AddWithValue("@To", to.Value);
+        if (from.HasValue) cmd.Parameters.Add("@From", MySqlDbType.DateTime).Value = from.Value;
+        if (to.HasValue) cmd.Parameters.Add("@To", MySqlDbType.DateTime).Value = to.Value;
 
-        var results = new List<VicidialSaleDto>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
+        try
         {
-            results.Add(new VicidialSaleDto
+            var results = new List<VicidialSaleDto>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
             {
-                Id = reader.GetInt32("Id"),
-                SalesRep = reader.GetString("SalesRep"),
-                SaleDate = reader.GetDateTime("SaleDate"),
-                ClientPhone = reader.GetString("ClientPhone"),
-                ClientName = reader.GetString("ClientName"),
-                ClientEmail = reader.GetString("ClientEmail"),
-                Bundle = reader.GetString("Bundle"),
-                Amount = reader.GetDecimal("Amount"),
-                CreatedAt = reader.GetDateTime("CreatedAt"),
-            });
+                results.Add(new VicidialSaleDto
+                {
+                    Id = reader.GetInt32("Id"),
+                    SalesRep = reader.GetString("SalesRep"),
+                    SaleDate = reader.GetDateTime("SaleDate"),
+                    ClientPhone = reader.GetString("ClientPhone"),
+                    ClientName = reader.GetString("ClientName"),
+                    ClientEmail = reader.GetString("ClientEmail"),
+                    Bundle = reader.GetString("Bundle"),
+                    Amount = reader.GetDecimal("Amount"),
+                    CreatedAt = reader.GetDateTime("CreatedAt"),
+                });
+            }
+            _logger.LogInformation("Vicidial GetAllAsync returned {Count} rows", results.Count);
+            return results;
         }
-        return results;
+        catch (MySqlException ex)
+        {
+            _logger.LogError(ex, "Vicidial GetAllAsync SQL error. Code={Code}, Number={Number}, Message={Message}", ex.ErrorCode, ex.Number, ex.Message);
+            throw;
+        }
     }
 }
