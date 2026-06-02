@@ -10,7 +10,7 @@ client.interceptors.response.use(
       if (!url.startsWith('/auth/')) {
         localStorage.removeItem('alrrx_token');
         delete client.defaults.headers.common['Authorization'];
-        window.location.href = '/crm-login';
+        window.location.href = '/login';
       }
     }
     return Promise.reject(err);

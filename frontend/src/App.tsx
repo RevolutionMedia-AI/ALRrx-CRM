@@ -20,7 +20,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
-  if (!user) return <Navigate to="/crm-login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
   return <AppLayout>{children}</AppLayout>;
 }
 
@@ -34,9 +34,8 @@ function AdminRoute({ children }: { children: ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<VicidialFormPage />} />
-      <Route path="/crm-login" element={<LoginPage />} />
-      <Route path="/vicidial-form" element={<VicidialFormPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/form_sale" element={<VicidialFormPage />} />
       <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
       <Route path="/real-time" element={<ProtectedRoute><RealTimePage /></ProtectedRoute>} />
