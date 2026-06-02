@@ -107,4 +107,42 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         }
         return results;
     }
+
+    public async Task<List<VicidialSaleDto>> GetAllAsync(DateTime? from, DateTime? to, int limit, CancellationToken ct = default)
+    {
+        var sql = """
+            SELECT Id, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt
+            FROM vicidial_form_sales
+            WHERE 1=1
+            """;
+
+        if (from.HasValue) sql += " AND SaleDate >= @From";
+        if (to.HasValue) sql += " AND SaleDate < @To";
+        sql += " ORDER BY SaleDate DESC LIMIT @Limit";
+
+        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@Limit", limit);
+        if (from.HasValue) cmd.Parameters.AddWithValue("@From", from.Value);
+        if (to.HasValue) cmd.Parameters.AddWithValue("@To", to.Value);
+
+        var results = new List<VicidialSaleDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            results.Add(new VicidialSaleDto
+            {
+                Id = reader.GetInt32("Id"),
+                SalesRep = reader.GetString("SalesRep"),
+                SaleDate = reader.GetDateTime("SaleDate"),
+                ClientPhone = reader.GetString("ClientPhone"),
+                ClientName = reader.GetString("ClientName"),
+                ClientEmail = reader.GetString("ClientEmail"),
+                Bundle = reader.GetString("Bundle"),
+                Amount = reader.GetDecimal("Amount"),
+                CreatedAt = reader.GetDateTime("CreatedAt"),
+            });
+        }
+        return results;
+    }
 }

@@ -6,6 +6,7 @@ import {
 import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto } from '../types';
 import PeriodComparisonModal from '../components/PeriodComparisonModal';
+import VicidialSalesSection from '../components/vicidial-form/VicidialSalesSection';
 import {
   PaymentSuccess01Icon,
   CallOutgoing01Icon,
@@ -513,6 +514,8 @@ export default function AnalyticsPage() {
           <div className="p-12 text-sm text-muted-slate text-center">No agent data available for this period</div>
         )}
       </section>
+
+      <VicidialSalesSection period={period} customStart={customStart} customEnd={customEnd} />
 
       <div className="flex justify-end gap-3" style={animateIn({ animationDelay: '480ms' })}>
         <button
