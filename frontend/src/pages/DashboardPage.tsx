@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
 } from 'recharts';
@@ -107,7 +107,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
 
   const filter = (p: Period, cs: string, ce: string): TimeFilterDto => {
     if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${cs}T00:00:00`, customEnd: `${ce}T23:59:59` };
@@ -148,12 +148,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadAll(period);
-
-    if (period !== 'Custom') {
-      intervalRef.current = setInterval(() => loadAll(period), 30000);
-      return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-    }
+    setLastUpdated(new Date().toLocaleTimeString());
   }, [period, customStart, customEnd]);
+
+  const handleManualRefresh = () => {
+    loadAll(period);
+    setLastUpdated(new Date().toLocaleTimeString());
+  };
 
   const totalCalls = summary ? findMetric(summary.metrics, 'Total Calls') : undefined;
   const salesToday = summary ? findMetric(summary.metrics, 'Sales Today') : undefined;
@@ -224,8 +225,8 @@ export default function DashboardPage() {
         <div>
           <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight">Operations Overview — ALTRX</h1>
           <p className="text-secondary mt-1 flex items-center gap-2 text-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-signal animate-pulse" />
-            <span>Auto-refreshing every 30s {summary ? `• ${new Date(summary.lastUpdated).toLocaleTimeString()}` : ''}</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-signal" />
+            <span>Click refresh to update{lastUpdated && ` • Última actualización: ${lastUpdated}`}</span>
           </p>
         </div>
         <div className="flex gap-2 flex-wrap items-end">
@@ -259,11 +260,13 @@ export default function DashboardPage() {
             </div>
           )}
           <button
-            onClick={() => loadAll(period)}
-            className="p-1.5 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm"
-            title="Refresh"
+            onClick={handleManualRefresh}
+            disabled={summaryLoading}
+            className="flex items-center gap-2 px-3 py-1.5 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh dashboard data"
           >
-            <span className="material-symbols-outlined text-[20px]">sync</span>
+            <span className={`material-symbols-outlined text-[20px] ${summaryLoading ? 'animate-spin' : ''}`}>sync</span>
+            <span>Refresh</span>
           </button>
         </div>
       </div>
@@ -274,11 +277,11 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ========== FILA 1: ACTIVIDAD DE MARCACIÓN (4 cards) ========== */}
+      {/* ========== FILA 1: HISTORIAL DE LLAMADAS (4 cards) ========== */}
       <section>
         <div className="flex items-center gap-2 mb-3">
-          <span className="material-symbols-outlined text-electric-blue text-lg">dialpad</span>
-          <h2 className="text-xs font-bold text-secondary uppercase tracking-wider">Actividad de Marcación</h2>
+          <span className="material-symbols-outlined text-electric-blue text-lg">history</span>
+          <h2 className="text-xs font-bold text-secondary uppercase tracking-wider">Historial de llamadas</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <KpiCard
@@ -339,18 +342,19 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* ========== FILA 3: RESULTADOS COMERCIALES (2 cards) ========== */}
+      {/* ========== FILA 3: RESULTADOS COMERCIALES (3 cards) ========== */}
       <section>
         <div className="flex items-center gap-2 mb-3">
           <span className="material-symbols-outlined text-emerald-signal text-lg">monetization_on</span>
           <h2 className="text-xs font-bold text-secondary uppercase tracking-wider">Resultados Comerciales</h2>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <TotalRevenueKpiCard filter={filter(period, customStart, customEnd)} />
           <KpiCard
-            title="Total Revenue"
+            title="N. Sales"
             value={salesToday?.value ?? '--'}
             change={salesToday?.trend}
-            icon="payments"
+            icon="confirmation_number"
             valueColor="var(--card-value-emerald)"
             loading={summaryLoading}
           />
@@ -660,6 +664,52 @@ function StatusBar({ label, count, total, color }: { label: string; count: numbe
   );
 }
 
+function TotalRevenueKpiCard({ filter }: { filter: TimeFilterDto }) {
+  const [total, setTotal] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await getGoogleSheetsSales(filter);
+        if (!cancelled) setTotal(data?.totalSales ?? null);
+      } catch {
+        if (!cancelled) setTotal(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+  }, [filter.period, filter.customStart, filter.customEnd]);
+
+  const value = total !== null
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(total)
+    : '--';
+
+  return (
+    <div className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-7 shadow-card transition-transform relative">
+      <div className="flex justify-between items-start mb-5">
+        <p className="text-card-label text-[13px] font-medium">Total Revenue</p>
+        <div className="p-2 bg-card-icon-bg dark:bg-gray-800 rounded-lg">
+          <span className="material-symbols-outlined text-base text-emerald-signal">payments</span>
+        </div>
+      </div>
+      {loading ? (
+        <div className="h-8 w-32 bg-surface-container rounded animate-pulse" />
+      ) : (
+        <div className="flex items-center gap-3">
+          <h2 className="text-[2rem] font-bold leading-none tracking-tight" style={{ color: 'var(--card-value-emerald)' }}>{value}</h2>
+        </div>
+      )}
+      {!loading && (
+        <p className="text-[11px] text-secondary font-metadata-mono mt-3">Google Forms (manual refresh)</p>
+      )}
+    </div>
+  );
+}
+
 function LastSaleKpiCard({ filter }: { filter: TimeFilterDto }) {
   const [lastSale, setLastSale] = useState<{ amount: number; sellerName: string; timestamp: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -679,8 +729,6 @@ function LastSaleKpiCard({ filter }: { filter: TimeFilterDto }) {
       }
     };
     load();
-    const id = setInterval(load, 30000);
-    return () => { cancelled = true; clearInterval(id); };
   }, [filter.period, filter.customStart, filter.customEnd]);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getStaffing, getDashboardSummary, exportDashboardPdf, exportDashboardExcel } from '../services/api';
 import type { DashboardSummaryDto, ReportDto } from '../types';
 
@@ -43,13 +43,13 @@ export default function RealTimePage() {
   const [summary, setSummary] = useState<DashboardSummaryDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
+      setLoading(true);
       const [st, sm] = await Promise.all([
         getStaffing().catch(() => null),
         getDashboardSummary({ period: 'Today' }).catch(() => null),
@@ -57,6 +57,7 @@ export default function RealTimePage() {
       setStaffing(st);
       setSummary(sm);
       setError(null);
+      setLastUpdated(new Date().toLocaleTimeString());
     } catch {
       setError('Failed to load live data');
     } finally {
@@ -66,11 +67,6 @@ export default function RealTimePage() {
 
   useEffect(() => {
     fetchData();
-    intervalRef.current = setInterval(() => {
-      fetchData();
-      setTick((t) => t + 1);
-    }, 10000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [fetchData]);
 
   const agents = (staffing?.rows ?? []) as unknown as AgentRow[];
@@ -97,16 +93,24 @@ export default function RealTimePage() {
         <div>
           <h1 className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Real-Time Report — ALTRX</h1>
           <p className="text-secondary text-sm mt-1">
-            Live agent monitoring — auto-refreshes every 10s
-            {summary ? ` • ${new Date(summary.lastUpdated).toLocaleTimeString()}` : ''}
+            Live agent monitoring — click refresh to update
+            {lastUpdated && ` • Última actualización: ${lastUpdated}`}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium text-emerald-signal bg-emerald-signal/8">
-            <span className="w-2 h-2 rounded-full bg-emerald-signal animate-pulse" />
-            Live
+            <span className="w-2 h-2 rounded-full bg-emerald-signal" />
+            Manual
           </span>
-          <span className="text-xs text-secondary">{tick}</span>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-1.5 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh live data"
+          >
+            <span className={`material-symbols-outlined text-[20px] ${loading ? 'animate-spin' : ''}`}>sync</span>
+            <span>Refresh</span>
+          </button>
         </div>
       </div>
 

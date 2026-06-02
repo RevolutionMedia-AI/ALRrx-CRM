@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { getGoogleSheetsSales } from '../services/api';
 import type { SalesSummary, TimeFilterDto } from '../types';
 
@@ -41,7 +41,6 @@ function formatDateTime(iso: string): string {
 export function GoogleSheetsKpiCards({ filter }: { filter: TimeFilterDto }) {
   const [data, setData] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
     try {
@@ -57,10 +56,6 @@ export function GoogleSheetsKpiCards({ filter }: { filter: TimeFilterDto }) {
 
   useEffect(() => {
     load();
-    intervalRef.current = setInterval(load, 30000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
   }, [filter.period, filter.customStart, filter.customEnd]);
 
   return (
@@ -87,7 +82,7 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel, onDataLoad
   const [loading, setLoading] = useState(true);
   const [sellerFilter, setSellerFilter] = useState('all');
   const [packageFilter, setPackageFilter] = useState('all');
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
 
   const load = async () => {
     try {
@@ -95,6 +90,7 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel, onDataLoad
       const result = await getGoogleSheetsSales(filter, sellerFilter, packageFilter);
       setData(result);
       onDataLoaded?.(result);
+      setLastUpdated(new Date().toLocaleTimeString());
     } catch {
       setData(null);
     } finally {
@@ -104,10 +100,6 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel, onDataLoad
 
   useEffect(() => {
     load();
-    intervalRef.current = setInterval(load, 30000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
   }, [filter.period, filter.customStart, filter.customEnd, sellerFilter, packageFilter]);
 
   return (
@@ -120,13 +112,24 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel, onDataLoad
               Ventas Google Sheets — {periodLabel}
             </h3>
             <p className="text-[12px] text-secondary mt-1 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-signal animate-pulse" />
-              <span>Sincronizado desde Google Forms · Auto-refresca cada 30s</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-signal" />
+              <span>Sincronizado desde Google Forms · Click refresh para actualizar{lastUpdated && ` • ${lastUpdated}`}</span>
             </p>
           </div>
-          <div className="bg-surface-container-low border border-whisper-border rounded-lg px-4 py-2 text-right">
-            <p className="text-[11px] font-medium text-secondary uppercase tracking-wider">Cantidad</p>
-            <p className="text-lg font-bold text-electric-blue">{loading ? '--' : String(data?.totalCount ?? 0)}</p>
+          <div className="flex items-center gap-3">
+            <div className="bg-surface-container-low border border-whisper-border rounded-lg px-4 py-2 text-right">
+              <p className="text-[11px] font-medium text-secondary uppercase tracking-wider">Cantidad</p>
+              <p className="text-lg font-bold text-electric-blue">{loading ? '--' : String(data?.totalCount ?? 0)}</p>
+            </div>
+            <button
+              onClick={load}
+              disabled={loading}
+              className="flex items-center gap-2 px-3 py-2 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh Google Sheets data"
+            >
+              <span className={`material-symbols-outlined text-[20px] ${loading ? 'animate-spin' : ''}`}>sync</span>
+              <span>Refresh</span>
+            </button>
           </div>
         </div>
 
