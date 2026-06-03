@@ -78,6 +78,14 @@ public sealed record VicidialSaleDto
     public DateTime CreatedAt { get; init; }
 }
 
+public sealed record ActiveAltrxAgentDto
+{
+    public string User { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public DateTime? LastCallTime { get; init; }
+    public DateTime? LastUpdateTime { get; init; }
+}
+
 public static class BundleTypeExtensions
 {
     public static string ToDisplayName(this BundleType bundle) => bundle switch

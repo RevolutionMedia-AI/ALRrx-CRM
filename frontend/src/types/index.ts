@@ -111,3 +111,10 @@ export interface VicidialAuthResponse {
   expiresAt: string;
   formName: string;
 }
+
+export interface ActiveAltrxAgentDto {
+  user: string;
+  name: string;
+  lastCallTime: string | null;
+  lastUpdateTime: string | null;
+}

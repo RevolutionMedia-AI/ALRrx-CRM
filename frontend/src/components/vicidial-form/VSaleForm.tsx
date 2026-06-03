@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { submitVicidialSale } from '../../services/vicidialFormApi';
-import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest } from '../../types';
+import { submitVicidialSale, getActiveAltrxAgents } from '../../services/vicidialFormApi';
+import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest, type ActiveAltrxAgentDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
 interface VSaleFormProps {
@@ -25,6 +25,32 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [activeAgents, setActiveAgents] = useState<ActiveAltrxAgentDto[]>([]);
+  const [agentsLoading, setAgentsLoading] = useState(true);
+  const [agentsError, setAgentsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setAgentsLoading(true);
+        const agents = await getActiveAltrxAgents();
+        if (!cancelled) {
+          setActiveAgents(agents);
+          setAgentsError(null);
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setAgentsError('Could not load active agents from Vicidial');
+          setActiveAgents([]);
+        }
+      } finally {
+        if (!cancelled) setAgentsLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (salesRep) {
@@ -59,7 +85,7 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
       saleDate: new Date(saleDate).toISOString(),
       clientPhone: clientPhone.trim(),
       clientName: clientName.trim(),
-      clientEmail: clientEmail.trim(),
+      clientEmail: clientEmail.trim().toLowerCase(),
       bundle,
       amount: amountNum,
     };
@@ -94,13 +120,35 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
           </legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Agent Name" required>
-              <input
-                type="text"
-                value={salesRep}
-                onChange={(e) => onSalesRepChange(e.target.value)}
-                placeholder="E.g. John Doe"
-                className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
-              />
+              {agentsLoading ? (
+                <div className="h-[38px] w-full bg-surface-container rounded-lg animate-pulse" />
+              ) : agentsError ? (
+                <div className="space-y-1">
+                  <div className="w-full px-3 py-2 text-sm border border-deep-rose/40 rounded-lg bg-deep-rose/5 text-deep-rose">
+                    {agentsError}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setAgentsError(null); setAgentsLoading(true); getActiveAltrxAgents().then(setActiveAgents).catch(() => setAgentsError('Could not load active agents from Vicidial')).finally(() => setAgentsLoading(false)); }}
+                    className="text-[11px] text-electric-blue hover:underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={salesRep}
+                  onChange={(e) => onSalesRepChange(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
+                >
+                  <option value="">— Select an active ALTRX agent —</option>
+                  {activeAgents.map((a) => (
+                    <option key={a.user} value={a.name}>
+                      {a.name} ({a.user})
+                    </option>
+                  ))}
+                </select>
+              )}
             </Field>
             <Field label="Sale Date" required>
               <input

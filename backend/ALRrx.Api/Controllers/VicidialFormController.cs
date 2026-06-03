@@ -13,15 +13,18 @@ public sealed class VicidialFormController : ControllerBase
 {
     private readonly SubmitVicidialSaleUseCase _submit;
     private readonly GetVicidialSalesUseCase _list;
+    private readonly GetActiveAltrxAgentsUseCase _activeAgents;
     private readonly ILogger<VicidialFormController> _logger;
 
     public VicidialFormController(
         SubmitVicidialSaleUseCase submit,
         GetVicidialSalesUseCase list,
+        GetActiveAltrxAgentsUseCase activeAgents,
         ILogger<VicidialFormController> logger)
     {
         _submit = submit;
         _list = list;
+        _activeAgents = activeAgents;
         _logger = logger;
     }
 
@@ -60,6 +63,21 @@ public sealed class VicidialFormController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("active-agents")]
+    public async Task<ActionResult<List<ActiveAltrxAgentDto>>> GetActiveAgents(CancellationToken ct = default)
+    {
+        try
+        {
+            var agents = await _activeAgents.ExecuteAsync(ct);
+            return Ok(agents);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch active ALTRX agents");
+            return StatusCode(500, new { error = "Failed to load active agents" });
         }
     }
 }
