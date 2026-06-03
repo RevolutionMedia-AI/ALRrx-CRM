@@ -329,7 +329,7 @@ export default function DashboardPage() {
           />
 
           {/* 2. Agent Performance Trend + Legend */}
-          <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card overflow-hidden">
+          <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card">
             <div className="p-6 border-b border-whisper-border flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-lg text-primary">Agent Performance Trend</h3>
@@ -339,8 +339,8 @@ export default function DashboardPage() {
               </div>
               <span className="material-symbols-outlined text-electric-blue text-2xl">monitoring</span>
             </div>
-            <div className="p-6 flex flex-col gap-5">
-              <div className="w-full h-64">
+            <div className="p-8 flex flex-col gap-6">
+              <div className="w-full h-80">
                 {chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>

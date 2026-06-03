@@ -252,7 +252,7 @@ export default function AnalyticsPage() {
 
   const sortableTh = (label: string, key: SortKey) => (
     <th
-      className="p-3 font-medium cursor-pointer select-none hover:text-primary transition-colors"
+      className="p-3 font-medium cursor-pointer select-none hover:text-primary dark:hover:text-white transition-colors"
       onClick={() => handleSort(key)}
     >
       <div className="flex items-center gap-1">
@@ -386,12 +386,72 @@ export default function AnalyticsPage() {
         </div>
       </section>
 
+      {/* ========== RESTORED 3-CARD ROW: Leads breakdown ========== */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        {[
+          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', valueColor: 'var(--card-value-blue)' },
+          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', valueColor: 'var(--card-value-emerald)' },
+          { label: 'Contact Rate', value: contactRateMetric?.value ?? '--%', valueColor: '#8B5CF6' },
+        ].map((l) => (
+          <div
+            key={l.label}
+            className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-8 shadow-card"
+          >
+            <p className="text-card-label text-[13px] font-medium">{l.label}</p>
+            <p className="text-[2.2rem] font-bold mt-1 leading-none" style={{ color: l.valueColor }}>
+              {loading ? '--' : l.value}
+            </p>
+          </div>
+        ))}
+      </section>
+
+      {/* ========== RESTORED 4-CARD ROW: Performance metrics with deltas ========== */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {[
+          { title: 'Sales Today', value: salesMetric?.value ?? '--', change: pctChange(salesMetric?.value ?? '0', prevSales?.value), icon: PaymentSuccess01Icon, valueColor: 'var(--card-value-emerald)' },
+          { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: CallOutgoing01Icon, valueColor: 'var(--card-value-emerald)' },
+          { title: 'No Contacts', value: noContactsMetric?.value ?? '--', change: pctChange(noContactsMetric?.value ?? '0', prevNoContacts?.value), icon: CallReceived02Icon, valueColor: 'var(--card-value-red)' },
+          { title: 'Total Calls', value: totalCallsMetric?.value ?? '--', change: pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value), icon: Call02Icon, valueColor: 'var(--card-value-dark)' },
+        ].map((card) => (
+          <div
+            key={card.title}
+            className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg py-8 px-7 shadow-card"
+          >
+            <div className="flex justify-between items-start mb-5">
+              <p className="text-card-label text-[13px] font-medium">{card.title}</p>
+              <div className="p-4 bg-card-icon-bg dark:bg-gray-800 rounded-xl">
+                <card.icon size={20} className="text-card-label" />
+              </div>
+            </div>
+            {loading ? (
+              <div className="h-8 w-28 bg-surface-container rounded animate-pulse" />
+            ) : (
+              <div className="flex items-baseline gap-3">
+                <h2 className="text-[2.2rem] font-bold leading-none tracking-tight" style={{ color: card.valueColor }}>{card.value}</h2>
+                {card.change && (
+                  <span className={`text-sm font-medium flex items-center font-metadata-mono ${
+                    card.change.direction === 'up' ? 'text-emerald-signal'
+                    : card.change.direction === 'down' ? 'text-deep-rose'
+                    : 'text-muted-slate'
+                  }`}>
+                    {card.change.direction === 'up' ? <AnalyticsUpIcon size={15} />
+                        : card.change.direction === 'down' ? <AnalyticsDownIcon size={15} />
+                        : <MinusSignCircleIcon size={15} />}
+                    {card.change.pct}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </section>
+
       {/* ========== 2-COLUMN BODY ========== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* LEFT COLUMN (8/12) */}
         <div className="lg:col-span-8 flex flex-col gap-6">
           {/* 1. Dispositions chart */}
-          <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card overflow-hidden">
+          <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card">
             <div className="p-6 border-b border-whisper-border flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-lg text-primary">Dispositions</h3>
@@ -401,8 +461,8 @@ export default function AnalyticsPage() {
               </div>
               <span className="material-symbols-outlined text-electric-blue text-2xl">monitoring</span>
             </div>
-            <div className="p-6 flex flex-col gap-5">
-              <div className="w-full h-64">
+            <div className="p-8 flex flex-col gap-6">
+              <div className="w-full h-80">
                 {chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
@@ -625,7 +685,7 @@ export default function AnalyticsPage() {
           <section className="bg-pure-surface border border-whisper-border rounded-xl p-6 shadow-diffused">
             <h3 className="font-bold text-lg text-primary mb-5 flex items-center gap-2">
               <span className="material-symbols-outlined text-amber-warmth">compare_arrows</span>
-              vs. Previous Period
+              Comparison for the selected period
             </h3>
             <div className="space-y-4">
               <DeltaRow
