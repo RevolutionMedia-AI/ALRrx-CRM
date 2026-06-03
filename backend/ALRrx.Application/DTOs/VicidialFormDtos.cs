@@ -59,7 +59,7 @@ public sealed class VicidialSaleRequest
     public string ClientEmail { get; init; } = string.Empty;
 
     [Required]
-    public BundleType Bundle { get; init; }
+    public string Bundle { get; init; } = string.Empty;
 
     [Required, Range(0.01, 1000000)]
     public decimal Amount { get; init; }

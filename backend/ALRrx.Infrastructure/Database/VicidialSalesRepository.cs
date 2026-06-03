@@ -46,7 +46,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         _logger.LogInformation("vicidial_form_sales table ready");
     }
 
-    public async Task<int> InsertAsync(VicidialSaleRequest request, CancellationToken ct = default)
+    public async Task<int> InsertAsync(VicidialSaleRequest request, string bundleDisplayName, CancellationToken ct = default)
     {
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand("""
@@ -61,11 +61,11 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         cmd.Parameters.AddWithValue("@ClientPhone", request.ClientPhone.Trim());
         cmd.Parameters.AddWithValue("@ClientName", request.ClientName.Trim());
         cmd.Parameters.AddWithValue("@ClientEmail", request.ClientEmail.Trim().ToLowerInvariant());
-        cmd.Parameters.AddWithValue("@Bundle", request.Bundle.ToDisplayName());
+        cmd.Parameters.AddWithValue("@Bundle", bundleDisplayName);
         cmd.Parameters.AddWithValue("@Amount", request.Amount);
 
         var newId = await cmd.ExecuteScalarAsync(ct);
-        _logger.LogInformation("Vicidial sale recorded: {SalesRep} | {Bundle} | ${Amount}", request.SalesRep, request.Bundle, request.Amount);
+        _logger.LogInformation("Vicidial sale recorded: {SalesRep} | {Bundle} | ${Amount}", request.SalesRep, bundleDisplayName, request.Amount);
         return Convert.ToInt32(newId);
     }
 
