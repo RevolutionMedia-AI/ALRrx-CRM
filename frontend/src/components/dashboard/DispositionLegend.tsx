@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export const DISPOSITION_LABELS: Record<string, string> = {
   SALE: 'Sale completed',
@@ -68,18 +68,52 @@ interface DispositionLegendProps {
 
 export default function DispositionLegend({ data, total }: DispositionLegendProps) {
   const [openCode, setOpenCode] = useState<string | null>(null);
+  const [flippedCodes, setFlippedCodes] = useState<Set<string>>(new Set());
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const measurePositions = useCallback(() => {
+    if (!containerRef.current) return;
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const newFlipped = new Set<string>();
+    data.forEach((d) => {
+      const el = itemRefs.current[d.name];
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const distanceFromRight = containerRect.right - rect.right;
+        if (distanceFromRight < 220) {
+          newFlipped.add(d.name);
+        }
+      }
+    });
+    setFlippedCodes(newFlipped);
+  }, [data]);
+
+  useEffect(() => {
+    measurePositions();
+    const observer = new ResizeObserver(measurePositions);
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+    window.addEventListener('resize', measurePositions);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measurePositions);
+    };
+  }, [measurePositions]);
 
   if (!data || data.length === 0) return null;
 
   const grandTotal = total ?? data.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div ref={containerRef} className="flex flex-wrap gap-2">
       {data.map((d) => {
         const pct = grandTotal > 0 ? ((d.value / grandTotal) * 100).toFixed(1) : '0.0';
         const isOpen = openCode === d.name;
+        const isFlipped = flippedCodes.has(d.name);
         return (
-          <div key={d.name} className="relative">
+          <div key={d.name} className="relative" ref={(el) => { itemRefs.current[d.name] = el; }}>
             <button
               type="button"
               onClick={() => setOpenCode(isOpen ? null : d.name)}
@@ -102,7 +136,11 @@ export default function DispositionLegend({ data, total }: DispositionLegendProp
               <span className="text-muted-slate text-[10px]">{pct}%</span>
             </button>
             {isOpen && (
-              <div className="absolute z-20 left-1/2 -translate-x-1/2 top-full mt-1.5 px-2.5 py-1.5 bg-pure-surface dark:bg-gray-800 border border-whisper-border dark:border-gray-600 rounded-md shadow-lg text-xs whitespace-nowrap pointer-events-none">
+              <div
+                className={`absolute z-20 top-full mt-1.5 px-2.5 py-1.5 bg-pure-surface dark:bg-gray-800 border border-whisper-border dark:border-gray-600 rounded-md shadow-lg text-xs whitespace-nowrap pointer-events-none ${
+                  isFlipped ? 'right-0' : 'left-0'
+                }`}
+              >
                 <p className="font-semibold text-primary">{d.name}</p>
                 <p className="text-secondary">{getDispositionDescription(d.name)}</p>
               </div>

@@ -401,83 +401,6 @@ export default function DashboardPage() {
           </section>
 
           {/* 3. Recent Calls Log */}
-          <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused overflow-hidden">
-            <div className="p-6 border-b border-whisper-border flex justify-between items-center bg-canvas-white">
-              <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary text-xl">list_alt</span>
-                Recent Calls Log
-              </h3>
-            </div>
-            {callsLoading ? (
-              <div className="p-6 space-y-3 animate-pulse">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-8 bg-surface-container rounded" />
-                ))}
-              </div>
-            ) : calls.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-surface-container-low border-b border-whisper-border text-xs uppercase tracking-wider text-secondary font-metadata-mono">
-                      <th className="p-4 font-medium">Call ID</th>
-                      <th className="p-4 font-medium">Agent</th>
-                      <th className="p-4 font-medium">Duration</th>
-                      <th className="p-4 font-medium">Disposition</th>
-                      <th className="p-4 font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-sm">
-                    {calls.slice(0, 10).map((call, i) => {
-                      const status = String(call.status ?? 'completed').toLowerCase();
-                      const sc = getCallStatusColor(status);
-                      return (
-                        <tr
-                          key={i}
-                          className="border-b border-whisper-border hover:bg-surface-container-lowest dark:hover:bg-gray-800 transition-colors"
-                        >
-                          <td className="p-4 font-metadata-mono text-primary">
-                            #{String(call.call_id ?? call.id ?? i + 1)}
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold">
-                                {getInitials(String(call.Name ?? call.agent_name ?? call.user ?? ''))}
-                              </div>
-                              <span className="font-medium text-primary">
-                                {String(call.Name ?? call.agent_name ?? call.user ?? '')}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-4 font-metadata-mono text-secondary">
-                            {formatDuration(Number(call.length_in_sec ?? 0))}
-                          </td>
-                          <td className="p-4">
-                            <span className="px-2 py-1 bg-surface-container rounded text-xs text-primary font-medium border border-whisper-border font-metadata-mono">
-                              {String(call.disposition ?? call.status ?? '')}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span
-                              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
-                              {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="p-10 flex flex-col items-center justify-center text-center">
-                <span className="material-symbols-outlined text-4xl text-muted-slate/40 mb-2">call_end</span>
-                <p className="text-sm font-medium text-primary">No calls yet</p>
-                <p className="text-xs text-muted-slate mt-1">Click refresh to load data</p>
-              </div>
-            )}
-          </section>
         </div>
 
         {/* RIGHT SIDEBAR (4/12) */}
@@ -579,10 +502,21 @@ export default function DashboardPage() {
 
           {/* Agent Status */}
           <div className="bg-pure-surface border border-whisper-border rounded-xl p-6 shadow-diffused">
-            <h3 className="font-bold text-lg text-primary mb-5 flex items-center gap-2">
+            <h3 className="font-bold text-lg text-primary mb-3 flex items-center gap-2">
               <span className="material-symbols-outlined text-electric-blue">groups</span>
               Agent Status
             </h3>
+            <div className="flex flex-wrap gap-x-3 gap-y-1.5 mb-4 pb-4 border-b border-whisper-border">
+              {(['READY', 'INCALL', 'QUEUE', 'PAUSED', 'OFFLINE'] as AgentStatus[]).map((s) => {
+                const c = STATUS_COLORS[s];
+                return (
+                  <div key={s} className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${c.dot}`} />
+                    <span className="text-[10px] text-secondary font-metadata-mono uppercase tracking-wider">{c.label}</span>
+                  </div>
+                );
+              })}
+            </div>
             {staffingLoading ? (
               <div className="grid grid-cols-3 gap-1.5">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -614,6 +548,85 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* 3. Recent Calls Log (full width) */}
+      <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused overflow-hidden">
+        <div className="p-6 border-b border-whisper-border flex justify-between items-center bg-canvas-white">
+          <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+            <span className="material-symbols-outlined text-secondary text-xl">list_alt</span>
+            Recent Calls Log
+          </h3>
+        </div>
+        {callsLoading ? (
+          <div className="p-6 space-y-3 animate-pulse">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-8 bg-surface-container rounded" />
+            ))}
+          </div>
+        ) : calls.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-surface-container-low border-b border-whisper-border text-xs uppercase tracking-wider text-secondary font-metadata-mono">
+                  <th className="p-4 font-medium">Call ID</th>
+                  <th className="p-4 font-medium">Agent</th>
+                  <th className="p-4 font-medium">Duration</th>
+                  <th className="p-4 font-medium">Disposition</th>
+                  <th className="p-4 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                {calls.slice(0, 10).map((call, i) => {
+                  const status = String(call.status ?? 'completed').toLowerCase();
+                  const sc = getCallStatusColor(status);
+                  return (
+                    <tr
+                      key={i}
+                      className="border-b border-whisper-border hover:bg-surface-container-lowest dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <td className="p-4 font-metadata-mono text-primary">
+                        #{String(call.call_id ?? call.id ?? i + 1)}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold">
+                            {getInitials(String(call.Name ?? call.agent_name ?? call.user ?? ''))}
+                          </div>
+                          <span className="font-medium text-primary">
+                            {String(call.Name ?? call.agent_name ?? call.user ?? '')}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4 font-metadata-mono text-secondary">
+                        {formatDuration(Number(call.length_in_sec ?? 0))}
+                      </td>
+                      <td className="p-4">
+                        <span className="px-2 py-1 bg-surface-container rounded text-xs text-primary font-medium border border-whisper-border font-metadata-mono">
+                          {String(call.disposition ?? call.status ?? '')}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-10 flex flex-col items-center justify-center text-center">
+            <span className="material-symbols-outlined text-4xl text-muted-slate/40 mb-2">call_end</span>
+            <p className="text-sm font-medium text-primary">No calls yet</p>
+            <p className="text-xs text-muted-slate mt-1">Click refresh to load data</p>
+          </div>
+        )}
+      </section>
     </>
   );
 }
