@@ -49,12 +49,22 @@ function DarkTooltip({ active, payload, label }: { active?: boolean; payload?: A
 
 
 
+function dayRange(date: Date): { start: string; end: string } {
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
 function previousPeriod(p: Period): TimeFilterDto {
+  const y = dayRange(new Date(Date.now() - 86400000));
+  const w = { start: dayRange(new Date(Date.now() - 14 * 86400000)).start, end: dayRange(new Date(Date.now() - 7 * 86400000)).end };
+  const m = { start: dayRange(new Date(Date.now() - 60 * 86400000)).start, end: dayRange(new Date(Date.now() - 30 * 86400000)).end };
+  const c = { start: dayRange(new Date(Date.now() - 7 * 86400000)).start, end: y.end };
   switch (p) {
-    case 'Today': return { period: 'Custom', customStart: new Date(Date.now() - 86400000).toISOString(), customEnd: new Date(Date.now() - 86400000).toISOString() };
-    case 'Week': return { period: 'Custom', customStart: new Date(Date.now() - 14 * 86400000).toISOString(), customEnd: new Date(Date.now() - 7 * 86400000).toISOString() };
-    case 'Month': return { period: 'Custom', customStart: new Date(Date.now() - 60 * 86400000).toISOString(), customEnd: new Date(Date.now() - 30 * 86400000).toISOString() };
-    case 'Custom': return { period: 'Custom', customStart: new Date(Date.now() - 7 * 86400000).toISOString(), customEnd: new Date(Date.now() - 86400000).toISOString() };
+    case 'Today': return { period: 'Custom', customStart: y.start, customEnd: y.end };
+    case 'Week': return { period: 'Custom', customStart: w.start, customEnd: w.end };
+    case 'Month': return { period: 'Custom', customStart: m.start, customEnd: m.end };
+    case 'Custom': return { period: 'Custom', customStart: c.start, customEnd: c.end };
   }
 }
 
