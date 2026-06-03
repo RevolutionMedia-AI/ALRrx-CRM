@@ -29,7 +29,6 @@ public sealed class FormDbConnectionFactory : IDisposable
             SslMode = MySqlSslMode.Required,
             ConvertZeroDateTime = true,
         };
-        builder["serverTimezone"] = "UTC";
 
         var connection = new MySqlConnection(builder.ConnectionString);
         var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
