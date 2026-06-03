@@ -41,6 +41,27 @@ public sealed record VicidialAuthResponse
     public string FormName { get; init; } = "ALTRX Sales Form";
 }
 
+public sealed class VicidialSaleClientRequest
+{
+    [Required]
+    public DateTime SaleDate { get; init; }
+
+    [Required]
+    public string ClientPhone { get; init; } = string.Empty;
+
+    [Required]
+    public string ClientName { get; init; } = string.Empty;
+
+    [Required, EmailAddress]
+    public string ClientEmail { get; init; } = string.Empty;
+
+    [Required]
+    public string Bundle { get; init; } = string.Empty;
+
+    [Required, Range(0.01, 1000000)]
+    public decimal Amount { get; init; }
+}
+
 public sealed class VicidialSaleRequest
 {
     [Required]
@@ -78,12 +99,31 @@ public sealed record VicidialSaleDto
     public DateTime CreatedAt { get; init; }
 }
 
-public sealed record ActiveAltrxAgentDto
+public sealed class VicidialFormTokenRequest
+{
+    [Required]
+    public string User { get; init; } = string.Empty;
+}
+
+public sealed record VicidialFormTokenResponse
+{
+    public string Token { get; init; } = string.Empty;
+    public string Url { get; init; } = string.Empty;
+    public string User { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public DateTime ExpiresAt { get; init; }
+}
+
+public sealed class VicidialFormAuthRequest
+{
+    [Required]
+    public string Token { get; init; } = string.Empty;
+}
+
+public sealed record VicidialFormIdentity
 {
     public string User { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
-    public DateTime? LastCallTime { get; init; }
-    public DateTime? LastUpdateTime { get; init; }
 }
 
 public static class BundleTypeExtensions

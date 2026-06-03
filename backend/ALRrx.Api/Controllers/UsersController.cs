@@ -1,5 +1,6 @@
 using ALRrx.Application.DTOs;
 using ALRrx.Application.Interfaces;
+using ALRrx.Application.UseCases;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,11 +13,16 @@ public sealed class UsersController : ControllerBase
 {
     private readonly IUserRepository _users;
     private readonly IAuthService _auth;
+    private readonly GenerateVicidialFormTokenUseCase _generateVicidialToken;
 
-    public UsersController(IUserRepository users, IAuthService auth)
+    public UsersController(
+        IUserRepository users,
+        IAuthService auth,
+        GenerateVicidialFormTokenUseCase generateVicidialToken)
     {
         _users = users;
         _auth = auth;
+        _generateVicidialToken = generateVicidialToken;
     }
 
     [HttpGet]
@@ -71,5 +77,21 @@ public sealed class UsersController : ControllerBase
         await _users.UpdateAsync(updated, ct);
 
         return NoContent();
+    }
+
+    [HttpPost("vicidial-form-tokens")]
+    public async Task<ActionResult<VicidialFormTokenResponse>> GenerateVicidialFormToken(
+        [FromBody] VicidialFormTokenRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await _generateVicidialToken.ExecuteAsync(request, ct);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 }

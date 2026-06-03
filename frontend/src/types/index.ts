@@ -85,7 +85,6 @@ export const BUNDLE_OPTIONS = [
 export type BundleOption = typeof BUNDLE_OPTIONS[number];
 
 export interface VicidialSaleRequest {
-  salesRep: string;
   saleDate: string;
   clientPhone: string;
   clientName: string;
@@ -112,9 +111,15 @@ export interface VicidialAuthResponse {
   formName: string;
 }
 
-export interface ActiveAltrxAgentDto {
+export interface VicidialFormIdentity {
   user: string;
   name: string;
-  lastCallTime: string | null;
-  lastUpdateTime: string | null;
+}
+
+export interface VicidialFormTokenResponse {
+  token: string;
+  url: string;
+  user: string;
+  name: string;
+  expiresAt: string;
 }

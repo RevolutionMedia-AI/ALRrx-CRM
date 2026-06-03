@@ -4,7 +4,6 @@ import type { VicidialSaleDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
 interface VSalesListProps {
-  salesRep: string;
   refreshKey: number;
 }
 
@@ -23,22 +22,18 @@ function formatDate(iso: string): string {
   }
 }
 
-export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
+export default function VSalesList({ refreshKey }: VSalesListProps) {
   const [sales, setSales] = useState<VicidialSaleDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!salesRep.trim()) {
-      setSales([]);
-      return;
-    }
     let cancelled = false;
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
-        const data = await listVicidialSales(salesRep.trim());
+        const data = await listVicidialSales();
         if (!cancelled) setSales(data);
       } catch (err: unknown) {
         if (!cancelled) {
@@ -50,7 +45,7 @@ export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
     };
     load();
     return () => { cancelled = true; };
-  }, [salesRep, refreshKey]);
+  }, [refreshKey]);
 
   const totalAmount = sales.reduce((sum, s) => sum + Number(s.amount), 0);
 
@@ -70,11 +65,7 @@ export default function VSalesList({ salesRep, refreshKey }: VSalesListProps) {
         </div>
       </header>
 
-      {!salesRep.trim() ? (
-        <div className="px-6 py-10 text-center text-sm text-muted-slate">
-          Enter your name in the form to see your registered sales.
-        </div>
-      ) : loading ? (
+      {loading ? (
         <div className="p-6 space-y-3 animate-pulse">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-9 bg-surface-container dark:bg-gray-800 rounded" />

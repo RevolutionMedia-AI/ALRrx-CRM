@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { listAllVicidialSales } from '../../services/vicidialFormApi';
+import { listAllVicidialSalesAdmin } from '../../services/vicidialFormApi';
 import type { VicidialSaleDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
@@ -75,7 +75,7 @@ export default function VicidialSalesSection({ refreshKey = 0 }: VicidialSalesSe
       setLoading(true);
       setError(null);
       try {
-        const data = await listAllVicidialSales(range.from || undefined, range.to || undefined, 500);
+        const data = await listAllVicidialSalesAdmin(range.from || undefined, range.to || undefined, 500);
         if (!cancelled) setSales(data);
       } catch (err: unknown) {
         if (!cancelled) {

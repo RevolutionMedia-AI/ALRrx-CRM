@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { submitVicidialSale, getActiveAltrxAgents } from '../../services/vicidialFormApi';
-import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest, type ActiveAltrxAgentDto } from '../../types';
+import { submitVicidialSale } from '../../services/vicidialFormApi';
+import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest, type VicidialFormIdentity } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
 interface VSaleFormProps {
-  salesRep: string;
-  onSalesRepChange: (value: string) => void;
+  identity: VicidialFormIdentity;
   onSubmitted: () => void;
 }
 
@@ -15,7 +14,7 @@ function getTodayLocalDateTime(): string {
   return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
-export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: VSaleFormProps) {
+export default function VSaleForm({ identity, onSubmitted }: VSaleFormProps) {
   const [saleDate, setSaleDate] = useState(getTodayLocalDateTime());
   const [clientPhone, setClientPhone] = useState('');
   const [clientName, setClientName] = useState('');
@@ -25,38 +24,10 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeAgents, setActiveAgents] = useState<ActiveAltrxAgentDto[]>([]);
-  const [agentsLoading, setAgentsLoading] = useState(true);
-  const [agentsError, setAgentsError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
-      try {
-        setAgentsLoading(true);
-        const agents = await getActiveAltrxAgents();
-        if (!cancelled) {
-          setActiveAgents(agents);
-          setAgentsError(null);
-        }
-      } catch (err: unknown) {
-        if (!cancelled) {
-          setAgentsError('Could not load active agents from Vicidial');
-          setActiveAgents([]);
-        }
-      } finally {
-        if (!cancelled) setAgentsLoading(false);
-      }
-    };
-    load();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    if (salesRep) {
-      setError(null);
-    }
-  }, [salesRep]);
+    setError(null);
+  }, [identity.user]);
 
   const reset = () => {
     setClientPhone('');
@@ -72,7 +43,6 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
     setError(null);
     setSuccess(null);
 
-    if (!salesRep.trim()) return setError('Agent name is required');
     if (!clientName.trim()) return setError('Client name is required');
     if (!clientPhone.trim()) return setError('Client phone is required');
     if (!clientEmail.trim()) return setError('Client email is required');
@@ -81,7 +51,6 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
     if (!amount || isNaN(amountNum) || amountNum <= 0) return setError('Amount must be greater than 0');
 
     const payload: VicidialSaleRequest = {
-      salesRep: salesRep.trim(),
       saleDate: new Date(saleDate).toISOString(),
       clientPhone: clientPhone.trim(),
       clientName: clientName.trim(),
@@ -119,36 +88,12 @@ export default function VSaleForm({ salesRep, onSalesRepChange, onSubmitted }: V
             Agent Information
           </legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Agent Name" required>
-              {agentsLoading ? (
-                <div className="h-[38px] w-full bg-surface-container rounded-lg animate-pulse" />
-              ) : agentsError ? (
-                <div className="space-y-1">
-                  <div className="w-full px-3 py-2 text-sm border border-deep-rose/40 rounded-lg bg-deep-rose/5 text-deep-rose">
-                    {agentsError}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => { setAgentsError(null); setAgentsLoading(true); getActiveAltrxAgents().then(setActiveAgents).catch(() => setAgentsError('Could not load active agents from Vicidial')).finally(() => setAgentsLoading(false)); }}
-                    className="text-[11px] text-electric-blue hover:underline"
-                  >
-                    Retry
-                  </button>
-                </div>
-              ) : (
-                <select
-                  value={salesRep}
-                  onChange={(e) => onSalesRepChange(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
-                >
-                  <option value="">— Select an active ALTRX agent —</option>
-                  {activeAgents.map((a) => (
-                    <option key={a.user} value={a.name}>
-                      {a.name} ({a.user})
-                    </option>
-                  ))}
-                </select>
-              )}
+            <Field label="Your user" required>
+              <div className="flex items-center gap-2 h-[38px] w-full px-3 border border-whisper-border dark:border-gray-700 rounded-lg bg-surface-container-low dark:bg-gray-800 text-primary dark:text-gray-100">
+                <span className="material-symbols-outlined text-[18px] text-emerald-signal">verified_user</span>
+                <span className="font-medium text-sm">{identity.name}</span>
+                <span className="text-[11px] text-muted-slate font-metadata-mono">({identity.user})</span>
+              </div>
             </Field>
             <Field label="Sale Date" required>
               <input

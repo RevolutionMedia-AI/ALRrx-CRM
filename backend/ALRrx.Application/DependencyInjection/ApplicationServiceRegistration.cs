@@ -21,7 +21,8 @@ public static class ApplicationServiceRegistration
         services.AddScoped<PeriodComparisonUseCase>();
         services.AddScoped<SubmitVicidialSaleUseCase>();
         services.AddScoped<GetVicidialSalesUseCase>();
-        services.AddScoped<GetActiveAltrxAgentsUseCase>();
+        services.AddScoped<GenerateVicidialFormTokenUseCase>();
+        services.AddScoped<ValidateVicidialFormTokenUseCase>();
 
         return services;
     }
