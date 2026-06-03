@@ -3,12 +3,9 @@ import { listAllVicidialSales } from '../../services/vicidialFormApi';
 import type { VicidialSaleDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
-type Period = 'Today' | 'Week' | 'Month' | 'Custom';
+type Period = 'Today' | 'Week' | 'Month' | 'All' | 'Custom';
 
 interface VicidialSalesSectionProps {
-  period: Period;
-  customStart: string;
-  customEnd: string;
   refreshKey?: number;
 }
 
@@ -29,6 +26,9 @@ function getPeriodRange(period: Period, customStart: string, customEnd: string):
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
     const end = new Date(today.getFullYear(), today.getMonth() + 1, 1);
     return { from: start.toISOString(), to: end.toISOString() };
+  }
+  if (period === 'All') {
+    return { from: '', to: '' };
   }
   return {
     from: new Date(`${customStart}T00:00:00`).toISOString(),
@@ -51,7 +51,16 @@ function formatDate(iso: string): string {
   }
 }
 
-export default function VicidialSalesSection({ period, customStart, customEnd, refreshKey = 0 }: VicidialSalesSectionProps) {
+export default function VicidialSalesSection({ refreshKey = 0 }: VicidialSalesSectionProps) {
+  const [period, setPeriod] = useState<Period>('All');
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+  const [customEnd, setCustomEnd] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [sales, setSales] = useState<VicidialSaleDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +75,7 @@ export default function VicidialSalesSection({ period, customStart, customEnd, r
       setLoading(true);
       setError(null);
       try {
-        const data = await listAllVicidialSales(range.from, range.to, 500);
+        const data = await listAllVicidialSales(range.from || undefined, range.to || undefined, 500);
         if (!cancelled) setSales(data);
       } catch (err: unknown) {
         if (!cancelled) {
@@ -103,36 +112,72 @@ export default function VicidialSalesSection({ period, customStart, customEnd, r
         animation: 'fadeSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
       }}
     >
-      <header className="p-6 border-b border-whisper-border dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div>
-          <h3 className="font-bold text-lg text-primary dark:text-gray-100">Vicidial Form Sales</h3>
-          <p className="text-xs text-secondary dark:text-gray-400 mt-0.5">Sales submitted by agents via the Vicidial standalone form</p>
+      <header className="p-6 border-b border-whisper-border dark:border-gray-700 flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
+            <h3 className="font-bold text-lg text-primary dark:text-gray-100">Vicidial Form Sales</h3>
+            <p className="text-xs text-secondary dark:text-gray-400 mt-0.5">Sales submitted by agents via the Vicidial standalone form</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {reps.length > 0 && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-secondary dark:text-gray-400">Agent:</label>
+                <select
+                  value={repFilter}
+                  onChange={(e) => setRepFilter(e.target.value)}
+                  className="text-xs px-2 py-1 border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
+                >
+                  <option value="all">All agents ({reps.length})</option>
+                  {reps.map((r) => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <button
+              onClick={() => setRefreshNonce((n) => n + 1)}
+              disabled={loading}
+              className="text-xs px-2.5 py-1 border border-whisper-border dark:border-gray-700 rounded text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-gray-100 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh sales"
+            >
+              <span className={`material-symbols-outlined text-sm ${loading ? 'animate-spin' : ''}`}>sync</span>
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {reps.length > 0 && (
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-secondary dark:text-gray-400">Agent:</label>
-              <select
-                value={repFilter}
-                onChange={(e) => setRepFilter(e.target.value)}
-                className="text-xs px-2 py-1 border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="bg-surface-container-low border border-whisper-border rounded flex text-xs overflow-hidden">
+            {(['Today', 'Week', 'Month', 'All', 'Custom'] as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1 border-r border-whisper-border last:border-r-0 transition-colors ${
+                  period === p
+                    ? 'bg-pure-surface text-primary font-medium'
+                    : 'text-secondary hover:bg-surface-container'
+                }`}
               >
-                <option value="all">All agents ({reps.length})</option>
-                {reps.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+                {p}
+              </button>
+            ))}
+          </div>
+          {period === 'Custom' && (
+            <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+              />
+              <span className="text-muted-slate text-xs">to</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+              />
             </div>
           )}
-          <button
-            onClick={() => setRefreshNonce((n) => n + 1)}
-            disabled={loading}
-            className="text-xs px-2.5 py-1 border border-whisper-border dark:border-gray-700 rounded text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-gray-100 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Refresh sales"
-          >
-            <span className={`material-symbols-outlined text-sm ${loading ? 'animate-spin' : ''}`}>sync</span>
-            <span>Refresh</span>
-          </button>
         </div>
       </header>
 
@@ -150,7 +195,9 @@ export default function VicidialSalesSection({ period, customStart, customEnd, r
         </div>
       ) : filteredSales.length === 0 ? (
         <div className="p-12 text-sm text-muted-slate text-center">
-          {repFilter === 'all' ? 'No Vicidial sales recorded for this period' : `No sales by "${repFilter}" in this period`}
+          {repFilter === 'all'
+            ? (period === 'All' ? 'No Vicidial sales recorded yet' : 'No Vicidial sales recorded for this period')
+            : `No sales by "${repFilter}" in this period`}
         </div>
       ) : (
         <div className="overflow-x-auto max-h-[420px] overflow-y-auto scrollbar-thin">

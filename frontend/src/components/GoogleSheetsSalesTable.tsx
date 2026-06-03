@@ -61,13 +61,13 @@ export function GoogleSheetsKpiCards({ filter }: { filter: TimeFilterDto }) {
   return (
     <div className="contents">
       <KpiTile
-        label="Total de Ventas"
+        label="Total Sales"
         value={loading ? '--' : formatCurrency(data?.totalSales ?? 0)}
         icon="payments"
         color="text-emerald-signal"
       />
       <KpiTile
-        label="Última Venta"
+        label="Last Sale"
         value={loading || !data?.lastSale ? '--' : formatCurrency(data.lastSale.amount)}
         subtitle={loading || !data?.lastSale ? '' : `${data.lastSale.sellerName} · ${formatDateTime(data.lastSale.timestamp)}`}
         icon="trending_up"
@@ -109,16 +109,16 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel, onDataLoad
           <div>
             <h3 className="font-bold text-lg text-primary flex items-center gap-2">
               <span className="material-symbols-outlined text-emerald-signal text-xl">receipt_long</span>
-              Ventas Google Sheets — {periodLabel}
+              Google Sheets Sales — {periodLabel}
             </h3>
             <p className="text-[12px] text-secondary mt-1 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-signal" />
-              <span>Sincronizado desde Google Forms · Click refresh para actualizar{lastUpdated && ` • ${lastUpdated}`}</span>
+              <span>Synced from Google Forms · Click refresh to update{lastUpdated && ` • ${lastUpdated}`}</span>
             </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="bg-surface-container-low border border-whisper-border rounded-lg px-4 py-2 text-right">
-              <p className="text-[11px] font-medium text-secondary uppercase tracking-wider">Cantidad</p>
+              <p className="text-[11px] font-medium text-secondary uppercase tracking-wider">Count</p>
               <p className="text-lg font-bold text-electric-blue">{loading ? '--' : String(data?.totalCount ?? 0)}</p>
             </div>
             <button
@@ -136,14 +136,14 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel, onDataLoad
         <div className="flex flex-wrap items-center gap-3 bg-surface-container-low border border-whisper-border rounded-lg px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary text-base">person</span>
-            <span className="text-xs font-medium text-secondary uppercase tracking-wider">Vendedor</span>
+            <span className="text-xs font-medium text-secondary uppercase tracking-wider">Seller</span>
           </div>
           <select
             value={sellerFilter}
             onChange={(e) => setSellerFilter(e.target.value)}
             className="flex-1 min-w-[160px] max-w-[260px] bg-pure-surface border border-whisper-border rounded px-3 py-1.5 text-sm text-primary focus:outline-none focus:border-electric-blue"
           >
-            <option value="all">Todos los vendedores</option>
+            <option value="all">All sellers</option>
             {data?.availableSellers.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
@@ -153,14 +153,14 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel, onDataLoad
 
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary text-base">package_2</span>
-            <span className="text-xs font-medium text-secondary uppercase tracking-wider">Paquete</span>
+            <span className="text-xs font-medium text-secondary uppercase tracking-wider">Package</span>
           </div>
           <select
             value={packageFilter}
             onChange={(e) => setPackageFilter(e.target.value)}
             className="flex-1 min-w-[180px] max-w-[300px] bg-pure-surface border border-whisper-border rounded px-3 py-1.5 text-sm text-primary focus:outline-none focus:border-electric-blue"
           >
-            <option value="all">Todos los paquetes</option>
+            <option value="all">All packages</option>
             {data?.availablePackages.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
@@ -180,11 +180,11 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel, onDataLoad
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-surface-container-low border-b border-whisper-border text-xs uppercase tracking-wider text-secondary font-metadata-mono">
-                  <th className="p-4 font-medium">Fecha</th>
-                  <th className="p-4 font-medium">Vendedor</th>
-                  <th className="p-4 font-medium">Email del Cliente</th>
-                  <th className="p-4 font-medium">Paquete</th>
-                  <th className="p-4 font-medium text-right">Monto</th>
+                  <th className="p-4 font-medium">Date</th>
+                  <th className="p-4 font-medium">Seller</th>
+                  <th className="p-4 font-medium">Client Email</th>
+                  <th className="p-4 font-medium">Package</th>
+                  <th className="p-4 font-medium text-right">Amount</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
@@ -214,12 +214,12 @@ export default function GoogleSheetsSalesTable({ filter, periodLabel, onDataLoad
             </table>
             {data.allSales.length > 50 && (
               <div className="p-4 text-center text-xs text-muted-slate border-t border-whisper-border">
-                Mostrando 50 de {data.allSales.length} ventas
+                Showing 50 of {data.allSales.length} sales
               </div>
             )}
           </div>
         ) : (
-          <div className="p-6 text-sm text-muted-slate text-center">No hay ventas en este período con los filtros seleccionados</div>
+          <div className="p-6 text-sm text-muted-slate text-center">No sales in this period with the selected filters</div>
         )}
       </div>
     </section>

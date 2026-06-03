@@ -226,7 +226,7 @@ export default function DashboardPage() {
           <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight">Operations Overview — ALTRX</h1>
           <p className="text-secondary mt-1 flex items-center gap-2 text-sm">
             <span className="w-2 h-2 rounded-full bg-emerald-signal" />
-            <span>Click refresh to update{lastUpdated && ` • Última actualización: ${lastUpdated}`}</span>
+            <span>Click refresh to update{lastUpdated && ` • Last updated: ${lastUpdated}`}</span>
           </p>
         </div>
         <div className="flex gap-2 flex-wrap items-end">
@@ -777,7 +777,7 @@ function LastSaleKpiCard({ filter }: { filter: TimeFilterDto }) {
         </div>
       )}
       {!loading && !lastSale && (
-        <p className="text-[11px] text-muted-slate mt-3">Sin ventas registradas en este período</p>
+        <p className="text-[11px] text-muted-slate mt-3">No sales recorded in this period</p>
       )}
     </div>
   );

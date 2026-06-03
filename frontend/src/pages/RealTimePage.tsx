@@ -94,7 +94,7 @@ export default function RealTimePage() {
           <h1 className="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">Real-Time Report — ALTRX</h1>
           <p className="text-secondary text-sm mt-1">
             Live agent monitoring — click refresh to update
-            {lastUpdated && ` • Última actualización: ${lastUpdated}`}
+            {lastUpdated && ` • Last updated: ${lastUpdated}`}
           </p>
         </div>
         <div className="flex items-center gap-3">

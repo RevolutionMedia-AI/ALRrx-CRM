@@ -544,7 +544,7 @@ export default function AnalyticsPage() {
         )}
       </section>
 
-      <VicidialSalesSection period={period} customStart={customStart} customEnd={customEnd} refreshKey={vicidialRefreshKey} />
+      <VicidialSalesSection refreshKey={vicidialRefreshKey} />
 
       <div className="flex justify-end gap-3" style={animateIn({ animationDelay: '480ms' })}>
         <button
@@ -567,7 +567,7 @@ export default function AnalyticsPage() {
               a.click();
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
-            } catch { setError('Error al generar Excel'); }
+            } catch { setError('Failed to generate Excel'); }
             finally { setExportingExcel(false); }
           }}
           disabled={exportingExcel}
@@ -590,7 +590,7 @@ export default function AnalyticsPage() {
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
             } catch {
-              setError('Error al generar PDF');
+              setError('Failed to generate PDF');
             } finally {
               setExportingPdf(false);
             }
