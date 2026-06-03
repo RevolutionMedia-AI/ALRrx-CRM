@@ -68,6 +68,11 @@ function safePct(numerator: number, denominator: number): string | null {
   return `${((numerator / denominator) * 100).toFixed(1)}%`;
 }
 
+function safePctDetailed(numerator: number, denominator: number): string | null {
+  if (!denominator || denominator <= 0) return null;
+  return `${((numerator / denominator) * 100).toFixed(2)}%`;
+}
+
 export default function FunnelBlock({ dialed, contacted, sales, loading }: FunnelBlockProps) {
   const allZero = (dialed ?? 0) === 0 && (contacted ?? 0) === 0 && sales === 0;
 
@@ -132,7 +137,7 @@ export default function FunnelBlock({ dialed, contacted, sales, loading }: Funne
           <div className="mt-4 pt-4 border-t border-whisper-border flex items-center justify-between text-xs">
             <span className="text-secondary">Overall conversion</span>
             <span className="font-bold text-emerald-signal font-metadata-mono">
-              {safePct(sales, dialed ?? 0)} (dialed → sale)
+              {safePctDetailed(sales, dialed ?? 0)} (dialed → sale)
             </span>
           </div>
         )}

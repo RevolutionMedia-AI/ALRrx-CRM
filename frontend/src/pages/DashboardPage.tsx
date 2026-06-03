@@ -7,12 +7,10 @@ import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto, Sale
 import FunnelBlock from '../components/dashboard/FunnelBlock';
 import DispositionLegend, { type DispositionItem } from '../components/dashboard/DispositionLegend';
 import ProductivityCard from '../components/dashboard/ProductivityCard';
-import SalesSection from '../components/dashboard/SalesSection';
 
 type Period = 'Today' | 'Week' | 'Month' | 'Custom';
 
 const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth', Custom: 'Custom' };
-const PERIOD_LABEL: Record<Period, string> = { Today: 'Today', Week: 'This Week', Month: 'This Month', Custom: 'Custom' };
 
 const DISPOSITION_PALETTE = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
@@ -187,8 +185,6 @@ export default function DashboardPage() {
   };
   const totalStaff = liveStatus.available + liveStatus.busy + liveStatus.break;
 
-  const handleExportError = (msg: string) => setError(msg);
-
   const periodBtn = (p: Period) => (
     <button
       key={p}
@@ -271,6 +267,14 @@ export default function DashboardPage() {
             loading={summaryLoading}
           />
           <KpiCard
+            title="Total Calls"
+            value={totalCalls?.value ?? '0'}
+            change={totalCalls?.trend}
+            icon="call"
+            valueColor="var(--card-value-dark)"
+            loading={summaryLoading}
+          />
+          <KpiCard
             title="Contacted"
             value={leadsContacted?.value ?? '0'}
             icon="contact_page"
@@ -282,14 +286,6 @@ export default function DashboardPage() {
             value={contactRate?.value ?? '0%'}
             icon="percent"
             valueColor="#8B5CF6"
-            loading={summaryLoading}
-          />
-          <KpiCard
-            title="Total Calls"
-            value={totalCalls?.value ?? '0'}
-            change={totalCalls?.trend}
-            icon="call"
-            valueColor="var(--card-value-dark)"
             loading={summaryLoading}
           />
           <KpiCard
@@ -349,17 +345,17 @@ export default function DashboardPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
                       <defs>
-                        {dispositionItems.map((d) => (
+                        {dispositionsChart?.series.map((s, idx) => (
                           <linearGradient
-                            key={d.name}
-                            id={`gradient-${d.name}`}
+                            key={s.name}
+                            id={`gradient-${s.name}`}
                             x1="0"
                             y1="0"
                             x2="0"
                             y2="1"
                           >
-                            <stop offset="5%" stopColor={d.color} stopOpacity={0.35} />
-                            <stop offset="95%" stopColor={d.color} stopOpacity={0} />
+                            <stop offset="5%" stopColor={DISPOSITION_PALETTE[idx % DISPOSITION_PALETTE.length]} stopOpacity={0.35} />
+                            <stop offset="95%" stopColor={DISPOSITION_PALETTE[idx % DISPOSITION_PALETTE.length]} stopOpacity={0} />
                           </linearGradient>
                         ))}
                       </defs>
@@ -374,13 +370,13 @@ export default function DashboardPage() {
                       />
                       <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} />
                       <Tooltip content={<DarkTooltip />} />
-                      {dispositionItems.map((d) => (
+                      {dispositionsChart?.series.map((s, idx) => (
                         <Area
-                          key={d.name}
+                          key={s.name}
                           type="monotone"
-                          dataKey={d.name}
-                          stroke={d.color}
-                          fill={`url(#gradient-${d.name})`}
+                          dataKey={s.name}
+                          stroke={DISPOSITION_PALETTE[idx % DISPOSITION_PALETTE.length]}
+                          fill={`url(#gradient-${s.name})`}
                           strokeWidth={2}
                         />
                       ))}
@@ -618,13 +614,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-
-      {/* ========== UNIFIED SALES SECTION ========== */}
-      <SalesSection
-        filter={filter(period, customStart, customEnd)}
-        periodLabel={PERIOD_LABEL[period]}
-        onError={handleExportError}
-      />
     </>
   );
 }
