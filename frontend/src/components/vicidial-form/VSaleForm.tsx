@@ -5,7 +5,6 @@ import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
 interface VSaleFormProps {
   identity: VicidialFormIdentity;
-  onSubmitted: () => void;
 }
 
 function getTodayLocalDateTime(): string {
@@ -14,7 +13,7 @@ function getTodayLocalDateTime(): string {
   return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
-export default function VSaleForm({ identity, onSubmitted }: VSaleFormProps) {
+export default function VSaleForm({ identity }: VSaleFormProps) {
   const [saleDate, setSaleDate] = useState(getTodayLocalDateTime());
   const [clientPhone, setClientPhone] = useState('');
   const [clientName, setClientName] = useState('');
@@ -64,7 +63,6 @@ export default function VSaleForm({ identity, onSubmitted }: VSaleFormProps) {
       const res = await submitVicidialSale(payload);
       setSuccess(`Sale #${res.id} registered successfully`);
       reset();
-      onSubmitted();
     } catch (err: unknown) {
       setError(extractErrorMessage(err, 'Could not register the sale'));
     } finally {

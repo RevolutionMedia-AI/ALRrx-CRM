@@ -75,7 +75,7 @@ export default function FunnelBlock({ dialed, contacted, sales, loading }: Funne
     <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card overflow-hidden">
       <div className="p-6 border-b border-whisper-border flex items-center justify-between">
         <div>
-          <h3 className="font-bold text-lg text-primary">Funnel</h3>
+          <h3 className="font-bold text-lg text-primary">History Call</h3>
           <p className="text-[11px] text-secondary mt-0.5 font-metadata-mono uppercase tracking-wider">
             Dialed → Contacted → Sales
           </p>

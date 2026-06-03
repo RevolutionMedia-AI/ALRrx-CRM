@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import VFormHeader from '../components/vicidial-form/VFormHeader';
 import VSaleForm from '../components/vicidial-form/VSaleForm';
-import VSalesList from '../components/vicidial-form/VSalesList';
 import { useAuth } from '../context/AuthContext';
 import { authenticateVicidialFormToken } from '../services/vicidialFormApi';
 import { saveFormToken, clearFormToken, getFormToken, getFormIdentity } from '../utils/vicidialFormAuth';
@@ -12,7 +11,6 @@ export default function VicidialFormPage() {
   const { token: dashboardToken, user, loading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [refreshKey, setRefreshKey] = useState(0);
   const [identity, setIdentity] = useState<VicidialFormIdentity | null>(() => getFormIdentity());
   const [validating, setValidating] = useState(() => !!getFormToken());
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -52,10 +50,6 @@ export default function VicidialFormPage() {
       setValidating(false);
     }
   }, []);
-
-  const handleRefresh = () => {
-    setRefreshKey((k) => k + 1);
-  };
 
   if (validating) {
     return (
@@ -106,13 +100,7 @@ export default function VicidialFormPage() {
     <div className="bg-canvas-white dark:bg-gray-950 min-h-screen text-on-surface dark:text-gray-100 transition-colors">
       <VFormHeader showHomeButton={showHomeButton} />
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-        <div className="space-y-6">
-          <VSaleForm
-            identity={identity}
-            onSubmitted={handleRefresh}
-          />
-          <VSalesList refreshKey={refreshKey} />
-        </div>
+        <VSaleForm identity={identity} />
       </main>
     </div>
   );

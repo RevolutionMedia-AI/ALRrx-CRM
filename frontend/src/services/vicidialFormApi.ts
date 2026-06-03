@@ -33,14 +33,6 @@ export async function submitVicidialSale(payload: VicidialSaleRequest): Promise<
   return data;
 }
 
-export async function listVicidialSales(from?: string, to?: string, limit = 50): Promise<VicidialSaleDto[]> {
-  const params: Record<string, string | number> = { limit };
-  if (from) params.from = from;
-  if (to) params.to = to;
-  const { data } = await vicidialClient.get<VicidialSaleDto[]>('/vicidial-form/sales', { params });
-  return data;
-}
-
 export async function listAllVicidialSalesAdmin(from?: string, to?: string, limit = 500): Promise<VicidialSaleDto[]> {
   const params: Record<string, string | number> = { limit };
   if (from) params.from = from;
