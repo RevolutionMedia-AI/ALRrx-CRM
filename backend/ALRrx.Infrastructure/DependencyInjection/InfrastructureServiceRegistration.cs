@@ -31,7 +31,7 @@ public static class InfrastructureServiceRegistration
         services.AddSingleton<IPeriodComparisonExcelService, PeriodComparisonExcelService>();
         services.AddSingleton<IGoogleSheetsImportService, GoogleSheetsImportService>();
         services.AddSingleton<IVicidialSalesRepository, VicidialSalesRepository>();
-        services.AddSingleton<IVicidialUserLookup, VicidialUserLookup>();
+        services.AddSingleton<IActiveAgentsRepository, ActiveAgentsRepository>();
 
         services.AddSingleton<IReportExportService, ExcelExportService>();
         services.AddSingleton<IReportExportService, CsvExportService>();

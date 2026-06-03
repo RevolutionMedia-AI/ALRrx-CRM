@@ -15,10 +15,10 @@ public sealed class SubmitVicidialSaleUseCase
         _logger = logger;
     }
 
-    public async Task<int> ExecuteAsync(VicidialSaleClientRequest request, VicidialFormIdentity identity, CancellationToken ct = default)
+    public async Task<int> ExecuteAsync(VicidialSaleRequest request, CancellationToken ct = default)
     {
-        if (identity is null || string.IsNullOrWhiteSpace(identity.User) || string.IsNullOrWhiteSpace(identity.Name))
-            throw new UnauthorizedAccessException("Invalid identity");
+        if (string.IsNullOrWhiteSpace(request.SalesRep))
+            throw new ArgumentException("SalesRep is required");
         if (string.IsNullOrWhiteSpace(request.ClientName))
             throw new ArgumentException("ClientName is required");
         if (string.IsNullOrWhiteSpace(request.ClientEmail))
@@ -32,19 +32,8 @@ public sealed class SubmitVicidialSaleUseCase
 
         var bundleDisplayName = bundleType.ToDisplayName();
 
-        var saleRequest = new VicidialSaleRequest
-        {
-            SalesRep = identity.Name,
-            SaleDate = request.SaleDate,
-            ClientPhone = request.ClientPhone,
-            ClientName = request.ClientName,
-            ClientEmail = request.ClientEmail,
-            Bundle = request.Bundle,
-            Amount = request.Amount,
-        };
-
-        var newId = await _repo.InsertAsync(saleRequest, bundleDisplayName, ct);
-        _logger.LogInformation("Vicidial sale #{Id} submitted: user={User}, rep={Rep}, bundle={Bundle}, ${Amount}", newId, identity.User, identity.Name, bundleDisplayName, request.Amount);
+        var newId = await _repo.InsertAsync(request, bundleDisplayName, ct);
+        _logger.LogInformation("Vicidial sale #{Id} submitted: rep={Rep}, bundle={Bundle}, ${Amount}", newId, request.SalesRep, bundleDisplayName, request.Amount);
         return newId;
     }
 }

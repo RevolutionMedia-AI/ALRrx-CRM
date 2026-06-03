@@ -16,26 +16,20 @@ public sealed class GetVicidialSalesUseCase
     }
 
     public async Task<List<VicidialSaleDto>> ExecuteAsync(
-        VicidialFormIdentity identity,
+        string? salesRep,
         DateTime? from,
         DateTime? to,
         int limit = 50,
         CancellationToken ct = default)
     {
-        if (identity is null || string.IsNullOrWhiteSpace(identity.Name))
-            throw new UnauthorizedAccessException("Invalid identity");
+        if (salesRep != null && string.IsNullOrWhiteSpace(salesRep))
+            throw new ArgumentException("SalesRep cannot be empty");
 
         var clamped = Math.Clamp(limit, 1, 1000);
-        return await _repo.GetBySalesRepAsync(identity.Name.Trim(), from, to, clamped, ct);
-    }
 
-    public async Task<List<VicidialSaleDto>> ExecuteAllAsync(
-        DateTime? from,
-        DateTime? to,
-        int limit = 500,
-        CancellationToken ct = default)
-    {
-        var clamped = Math.Clamp(limit, 1, 1000);
-        return await _repo.GetAllAsync(from, to, clamped, ct);
+        if (string.IsNullOrWhiteSpace(salesRep))
+            return await _repo.GetAllAsync(from, to, clamped, ct);
+
+        return await _repo.GetBySalesRepAsync(salesRep.Trim(), from, to, clamped, ct);
     }
 }

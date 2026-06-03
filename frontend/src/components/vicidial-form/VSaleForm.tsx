@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { submitVicidialSale } from '../../services/vicidialFormApi';
-import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest, type VicidialFormIdentity } from '../../types';
+import { submitVicidialSale, getActiveAltrxAgents } from '../../services/vicidialFormApi';
+import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest, type ActiveAltrxAgentDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
-interface VSaleFormProps {
-  identity: VicidialFormIdentity;
-}
+const SALES_REP_STORAGE_KEY = 'vicidial_form_sales_rep';
 
 function getTodayLocalDateTime(): string {
   const d = new Date();
@@ -13,7 +11,11 @@ function getTodayLocalDateTime(): string {
   return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
-export default function VSaleForm({ identity }: VSaleFormProps) {
+export default function VSaleForm() {
+  const [agents, setAgents] = useState<ActiveAltrxAgentDto[]>([]);
+  const [loadingAgents, setLoadingAgents] = useState(true);
+  const [agentsError, setAgentsError] = useState<string | null>(null);
+  const [salesRep, setSalesRep] = useState<string>(() => sessionStorage.getItem(SALES_REP_STORAGE_KEY) ?? '');
   const [saleDate, setSaleDate] = useState(getTodayLocalDateTime());
   const [clientPhone, setClientPhone] = useState('');
   const [clientName, setClientName] = useState('');
@@ -25,8 +27,32 @@ export default function VSaleForm({ identity }: VSaleFormProps) {
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    setError(null);
-  }, [identity.user]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await getActiveAltrxAgents();
+        if (cancelled) return;
+        setAgents(list);
+        if (list.length === 0) {
+          setAgentsError('No active ALTRX agents found');
+        }
+      } catch (err: unknown) {
+        if (cancelled) return;
+        setAgentsError(extractErrorMessage(err, 'Could not load agents'));
+      } finally {
+        if (!cancelled) setLoadingAgents(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (salesRep) {
+      sessionStorage.setItem(SALES_REP_STORAGE_KEY, salesRep);
+    }
+  }, [salesRep]);
 
   const reset = () => {
     setClientPhone('');
@@ -42,6 +68,7 @@ export default function VSaleForm({ identity }: VSaleFormProps) {
     setError(null);
     setSuccess(null);
 
+    if (!salesRep.trim()) return setError('Please select your user');
     if (!clientName.trim()) return setError('Client name is required');
     if (!clientPhone.trim()) return setError('Client phone is required');
     if (!clientEmail.trim()) return setError('Client email is required');
@@ -50,10 +77,11 @@ export default function VSaleForm({ identity }: VSaleFormProps) {
     if (!amount || isNaN(amountNum) || amountNum <= 0) return setError('Amount must be greater than 0');
 
     const payload: VicidialSaleRequest = {
+      salesRep: salesRep.trim(),
       saleDate: new Date(saleDate).toISOString(),
       clientPhone: clientPhone.trim(),
       clientName: clientName.trim(),
-      clientEmail: clientEmail.trim().toLowerCase(),
+      clientEmail: clientEmail.trim(),
       bundle,
       amount: amountNum,
     };
@@ -87,11 +115,29 @@ export default function VSaleForm({ identity }: VSaleFormProps) {
           </legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Your user" required>
-              <div className="flex items-center gap-2 h-[38px] w-full px-3 border border-whisper-border dark:border-gray-700 rounded-lg bg-surface-container-low dark:bg-gray-800 text-primary dark:text-gray-100">
-                <span className="material-symbols-outlined text-[18px] text-emerald-signal">verified_user</span>
-                <span className="font-medium text-sm">{identity.name}</span>
-                <span className="text-[11px] text-muted-slate font-metadata-mono">({identity.user})</span>
-              </div>
+              {loadingAgents ? (
+                <div className="w-full h-[38px] px-3 border border-whisper-border dark:border-gray-700 rounded-lg bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-400 text-sm flex items-center">
+                  <span className="material-symbols-outlined text-[18px] mr-2 animate-spin">progress_activity</span>
+                  Loading agents…
+                </div>
+              ) : (
+                <select
+                  value={salesRep}
+                  onChange={(e) => setSalesRep(e.target.value)}
+                  disabled={!!agentsError}
+                  className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none disabled:opacity-50"
+                >
+                  <option value="">Select your user</option>
+                  {agents.map((a) => (
+                    <option key={a.user} value={a.fullName}>
+                      {a.fullName} ({a.user})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {agentsError && (
+                <p className="mt-1 text-xs text-deep-rose">{agentsError}</p>
+              )}
             </Field>
             <Field label="Sale Date" required>
               <input
@@ -180,7 +226,7 @@ export default function VSaleForm({ identity }: VSaleFormProps) {
         <div className="flex justify-end pt-2">
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || loadingAgents || !!agentsError || !salesRep}
             className="bg-emerald-signal hover:bg-emerald-signal/90 text-white font-medium px-6 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
           >
             {submitting ? (

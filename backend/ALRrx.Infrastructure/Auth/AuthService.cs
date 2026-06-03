@@ -70,68 +70,6 @@ public sealed class AuthService : IAuthService
         }
     }
 
-    public string GenerateVicidialFormToken(string user, string name, TimeSpan lifetime)
-    {
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? "super-secret-key-alrrx-2026-min-32-chars!"));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var claims = new[]
-        {
-            new Claim("vicidial_user", user),
-            new Claim("name", name),
-            new Claim("purpose", "vicidial-form"),
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"] ?? "ALRrx",
-            audience: _config["Jwt:Audience"] ?? "ALRrx",
-            claims: claims,
-            expires: DateTime.UtcNow.Add(lifetime),
-            signingCredentials: creds);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    public Dictionary<string, string>? ValidateVicidialFormToken(string token)
-    {
-        try
-        {
-            var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? "super-secret-key-alrrx-2026-min-32-chars!"));
-
-            var handler = new JwtSecurityTokenHandler();
-            var result = handler.ValidateToken(token, new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = key,
-                ValidateIssuer = true,
-                ValidIssuer = _config["Jwt:Issuer"] ?? "ALRrx",
-                ValidateAudience = true,
-                ValidAudience = _config["Jwt:Audience"] ?? "ALRrx",
-                ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
-            }, out _);
-
-            var purpose = result.FindFirst("purpose")?.Value;
-            if (purpose != "vicidial-form") return null;
-
-            var user = result.FindFirst("vicidial_user")?.Value;
-            var name = result.FindFirst("name")?.Value;
-            if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(name)) return null;
-
-            return new Dictionary<string, string>
-            {
-                ["user"] = user,
-                ["name"] = name,
-            };
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     public string HashPassword(string password) => BCrypt.Net.BCrypt.HashPassword(password);
 
     public bool VerifyPassword(string password, string hash) => BCrypt.Net.BCrypt.Verify(password, hash);
