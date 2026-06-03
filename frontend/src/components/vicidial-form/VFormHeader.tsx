@@ -1,10 +1,13 @@
+import { useNavigate } from 'react-router-dom';
 import RevolutionLogo from '../../images/RevolutionLogo.png';
 
 interface VicidialFormHeaderProps {
-  onClose: () => void;
+  showHomeButton: boolean;
 }
 
-export default function VicidialFormHeader({ onClose }: VicidialFormHeaderProps) {
+export default function VicidialFormHeader({ showHomeButton }: VicidialFormHeaderProps) {
+  const navigate = useNavigate();
+
   return (
     <header className="sticky top-0 z-10 bg-pure-surface dark:bg-gray-900 border-b border-whisper-border dark:border-gray-800">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex justify-between items-center">
@@ -15,14 +18,16 @@ export default function VicidialFormHeader({ onClose }: VicidialFormHeaderProps)
             <p className="text-[11px] text-secondary dark:text-gray-400 leading-tight">Register a sale from Vicidial</p>
           </div>
         </div>
-        <button
-          onClick={onClose}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary dark:text-gray-300 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors"
-          title="Close tab"
-        >
-          <span className="material-symbols-outlined text-[20px]">close</span>
-          <span className="hidden sm:inline">Close</span>
-        </button>
+        {showHomeButton && (
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm text-secondary dark:text-gray-300 hover:bg-surface-container-low dark:hover:bg-gray-800 hover:text-primary transition-colors"
+            title="Go to dashboard"
+          >
+            <span className="material-symbols-outlined text-[20px]">home</span>
+            <span className="hidden sm:inline">Home</span>
+          </button>
+        )}
       </div>
     </header>
   );
