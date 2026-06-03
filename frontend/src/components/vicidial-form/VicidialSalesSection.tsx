@@ -9,6 +9,7 @@ interface VicidialSalesSectionProps {
   period: Period;
   customStart: string;
   customEnd: string;
+  refreshKey?: number;
 }
 
 function getPeriodRange(period: Period, customStart: string, customEnd: string): { from: string; to: string } {
@@ -50,11 +51,12 @@ function formatDate(iso: string): string {
   }
 }
 
-export default function VicidialSalesSection({ period, customStart, customEnd }: VicidialSalesSectionProps) {
+export default function VicidialSalesSection({ period, customStart, customEnd, refreshKey = 0 }: VicidialSalesSectionProps) {
   const [sales, setSales] = useState<VicidialSaleDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [repFilter, setRepFilter] = useState<string>('all');
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   const range = useMemo(() => getPeriodRange(period, customStart, customEnd), [period, customStart, customEnd]);
 
@@ -76,7 +78,7 @@ export default function VicidialSalesSection({ period, customStart, customEnd }:
     };
     load();
     return () => { cancelled = true; };
-  }, [range.from, range.to]);
+  }, [range.from, range.to, refreshKey, refreshNonce]);
 
   const totalCount = sales.length;
   const totalAmount = sales.reduce((sum, s) => sum + Number(s.amount), 0);
@@ -106,21 +108,32 @@ export default function VicidialSalesSection({ period, customStart, customEnd }:
           <h3 className="font-bold text-lg text-primary dark:text-gray-100">Vicidial Form Sales</h3>
           <p className="text-xs text-secondary dark:text-gray-400 mt-0.5">Sales submitted by agents via the Vicidial standalone form</p>
         </div>
-        {reps.length > 0 && (
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-secondary dark:text-gray-400">Agent:</label>
-            <select
-              value={repFilter}
-              onChange={(e) => setRepFilter(e.target.value)}
-              className="text-xs px-2 py-1 border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
-            >
-              <option value="all">All agents ({reps.length})</option>
-              {reps.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {reps.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-secondary dark:text-gray-400">Agent:</label>
+              <select
+                value={repFilter}
+                onChange={(e) => setRepFilter(e.target.value)}
+                className="text-xs px-2 py-1 border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
+              >
+                <option value="all">All agents ({reps.length})</option>
+                {reps.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            onClick={() => setRefreshNonce((n) => n + 1)}
+            disabled={loading}
+            className="text-xs px-2.5 py-1 border border-whisper-border dark:border-gray-700 rounded text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-gray-100 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh sales"
+          >
+            <span className={`material-symbols-outlined text-sm ${loading ? 'animate-spin' : ''}`}>sync</span>
+            <span>Refresh</span>
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-whisper-border dark:bg-gray-700 border-b border-whisper-border dark:border-gray-700">

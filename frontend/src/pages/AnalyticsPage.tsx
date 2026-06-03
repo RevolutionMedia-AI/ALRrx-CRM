@@ -131,6 +131,8 @@ export default function AnalyticsPage() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
   const [showPeriodComparison, setShowPeriodComparison] = useState(false);
+  const [vicidialRefreshKey, setVicidialRefreshKey] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const filter = (p: Period): TimeFilterDto => {
     if (p === 'Custom') return { period: PERIOD_API[p], customStart: `${customStart}T00:00:00`, customEnd: `${customEnd}T23:59:59` };
@@ -274,6 +276,23 @@ export default function AnalyticsPage() {
               </button>
             ))}
           </div>
+          <button
+            onClick={async () => {
+              setRefreshing(true);
+              setVicidialRefreshKey((k) => k + 1);
+              try {
+                await fetchAnalytics(period);
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+            disabled={refreshing || loading}
+            className="bg-surface-container-low border border-whisper-border text-primary px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh all analytics data"
+          >
+            <span className={`material-symbols-outlined text-sm ${refreshing ? 'animate-spin' : ''}`}>sync</span>
+            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
           {period === 'Custom' && (
             <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1">
               <input
@@ -525,7 +544,7 @@ export default function AnalyticsPage() {
         )}
       </section>
 
-      <VicidialSalesSection period={period} customStart={customStart} customEnd={customEnd} />
+      <VicidialSalesSection period={period} customStart={customStart} customEnd={customEnd} refreshKey={vicidialRefreshKey} />
 
       <div className="flex justify-end gap-3" style={animateIn({ animationDelay: '480ms' })}>
         <button
