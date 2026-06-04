@@ -636,7 +636,7 @@ export default function AnalyticsPage() {
         {/* RIGHT SIDEBAR (4/12) */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           {/* Contact vs No Contact */}
-          <section className="bg-pure-surface border-2 border-black dark:border-black rounded-xl p-6 shadow-diffused">
+          <section className="bg-pure-surface border border-whisper-border rounded-xl p-6 shadow-diffused">
             <h3 className="font-bold text-lg text-primary mb-5 flex items-center gap-2">
               <span className="material-symbols-outlined text-electric-blue">pie_chart</span>
               Contact vs No Contact
@@ -645,27 +645,29 @@ export default function AnalyticsPage() {
               <div className="h-64 bg-surface-container rounded animate-pulse" />
             ) : contactAreaData.length > 0 ? (
               <div className="flex flex-col gap-4">
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: 'Contact', value: contactAreaData[0].Contact, color: '#10b981' },
-                        { name: 'No Contact', value: contactAreaData[0]['No Contact'], color: '#ef4444' },
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={90}
-                      paddingAngle={2}
-                      dataKey="value"
-                      isAnimationActive={false}
-                    >
-                      <Cell fill="#10b981" />
-                      <Cell fill="#ef4444" />
-                    </Pie>
-                    <Tooltip content={<DarkTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="border-2 border-black dark:border-black rounded-lg p-2">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Contact', value: contactAreaData[0].Contact, color: '#10b981' },
+                          { name: 'No Contact', value: contactAreaData[0]['No Contact'], color: '#ef4444' },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        dataKey="value"
+                        isAnimationActive={false}
+                      >
+                        <Cell fill="#10b981" />
+                        <Cell fill="#ef4444" />
+                      </Pie>
+                      <Tooltip content={<DarkTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
