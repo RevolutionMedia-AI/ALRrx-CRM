@@ -1,6 +1,12 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, type UserInfo } from '../services/authApi';
 
+// ─── DEV BYPASS ────────────────────────────────────────────────────────────────
+// Set VITE_DEV_BYPASS=true in frontend/.env.local to skip login locally.
+// The backend emits a real JWT via POST /api/auth/dev-login (Development only).
+const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS === 'true';
+// ───────────────────────────────────────────────────────────────────────────────
+
 interface AuthContextType {
   user: UserInfo | null;
   token: string | null;
@@ -20,6 +26,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // ── Dev bypass: auto-login without credentials ──
+    if (DEV_BYPASS) {
+      fetch('/api/auth/dev-login', { method: 'POST' })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data?.token) {
+            localStorage.setItem('alrrx_token', data.token);
+            setAuthToken(data.token);
+            setToken(data.token);
+            setUser(data.user);
+          }
+        })
+        .catch(() => { /* backend no disponible, queda sin sesión */ })
+        .finally(() => setLoading(false));
+      return;
+    }
+    // ── Flujo normal ──
     const stored = localStorage.getItem('alrrx_token');
     if (stored) {
       setAuthToken(stored);
