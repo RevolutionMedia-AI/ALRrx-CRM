@@ -14,6 +14,7 @@ public sealed class VicidialFormController : ControllerBase
     private readonly SubmitVicidialSaleUseCase _submit;
     private readonly GetVicidialSalesUseCase _list;
     private readonly UpdateVicidialSaleUseCase _update;
+    private readonly DeleteVicidialSaleUseCase _delete;
     private readonly GetActiveAltrxAgentsUseCase _activeAgents;
     private readonly ILogger<VicidialFormController> _logger;
 
@@ -21,12 +22,14 @@ public sealed class VicidialFormController : ControllerBase
         SubmitVicidialSaleUseCase submit,
         GetVicidialSalesUseCase list,
         UpdateVicidialSaleUseCase update,
+        DeleteVicidialSaleUseCase delete,
         GetActiveAltrxAgentsUseCase activeAgents,
         ILogger<VicidialFormController> logger)
     {
         _submit = submit;
         _list = list;
         _update = update;
+        _delete = delete;
         _activeAgents = activeAgents;
         _logger = logger;
     }
@@ -107,6 +110,32 @@ public sealed class VicidialFormController : ControllerBase
         {
             _logger.LogWarning("Vicidial sale #{Id} update denied: {Reason}", id, ex.Message);
             return StatusCode(403, new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpDelete("sale/{id:int}")]
+    public async Task<ActionResult> DeleteSale(
+        int id,
+        [FromQuery] string editorEmail = "",
+        CancellationToken ct = default)
+    {
+        try
+        {
+            await _delete.ExecuteAsync(id, editorEmail, ct);
+            return Ok(new { id, message = "Sale deleted successfully" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Vicidial sale #{Id} delete denied: {Reason}", id, ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
         }
         catch (ArgumentException ex)
         {

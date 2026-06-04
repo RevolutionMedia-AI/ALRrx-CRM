@@ -263,4 +263,15 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         _logger.LogInformation("Vicidial sale #{Id} updated by {Email}: fields={Fields}", id, request.EditorEmail, sets.Count);
         return affected > 0;
     }
+
+    public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
+    {
+        const string sql = "DELETE FROM vicidial_form_sales WHERE Id = @Id";
+        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.Add("@Id", MySqlDbType.Int32).Value = id;
+        var affected = await cmd.ExecuteNonQueryAsync(ct);
+        _logger.LogInformation("Vicidial sale #{Id} deleted, rows affected: {Rows}", id, affected);
+        return affected > 0;
+    }
 }

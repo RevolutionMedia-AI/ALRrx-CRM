@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { listAllVicidialSales, updateVicidialSale, type VicidialSaleUpdatePayload } from '../../services/vicidialFormApi';
+import { listAllVicidialSales, updateVicidialSale, deleteVicidialSale, type VicidialSaleUpdatePayload } from '../../services/vicidialFormApi';
 import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
-type Period = 'Today' | 'Week' | 'Month' | 'All' | 'Custom';
 type PagePeriod = 'Today' | 'Week' | 'Month' | 'Custom';
 
 interface VicidialSalesSectionProps {
@@ -63,7 +62,8 @@ function addDays(d: Date, n: number): Date {
   return new Date(d.getTime() + n * 24 * 60 * 60 * 1000);
 }
 
-function getPeriodRange(period: Period, customStart: string, customEnd: string): { from: string; to: string } {
+function getEffectivePeriod(period: PagePeriod | undefined, customStart: string | undefined, customEnd: string | undefined): { from: string; to: string } {
+  if (!period) return { from: '', to: '' };
   const now = new Date();
   const tp = getTijuanaDateParts(now);
   const todayLocalMidnight = new Date(tp.year, tp.month - 1, tp.day, 0, 0, 0);
@@ -82,12 +82,9 @@ function getPeriodRange(period: Period, customStart: string, customEnd: string):
     const nextMonthStart = new Date(tp.year, tp.month, 1, 0, 0, 0);
     return { from: formatTijuanaDateTime(startLocalMidnight), to: formatTijuanaDateTime(nextMonthStart) };
   }
-  if (period === 'All') {
-    return { from: '', to: '' };
-  }
   return {
-    from: `${customStart} 00:00:00`,
-    to: `${customEnd} 23:59:59`,
+    from: `${customStart ?? ''} 00:00:00`,
+    to: `${customEnd ?? ''} 23:59:59`,
   };
 }
 
@@ -117,44 +114,91 @@ function toLocalDateTimeInputValue(iso: string): string {
   }
 }
 
+function ConfirmDeleteModal({
+  sale,
+  onConfirm,
+  onCancel,
+  saving,
+}: {
+  sale: VicidialSaleDto;
+  onConfirm: () => void;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onCancel}>
+      <div
+        className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-2xl p-6 w-full max-w-md mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-deep-rose/10 flex items-center justify-center">
+            <span className="material-symbols-outlined text-deep-rose text-xl">delete_forever</span>
+          </div>
+          <div>
+            <h3 className="font-bold text-base text-primary dark:text-gray-100">Delete Sale</h3>
+            <p className="text-xs text-secondary dark:text-gray-400">This action cannot be undone</p>
+          </div>
+        </div>
+
+        <div className="bg-surface-container-low dark:bg-gray-800 rounded-lg p-3 mb-4 text-sm">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+            <span className="text-secondary">Client</span>
+            <span className="text-primary font-medium text-right">{sale.clientName}</span>
+            <span className="text-secondary">Bundle</span>
+            <span className="text-primary font-medium text-right">{sale.bundle}</span>
+            <span className="text-secondary">Amount</span>
+            <span className="text-emerald-signal font-bold text-right">{formatCurrency(sale.amount)}</span>
+            <span className="text-secondary">Agent</span>
+            <span className="text-primary font-medium text-right">{sale.salesRep}</span>
+          </div>
+        </div>
+
+        <p className="text-sm text-primary dark:text-gray-200 mb-5">
+          Are you sure you want to delete this sale? This action is permanent.
+        </p>
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="px-4 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg text-secondary hover:text-primary disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={saving}
+            className="px-4 py-2 text-sm bg-deep-rose text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5 transition-opacity"
+          >
+            {saving && <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>}
+            {saving ? 'Deleting...' : 'Yes, Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageCustomStart, pageCustomEnd }: VicidialSalesSectionProps) {
   const { user } = useAuth();
   const canEdit = !!user && ALLOWED_EDIT_EMAILS.has(user.email);
 
-  const [period, setPeriod] = useState<Period>('All');
-  const [customStart, setCustomStart] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  });
-  const [customEnd, setCustomEnd] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  });
   const [sales, setSales] = useState<VicidialSaleDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [repFilter, setRepFilter] = useState<string>('all');
   const [refreshNonce, setRefreshNonce] = useState(0);
-  const [followPage, setFollowPage] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<VicidialSaleUpdatePayload>({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!followPage || !pagePeriod) return;
-    setPeriod(pagePeriod);
-  }, [followPage, pagePeriod]);
-
-  useEffect(() => {
-    if (followPage && pageCustomStart) setCustomStart(pageCustomStart);
-  }, [followPage, pageCustomStart]);
-
-  useEffect(() => {
-    if (followPage && pageCustomEnd) setCustomEnd(pageCustomEnd);
-  }, [followPage, pageCustomEnd]);
-
-  const range = useMemo(() => getPeriodRange(period, customStart, customEnd), [period, customStart, customEnd]);
+  const range = useMemo(() => getEffectivePeriod(pagePeriod, pageCustomStart, pageCustomEnd), [pagePeriod, pageCustomStart, pageCustomEnd]);
 
   const loadSales = async (cancelled: { value: boolean }) => {
     setLoading(true);
@@ -226,6 +270,32 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
     }
   };
 
+  const confirmDelete = (sale: VicidialSaleDto) => {
+    setDeletingId(sale.id);
+    setDeleteError(null);
+  };
+
+  const cancelDelete = () => {
+    setDeletingId(null);
+    setDeleteError(null);
+  };
+
+  const executeDelete = async () => {
+    if (!deletingId || !user) return;
+    setSavingEdit(true);
+    setDeleteError(null);
+    try {
+      await deleteVicidialSale(deletingId, user.email);
+      cancelDelete();
+      setRefreshNonce((n) => n + 1);
+    } catch (err: unknown) {
+      setDeleteError(extractErrorMessage(err, 'Could not delete the sale'));
+      setSavingEdit(false);
+    }
+  };
+
+  const saleToDelete = deletingId !== null ? sales.find((s) => s.id === deletingId) ?? null : null;
+
   return (
     <section
       className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg shadow-card"
@@ -235,107 +305,42 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
         animation: 'fadeSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
       }}
     >
-      <header className="p-6 border-b border-whisper-border dark:border-gray-700 flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <h3 className="font-bold text-lg text-primary dark:text-gray-100">Vicidial Form Sales</h3>
-            <p className="text-xs text-secondary dark:text-gray-400 mt-0.5">
-              All sales submitted via the standalone form
-              {canEdit && <span className="ml-2 text-emerald-signal font-semibold">• You can edit rows</span>}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {reps.length > 0 && (
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-secondary dark:text-gray-400">Agent:</label>
-                <select
-                  value={repFilter}
-                  onChange={(e) => setRepFilter(e.target.value)}
-                  className="text-xs px-2 py-1 border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
-                >
-                  <option value="all">All agents ({reps.length})</option>
-                  {reps.map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <button
-              onClick={() => setRefreshNonce((n) => n + 1)}
-              disabled={loading}
-              className="text-xs px-2.5 py-1 border border-whisper-border dark:border-gray-700 rounded text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-gray-100 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Refresh sales"
-            >
-              <span className={`material-symbols-outlined text-sm ${loading ? 'animate-spin' : ''}`}>sync</span>
-              <span>Refresh</span>
-            </button>
-          </div>
+      <header className="p-6 border-b border-whisper-border dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <h3 className="font-bold text-lg text-primary dark:text-gray-100">
+            Vicidial Form Sales
+            {pagePeriod && <span className="ml-2 text-sm font-normal text-secondary dark:text-gray-400">— {pagePeriod}</span>}
+          </h3>
+          <p className="text-xs text-secondary dark:text-gray-400 mt-0.5">
+            {range.from ? `From ${range.from} to ${range.to}` : 'All sales'}
+            {canEdit && <span className="ml-2 text-emerald-signal font-semibold">• You can edit rows</span>}
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`text-[10px] font-metadata-mono uppercase tracking-wider px-2 py-0.5 rounded ${
-              followPage
-                ? 'bg-electric-blue/10 text-electric-blue'
-                : 'bg-amber-warmth/15 text-amber-warmth'
-            }`}
-            title={followPage ? `Mirroring page period: ${pagePeriod ?? '—'}` : 'Independent of page period'}
-          >
-            {followPage ? `Following page: ${pagePeriod ?? '—'}` : 'Independent'}
-          </span>
-          <button
-            onClick={() => {
-              if (followPage) {
-                setFollowPage(false);
-                return;
-              }
-              if (pagePeriod) setPeriod(pagePeriod);
-              if (pageCustomStart) setCustomStart(pageCustomStart);
-              if (pageCustomEnd) setCustomEnd(pageCustomEnd);
-              setFollowPage(true);
-            }}
-            disabled={!pagePeriod}
-            className={`text-[10px] font-metadata-mono uppercase tracking-wider px-2.5 py-1 rounded border transition-colors flex items-center gap-1 ${
-              followPage
-                ? 'border-electric-blue/40 bg-electric-blue/5 text-electric-blue'
-                : 'border-whisper-border text-secondary hover:text-primary hover:border-electric-blue/40'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-            title={followPage ? 'Stop mirroring the page period' : 'Mirror the page period selector'}
-          >
-            <span className="material-symbols-outlined text-[12px]">{followPage ? 'link_off' : 'link'}</span>
-            {followPage ? 'Unlink from page' : 'Follow page period'}
-          </button>
-          <div className="bg-surface-container-low border border-whisper-border rounded flex text-xs overflow-hidden">
-            {(['Today', 'Week', 'Month', 'All', 'Custom'] as Period[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => { setFollowPage(false); setPeriod(p); }}
-                className={`px-3 py-1 border-r border-whisper-border last:border-r-0 transition-colors ${
-                  period === p
-                    ? 'bg-pure-surface text-primary font-medium'
-                    : 'text-secondary hover:bg-surface-container'
-                }`}
+        <div className="flex items-center gap-2 flex-wrap">
+          {reps.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-secondary dark:text-gray-400">Agent:</label>
+              <select
+                value={repFilter}
+                onChange={(e) => setRepFilter(e.target.value)}
+                className="text-xs px-2 py-1 border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
               >
-                {p}
-              </button>
-            ))}
-          </div>
-          {period === 'Custom' && (
-            <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1">
-              <input
-                type="date"
-                value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
-              />
-              <span className="text-muted-slate text-xs">to</span>
-              <input
-                type="date"
-                value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
-              />
+                <option value="all">All agents ({reps.length})</option>
+                {reps.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
             </div>
           )}
+          <button
+            onClick={() => setRefreshNonce((n) => n + 1)}
+            disabled={loading}
+            className="text-xs px-2.5 py-1 border border-whisper-border dark:border-gray-700 rounded text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-gray-100 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Refresh sales"
+          >
+            <span className={`material-symbols-outlined text-sm ${loading ? 'animate-spin' : ''}`}>sync</span>
+            <span>Refresh</span>
+          </button>
         </div>
       </header>
 
@@ -344,6 +349,15 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
         <KpiTile label="Total Amount" value={loading ? '--' : formatCurrency(totalAmount)} valueColor="var(--card-value-emerald)" />
         <KpiTile label="Unique Agents" value={loading ? '--' : uniqueAgents.toString()} valueColor="var(--card-value-dark)" />
       </div>
+
+      {deleteError && (
+        <div className="px-6 pt-4">
+          <div className="bg-deep-rose/10 border border-deep-rose/20 rounded-lg px-3 py-2 text-xs text-deep-rose flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">error</span>
+            {deleteError}
+          </div>
+        </div>
+      )}
 
       {error ? (
         <div className="p-6 text-deep-rose text-sm">{error}</div>
@@ -354,7 +368,7 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
       ) : filteredSales.length === 0 ? (
         <div className="p-12 text-sm text-muted-slate text-center">
           {repFilter === 'all'
-            ? (period === 'All' ? 'No Vicidial sales recorded yet' : 'No Vicidial sales recorded for this period')
+            ? (pagePeriod ? 'No Vicidial sales recorded for this period' : 'No Vicidial sales recorded yet')
             : `No sales by "${repFilter}" in this period`}
         </div>
       ) : (
@@ -476,14 +490,24 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
                             </div>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => startEdit(s)}
-                            className="px-2 py-1 text-[11px] border border-whisper-border dark:border-gray-700 rounded text-secondary hover:text-electric-blue hover:border-electric-blue/40 flex items-center gap-1 ml-auto"
-                            title="Edit sale"
-                          >
-                            <span className="material-symbols-outlined text-[12px]">edit</span>
-                            Edit
-                          </button>
+                          <div className="flex gap-1 justify-end">
+                            <button
+                              onClick={() => startEdit(s)}
+                              className="px-2 py-1 text-[11px] border border-whisper-border dark:border-gray-700 rounded text-secondary hover:text-electric-blue hover:border-electric-blue/40 flex items-center gap-1"
+                              title="Edit sale"
+                            >
+                              <span className="material-symbols-outlined text-[12px]">edit</span>
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => confirmDelete(s)}
+                              className="px-2 py-1 text-[11px] border border-whisper-border dark:border-gray-700 rounded text-secondary hover:text-deep-rose hover:border-deep-rose/40 flex items-center gap-1"
+                              title="Delete sale"
+                            >
+                              <span className="material-symbols-outlined text-[12px]">delete</span>
+                              Delete
+                            </button>
+                          </div>
                         )}
                       </td>
                     )}
@@ -493,6 +517,15 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
             </tbody>
           </table>
         </div>
+      )}
+
+      {saleToDelete && (
+        <ConfirmDeleteModal
+          sale={saleToDelete}
+          onConfirm={executeDelete}
+          onCancel={cancelDelete}
+          saving={savingEdit}
+        />
       )}
     </section>
   );

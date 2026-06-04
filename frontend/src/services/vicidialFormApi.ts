@@ -42,6 +42,13 @@ export async function getVicidialSalesSummary(from?: string, to?: string, limit 
   return data;
 }
 
+export async function deleteVicidialSale(id: number, editorEmail: string): Promise<{ id: number; message: string }> {
+  const { data } = await vicidialClient.delete<{ id: number; message: string }>(`/vicidial-form/sale/${id}`, {
+    params: { editorEmail },
+  });
+  return data;
+}
+
 export interface VicidialSaleUpdatePayload {
   editorEmail?: string;
   saleDate?: string;
