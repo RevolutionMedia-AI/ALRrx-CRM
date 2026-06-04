@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import RealTimePage from './pages/RealTimePage';
 import UsersPage from './pages/UsersPage';
+import VicidialFormPage from './pages/VicidialFormPage';
 import AppLayout from './components/Layout/AppLayout';
 import type { ReactNode } from 'react';
 
@@ -34,6 +35,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/form_sale" element={<VicidialFormPage />} />
       <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
       <Route path="/real-time" element={<ProtectedRoute><RealTimePage /></ProtectedRoute>} />

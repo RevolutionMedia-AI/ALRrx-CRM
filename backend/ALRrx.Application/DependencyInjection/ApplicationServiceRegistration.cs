@@ -19,6 +19,9 @@ public static class ApplicationServiceRegistration
         services.AddScoped<GetAvailableQueriesUseCase>();
         services.AddScoped<ExportDashboardUseCase>();
         services.AddScoped<PeriodComparisonUseCase>();
+        services.AddScoped<SubmitVicidialSaleUseCase>();
+        services.AddScoped<GetVicidialSalesUseCase>();
+        services.AddScoped<GetActiveAltrxAgentsUseCase>();
 
         return services;
     }

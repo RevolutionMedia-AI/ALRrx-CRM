@@ -30,6 +30,9 @@ public sealed class DashboardExcelService : IDashboardExcelService
         var contactSheet = package.Workbook.Worksheets.Add("Contact Summary");
         WriteContactSheet(contactSheet, data);
 
+        var googleSheet = package.Workbook.Worksheets.Add("Google Sheets Sales");
+        WriteGoogleSheetsSheet(googleSheet, data);
+
         return package.GetAsByteArray();
     }
 
@@ -188,5 +191,107 @@ public sealed class DashboardExcelService : IDashboardExcelService
         }
 
         ws.Cells.AutoFitColumns();
+    }
+
+    private static void WriteGoogleSheetsSheet(ExcelWorksheet ws, DashboardPdfData data)
+    {
+        var gs = data.GoogleSheets;
+
+        ws.Cells[1, 1].Value = "ALTRX — Google Sheets Sales Report";
+        ws.Cells[1, 1].Style.Font.Bold = true;
+        ws.Cells[1, 1].Style.Font.Size = 14;
+        ws.Cells[2, 1].Value = $"Period: {data.Period} | Generated: {data.GeneratedAt} UTC";
+        ws.Cells[2, 1].Style.Font.Italic = true;
+        ws.Cells[2, 1].Style.Font.Color.SetColor(System.Drawing.Color.Gray);
+
+        ws.Cells[4, 1].Value = "Summary";
+        ws.Cells[4, 1].Style.Font.Bold = true;
+        ws.Cells[4, 1].Style.Font.Size = 12;
+
+        ws.Cells[5, 1].Value = "Total Sales";
+        ws.Cells[5, 2].Value = gs.TotalSales;
+        ws.Cells[5, 2].Style.Numberformat.Format = "$#,##0.00";
+        ws.Cells[5, 2].Style.Font.Bold = true;
+        ws.Cells[5, 2].Style.Font.Color.SetColor(System.Drawing.Color.FromArgb(16, 185, 129));
+
+        ws.Cells[6, 1].Value = "Total Count";
+        ws.Cells[6, 2].Value = gs.TotalCount;
+        ws.Cells[6, 2].Style.Font.Bold = true;
+
+        if (gs.LastSale != null)
+        {
+            ws.Cells[7, 1].Value = "Last Sale";
+            ws.Cells[7, 2].Value = gs.LastSale.Amount;
+            ws.Cells[7, 2].Style.Numberformat.Format = "$#,##0.00";
+            ws.Cells[7, 2].Style.Font.Bold = true;
+            ws.Cells[7, 2].Style.Font.Color.SetColor(System.Drawing.Color.FromArgb(245, 158, 11));
+
+            ws.Cells[8, 1].Value = "Last Sale By";
+            ws.Cells[8, 2].Value = gs.LastSale.SellerName;
+
+            ws.Cells[9, 1].Value = "Last Sale Date";
+            ws.Cells[9, 2].Value = gs.LastSale.Timestamp;
+            ws.Cells[9, 2].Style.Numberformat.Format = "yyyy-mm-dd hh:mm:ss";
+        }
+
+        for (var r = 5; r <= 9; r++)
+            ws.Cells[r, 1].Style.Font.Bold = true;
+
+        var headerRow = 12;
+        ws.Cells[headerRow, 1].Value = "Timestamp";
+        ws.Cells[headerRow, 2].Value = "Seller";
+        ws.Cells[headerRow, 3].Value = "Sale Date";
+        ws.Cells[headerRow, 4].Value = "Customer Email";
+        ws.Cells[headerRow, 5].Value = "Package";
+        ws.Cells[headerRow, 6].Value = "Amount";
+
+        using (var range = ws.Cells[headerRow, 1, headerRow, 6])
+        {
+            range.Style.Font.Bold = true;
+            range.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+            range.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(16, 185, 129));
+            range.Style.Font.Color.SetColor(System.Drawing.Color.White);
+        }
+
+        for (var i = 0; i < gs.Sales.Count; i++)
+        {
+            var sale = gs.Sales[i];
+            var row = headerRow + 1 + i;
+            ws.Cells[row, 1].Value = sale.Timestamp;
+            ws.Cells[row, 1].Style.Numberformat.Format = "yyyy-mm-dd hh:mm:ss";
+            ws.Cells[row, 2].Value = sale.SellerName;
+            ws.Cells[row, 3].Value = sale.SaleDate;
+            ws.Cells[row, 3].Style.Numberformat.Format = "yyyy-mm-dd";
+            ws.Cells[row, 4].Value = sale.CustomerEmail;
+            ws.Cells[row, 5].Value = sale.Package;
+            ws.Cells[row, 6].Value = sale.Amount;
+            ws.Cells[row, 6].Style.Numberformat.Format = "$#,##0.00";
+            ws.Cells[row, 6].Style.Font.Bold = true;
+            ws.Cells[row, 6].Style.Font.Color.SetColor(System.Drawing.Color.FromArgb(16, 185, 129));
+        }
+
+        ws.Cells.AutoFitColumns();
+
+        if (gs.Sales.Count > 0)
+        {
+            var chart = ws.Drawings.AddChart("GoogleSheetsBar", eChartType.ColumnClustered);
+            chart.Title.Text = "Sales Amount by Seller";
+            chart.SetPosition(headerRow + 1, 0, 8, 0);
+            chart.SetSize(520, 320);
+
+            var dataStart = headerRow + 1;
+            var dataEnd = headerRow + gs.Sales.Count;
+            var sellerGroups = gs.Sales
+                .GroupBy(s => s.SellerName)
+                .Select(g => new { Seller = g.Key, Total = g.Sum(s => s.Amount) })
+                .OrderByDescending(x => x.Total)
+                .Take(15)
+                .ToList();
+
+            var sellerRange = ws.Cells[dataStart, 2, dataEnd, 2];
+            var amountRange = ws.Cells[dataStart, 6, dataEnd, 6];
+            var sellerChart = chart.Series.Add(amountRange, sellerRange);
+            sellerChart.HeaderAddress = ws.Cells[headerRow, 2];
+        }
     }
 }

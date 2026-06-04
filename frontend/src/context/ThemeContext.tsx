@@ -16,7 +16,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
+    if (window.location.pathname === '/login') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.toggle('dark', isDark);
+    }
     localStorage.setItem('alrrx-theme', isDark ? 'dark' : 'light');
   }, [isDark]);
 

@@ -17,27 +17,45 @@ public sealed class QueryExecutor : IQueryService
         {
             Id = "ventas_hoy",
             Name = "Sales Today",
-            Description = "Total sales count for the period",
+            Description = "Total sales count for the period (includes all SALE variants + archive tables)",
             Category = "Dashboard",
             SqlTemplate = """
                 SELECT COUNT(*) AS Sales_Today
                 FROM (
-                    SELECT vl.status, vl.call_date
+                    SELECT vl.lead_id
                     FROM vicidial_log vl
-                    JOIN vicidial_users vu ON vl.user = vu.user
-                    WHERE DATE(vl.call_date) BETWEEN @Start AND @End
-                    AND vl.status = 'SALE'
-                    AND vu.user_group = 'ALTRX'
+                    INNER JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE vu.user_group = 'ALTRX'
+                    AND (UPPER(vl.status) LIKE 'SALE%' OR UPPER(vl.status) = 'UPSELL' OR UPPER(vl.status) = 'XFER-SALE')
+                    AND DATE(vl.call_date) BETWEEN @Start AND @End
 
                     UNION ALL
 
-                    SELECT cl.status, cl.call_date
+                    SELECT cl.lead_id
                     FROM vicidial_closer_log cl
-                    JOIN vicidial_users vu ON cl.user = vu.user
-                    WHERE DATE(cl.call_date) BETWEEN @Start AND @End
-                    AND cl.status = 'SALE'
-                    AND vu.user_group = 'ALTRX'
-                ) calls
+                    INNER JOIN vicidial_users vu ON cl.user = vu.user
+                    WHERE vu.user_group = 'ALTRX'
+                    AND (UPPER(cl.status) LIKE 'SALE%' OR UPPER(cl.status) = 'UPSELL' OR UPPER(cl.status) = 'XFER-SALE')
+                    AND DATE(cl.call_date) BETWEEN @Start AND @End
+
+                    UNION ALL
+
+                    SELECT vla.lead_id
+                    FROM vicidial_log_archive vla
+                    INNER JOIN vicidial_users vu ON vla.user = vu.user
+                    WHERE vu.user_group = 'ALTRX'
+                    AND (UPPER(vla.status) LIKE 'SALE%' OR UPPER(vla.status) = 'UPSELL' OR UPPER(vla.status) = 'XFER-SALE')
+                    AND DATE(vla.call_date) BETWEEN @Start AND @End
+
+                    UNION ALL
+
+                    SELECT cla.lead_id
+                    FROM vicidial_closer_log_archive cla
+                    INNER JOIN vicidial_users vu ON cla.user = vu.user
+                    WHERE vu.user_group = 'ALTRX'
+                    AND (UPPER(cla.status) LIKE 'SALE%' OR UPPER(cla.status) = 'UPSELL' OR UPPER(cla.status) = 'XFER-SALE')
+                    AND DATE(cla.call_date) BETWEEN @Start AND @End
+                ) AS todas_las_ventas
                 """
         },
         ["agent_performance"] = new QueryDefinition
@@ -48,25 +66,53 @@ public sealed class QueryExecutor : IQueryService
             Category = "Agents",
             SqlTemplate = """
                 SELECT
-                    vl.user AS `User`,
-                    vu.full_name AS Name,
-                    COUNT(*) AS Calls_Handled,
-                    SUM(CASE WHEN vl.status = 'SALE' THEN 1 ELSE 0 END) AS Sales_Made,
-                    SUM(CASE
-                        WHEN vl.status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY')
-                        THEN 1 ELSE 0 END) AS Contacts,
-                    ROUND(
-                        SUM(CASE WHEN vl.status = 'SALE' THEN 1 ELSE 0 END) * 100.0 /
-                        NULLIF(SUM(CASE
+                    user AS `User`,
+                    full_name AS Name,
+                    SUM(Calls_Handled) AS Calls_Handled,
+                    SUM(Sales_Made) AS Sales_Made,
+                    SUM(Contacts) AS Contacts,
+                    ROUND(SUM(Sales_Made) * 100.0 / NULLIF(SUM(Contacts), 0), 2) AS Conversion_Percentage,
+                    SEC_TO_TIME(AVG(AHT)) AS AHT
+                FROM (
+                    SELECT
+                        vl.user,
+                        vu.full_name,
+                        COUNT(*) AS Calls_Handled,
+                        SUM(CASE
+                            WHEN UPPER(vl.status) LIKE 'SALE%' OR UPPER(vl.status) = 'UPSELL' OR UPPER(vl.status) = 'XFER-SALE'
+                            THEN 1 ELSE 0
+                        END) AS Sales_Made,
+                        SUM(CASE
                             WHEN vl.status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY')
-                            THEN 1 ELSE 0 END), 0)
-                    , 2) AS Conversion_Percentage,
-                    SEC_TO_TIME(AVG(vl.length_in_sec)) AS AHT
-                FROM vicidial_log vl
-                JOIN vicidial_users vu ON vl.user = vu.user
-                WHERE DATE(vl.call_date) BETWEEN @Start AND @End
-                AND vu.user_group = 'ALTRX'
-                GROUP BY vl.user, vu.full_name
+                            THEN 1 ELSE 0 END) AS Contacts,
+                        AVG(vl.length_in_sec) AS AHT
+                    FROM vicidial_log vl
+                    JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE DATE(vl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+                    GROUP BY vl.user, vu.full_name
+
+                    UNION ALL
+
+                    SELECT
+                        cl.user,
+                        vu.full_name,
+                        COUNT(*) AS Calls_Handled,
+                        SUM(CASE
+                            WHEN UPPER(cl.status) LIKE 'SALE%' OR UPPER(cl.status) = 'UPSELL' OR UPPER(cl.status) = 'XFER-SALE'
+                            THEN 1 ELSE 0
+                        END) AS Sales_Made,
+                        SUM(CASE
+                            WHEN cl.status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY')
+                            THEN 1 ELSE 0 END) AS Contacts,
+                        AVG(cl.length_in_sec) AS AHT
+                    FROM vicidial_closer_log cl
+                    JOIN vicidial_users vu ON cl.user = vu.user
+                    WHERE DATE(cl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+                    GROUP BY cl.user, vu.full_name
+                ) combined
+                GROUP BY user, full_name
                 ORDER BY Sales_Made DESC
                 """
         },
@@ -154,10 +200,21 @@ public sealed class QueryExecutor : IQueryService
                     status AS Disposition,
                     COUNT(*) AS Total,
                     ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) AS Percentage
-                FROM vicidial_log vl
-                JOIN vicidial_users vu ON vl.user = vu.user
-                WHERE DATE(vl.call_date) BETWEEN @Start AND @End
-                AND vu.user_group = 'ALTRX'
+                FROM (
+                    SELECT vl.status, vl.call_date
+                    FROM vicidial_log vl
+                    JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE DATE(vl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+
+                    UNION ALL
+
+                    SELECT cl.status, cl.call_date
+                    FROM vicidial_closer_log cl
+                    JOIN vicidial_users vu ON cl.user = vu.user
+                    WHERE DATE(cl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+                ) calls
                 GROUP BY status
                 ORDER BY Total DESC
                 """
@@ -177,10 +234,21 @@ public sealed class QueryExecutor : IQueryService
                         WHEN status NOT IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY')
                         THEN 1 ELSE 0 END) AS No_Contact,
                     COUNT(*) AS Total_Calls
-                FROM vicidial_log vl
-                JOIN vicidial_users vu ON vl.user = vu.user
-                WHERE DATE(vl.call_date) BETWEEN @Start AND @End
-                AND vu.user_group = 'ALTRX'
+                FROM (
+                    SELECT vl.status, vl.call_date
+                    FROM vicidial_log vl
+                    JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE DATE(vl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+
+                    UNION ALL
+
+                    SELECT cl.status, cl.call_date
+                    FROM vicidial_closer_log cl
+                    JOIN vicidial_users vu ON cl.user = vu.user
+                    WHERE DATE(cl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+                ) calls
                 """
         },
         ["leads_contact_rate"] = new QueryDefinition
@@ -202,8 +270,15 @@ public sealed class QueryExecutor : IQueryService
                             THEN lead_id
                         END) * 100.0 / COUNT(DISTINCT lead_id)
                     , 1) AS Contact_Rate
-                FROM vicidial_log
-                WHERE DATE(call_date) BETWEEN @Start AND @End
+                FROM (
+                    SELECT lead_id, status FROM vicidial_log
+                    WHERE DATE(call_date) BETWEEN @Start AND @End
+
+                    UNION ALL
+
+                    SELECT lead_id, status FROM vicidial_closer_log
+                    WHERE DATE(call_date) BETWEEN @Start AND @End
+                ) calls
                 """
         }
     };

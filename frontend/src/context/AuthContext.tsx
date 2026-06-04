@@ -47,10 +47,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (stored) {
       setAuthToken(stored);
       setToken(stored);
-      getMe().then((u) => { setUser(u); setLoading(false); }).catch(() => {
-        localStorage.removeItem('alrrx_token');
-        setAuthToken(null);
-        setToken(null);
+      getMe().then((u) => { setUser(u); setLoading(false); }).catch((err: unknown) => {
+        const status = err && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { status?: number } }).response?.status
+          : undefined;
+        if (status === 401) {
+          localStorage.removeItem('alrrx_token');
+          setAuthToken(null);
+          setToken(null);
+        } else {
+          console.warn('getMe failed (transient), keeping token:', err);
+        }
         setLoading(false);
       });
     } else {

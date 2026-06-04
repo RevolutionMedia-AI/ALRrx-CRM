@@ -66,6 +66,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
+builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
 
 var cfg = builder.Configuration;
@@ -86,7 +87,16 @@ var connectionConfig = new ConnectionConfig
     DatabasePassword = cfg["Database:Password"] ?? throw new InvalidOperationException("DB_PASSWORD is required"),
 };
 
-builder.Services.AddInfrastructure(connectionConfig);
+var formConnectionConfig = new FormConnectionConfig
+{
+    Host = cfg["FormDatabase:Host"] ?? "",
+    Port = int.Parse(cfg["FormDatabase:Port"] ?? "3306"),
+    Database = cfg["FormDatabase:Name"] ?? "",
+    User = cfg["FormDatabase:User"] ?? "",
+    Password = cfg["FormDatabase:Password"] ?? "",
+};
+
+builder.Services.AddInfrastructure(connectionConfig, formConnectionConfig);
 builder.Services.AddApplication();
 
 builder.Services.AddSingleton<IAuthService, ALRrx.Infrastructure.Auth.AuthService>();
@@ -114,6 +124,7 @@ app.MapHub<DashboardHub>("/hubs/dashboard");
 using (var scope = app.Services.CreateScope())
 {
     var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+    var vicidialRepo = scope.ServiceProvider.GetRequiredService<ALRrx.Application.Interfaces.IVicidialSalesRepository>();
     var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
@@ -124,6 +135,16 @@ using (var scope = app.Services.CreateScope())
     {
         seedLogger.LogWarning(ex, "No se pudo crear/verificar tabla alrrx_users. " +
             "El usuario de BD no tiene permisos CREATE. La app continuará sin seed.");
+    }
+    try
+    {
+        await vicidialRepo.EnsureTableAsync();
+        seedLogger.LogInformation("Vicidial form sales table ready.");
+    }
+    catch (Exception ex)
+    {
+        seedLogger.LogWarning(ex, "No se pudo crear/verificar tabla vicidial_form_sales. " +
+            "El usuario de BD no tiene permisos CREATE. La app continuará sin esa tabla.");
     }
 }
 

@@ -1,5 +1,6 @@
 using ALRrx.Application.DTOs;
 using ALRrx.Application.Helpers;
+using ALRrx.Application.Interfaces;
 using ALRrx.Domain.Interfaces;
 
 namespace ALRrx.Application.UseCases;
@@ -20,11 +21,16 @@ public sealed class ExportDashboardUseCase
 {
     private readonly IQueryService _queryService;
     private readonly IDashboardPdfService _pdfService;
+    private readonly IGoogleSheetsImportService _googleSheetsService;
 
-    public ExportDashboardUseCase(IQueryService queryService, IDashboardPdfService pdfService)
+    public ExportDashboardUseCase(
+        IQueryService queryService,
+        IDashboardPdfService pdfService,
+        IGoogleSheetsImportService googleSheetsService)
     {
         _queryService = queryService;
         _pdfService = pdfService;
+        _googleSheetsService = googleSheetsService;
     }
 
     public async Task<byte[]> ExecuteAsync(TimeFilterDto filter, CancellationToken ct = default)
@@ -47,6 +53,8 @@ public sealed class ExportDashboardUseCase
             _queryService.ExecuteQueryAsync("occupancy_rate", timeRange, ct),
             _queryService.ExecuteQueryAsync("leads_contact_rate", timeRange, ct)
         );
+
+        GoogleSheetsSummary googleSheets = await BuildGoogleSheetsSummaryAsync(timeRange, ct);
 
         var salesResult = tasks[0];
         var contactResult = tasks[1];
@@ -81,6 +89,11 @@ public sealed class ExportDashboardUseCase
 
         if (tasks[6].Rows.Length > 0)
             kpis.Add(new KpiRow { Label = "Occupancy", Value = $"{tasks[6].Rows[0].GetValueOrDefault("Occupancy_Pct") ?? 0}%", Color = "#8B5CF6" });
+
+        kpis.Add(new KpiRow { Label = "Google Sheets Sales", Value = $"${googleSheets.TotalSales:F0}", Color = "#10B981" });
+        kpis.Add(new KpiRow { Label = "Google Sheets Count", Value = googleSheets.TotalCount.ToString(), Color = "#3B82F6" });
+        if (googleSheets.LastSale != null)
+            kpis.Add(new KpiRow { Label = "Last GS Sale", Value = $"${googleSheets.LastSale.Amount:F0}", Color = "#F59E0B" });
 
         ContactSummary? contactData = null;
         if (contactResult.Rows.Length > 0)
@@ -126,9 +139,53 @@ public sealed class ExportDashboardUseCase
             Dispositions = dispositions,
             RecentCalls = recentCalls,
             ContactData = contactData,
+            GoogleSheets = googleSheets,
         };
 
         return data;
+    }
+
+    private async Task<GoogleSheetsSummary> BuildGoogleSheetsSummaryAsync(Domain.ValueObjects.TimeRange timeRange, CancellationToken ct)
+    {
+        try
+        {
+            var allSales = await _googleSheetsService.GetSalesAsync(ct);
+            var filtered = allSales
+                .Where(s => s.SaleDate >= timeRange.Start && s.SaleDate <= timeRange.End)
+                .OrderByDescending(s => s.Timestamp)
+                .ToList();
+
+            var lastSale = filtered.FirstOrDefault();
+            var lastSaleDto = lastSale == null ? null : new SaleRecord
+            {
+                Timestamp = lastSale.Timestamp,
+                SellerName = lastSale.SellerName,
+                SaleDate = lastSale.SaleDate,
+                CustomerEmail = lastSale.CustomerEmail,
+                Package = lastSale.Package,
+                Amount = lastSale.Amount,
+            };
+
+            return new GoogleSheetsSummary
+            {
+                TotalSales = filtered.Sum(s => s.Amount),
+                TotalCount = filtered.Count,
+                LastSale = lastSaleDto,
+                Sales = filtered.Select(s => new SaleRecord
+                {
+                    Timestamp = s.Timestamp,
+                    SellerName = s.SellerName,
+                    SaleDate = s.SaleDate,
+                    CustomerEmail = s.CustomerEmail,
+                    Package = s.Package,
+                    Amount = s.Amount,
+                }).ToList(),
+            };
+        }
+        catch
+        {
+            return new GoogleSheetsSummary();
+        }
     }
 
     private static string FormatDuration(object? secondsObj)
@@ -150,6 +207,7 @@ public sealed class DashboardPdfData
     public List<DispositionRow> Dispositions { get; init; } = [];
     public List<CallRow> RecentCalls { get; init; } = [];
     public ContactSummary? ContactData { get; init; }
+    public GoogleSheetsSummary GoogleSheets { get; init; } = new();
 }
 
 public sealed class KpiRow
@@ -190,4 +248,12 @@ public sealed class ContactSummary
     public string Contacts { get; init; } = "0";
     public string NoContacts { get; init; } = "0";
     public string ContactRate { get; init; } = "0%";
+}
+
+public sealed class GoogleSheetsSummary
+{
+    public decimal TotalSales { get; init; } = 0m;
+    public int TotalCount { get; init; } = 0;
+    public SaleRecord? LastSale { get; init; }
+    public List<SaleRecord> Sales { get; init; } = new();
 }
