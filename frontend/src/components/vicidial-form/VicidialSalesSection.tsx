@@ -70,21 +70,20 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
   const [error, setError] = useState<string | null>(null);
   const [repFilter, setRepFilter] = useState<string>('all');
   const [refreshNonce, setRefreshNonce] = useState(0);
-  const [userOverridden, setUserOverridden] = useState(false);
+  const [followPage, setFollowPage] = useState(false);
 
   useEffect(() => {
-    if (!pagePeriod) return;
-    setUserOverridden(false);
+    if (!followPage || !pagePeriod) return;
     setPeriod(pagePeriod);
-  }, [pagePeriod]);
+  }, [followPage, pagePeriod]);
 
   useEffect(() => {
-    if (pageCustomStart) setCustomStart(pageCustomStart);
-  }, [pageCustomStart]);
+    if (followPage && pageCustomStart) setCustomStart(pageCustomStart);
+  }, [followPage, pageCustomStart]);
 
   useEffect(() => {
-    if (pageCustomEnd) setCustomEnd(pageCustomEnd);
-  }, [pageCustomEnd]);
+    if (followPage && pageCustomEnd) setCustomEnd(pageCustomEnd);
+  }, [followPage, pageCustomEnd]);
 
   const range = useMemo(() => getPeriodRange(period, customStart, customEnd), [period, customStart, customEnd]);
 
@@ -167,19 +166,41 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
         <div className="flex flex-wrap items-center gap-2">
           <span
             className={`text-[10px] font-metadata-mono uppercase tracking-wider px-2 py-0.5 rounded ${
-              userOverridden
-                ? 'bg-amber-warmth/15 text-amber-warmth'
-                : 'bg-electric-blue/10 text-electric-blue'
+              followPage
+                ? 'bg-electric-blue/10 text-electric-blue'
+                : 'bg-amber-warmth/15 text-amber-warmth'
             }`}
-            title={userOverridden ? 'Using local period override' : 'Synced with page period'}
+            title={followPage ? `Mirroring page period: ${pagePeriod ?? '—'}` : 'Independent of page period'}
           >
-            {userOverridden ? 'Local override' : 'Synced with page'}
+            {followPage ? `Following page: ${pagePeriod ?? '—'}` : 'Independent'}
           </span>
+          <button
+            onClick={() => {
+              if (followPage) {
+                setFollowPage(false);
+                return;
+              }
+              if (pagePeriod) setPeriod(pagePeriod);
+              if (pageCustomStart) setCustomStart(pageCustomStart);
+              if (pageCustomEnd) setCustomEnd(pageCustomEnd);
+              setFollowPage(true);
+            }}
+            disabled={!pagePeriod}
+            className={`text-[10px] font-metadata-mono uppercase tracking-wider px-2.5 py-1 rounded border transition-colors flex items-center gap-1 ${
+              followPage
+                ? 'border-electric-blue/40 bg-electric-blue/5 text-electric-blue'
+                : 'border-whisper-border text-secondary hover:text-primary hover:border-electric-blue/40'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            title={followPage ? 'Stop mirroring the page period' : 'Mirror the page period selector'}
+          >
+            <span className="material-symbols-outlined text-[12px]">{followPage ? 'link_off' : 'link'}</span>
+            {followPage ? 'Unlink from page' : 'Follow page period'}
+          </button>
           <div className="bg-surface-container-low border border-whisper-border rounded flex text-xs overflow-hidden">
             {(['Today', 'Week', 'Month', 'All', 'Custom'] as Period[]).map((p) => (
               <button
                 key={p}
-                onClick={() => { setUserOverridden(true); setPeriod(p); }}
+                onClick={() => { setFollowPage(false); setPeriod(p); }}
                 className={`px-3 py-1 border-r border-whisper-border last:border-r-0 transition-colors ${
                   period === p
                     ? 'bg-pure-surface text-primary font-medium'
