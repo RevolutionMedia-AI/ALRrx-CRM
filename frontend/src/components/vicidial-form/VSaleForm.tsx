@@ -68,7 +68,12 @@ export default function VSaleForm() {
     setError(null);
     setSuccess(null);
 
-    if (!salesRep.trim()) return setError('Please select your user');
+    console.log('[VSaleForm] Submit clicked', { salesRep, clientName, clientPhone, clientEmail, amount, bundle });
+
+    if (!salesRep.trim()) {
+      console.warn('[VSaleForm] Blocked: no sales rep selected');
+      return setError('Please select your user from the dropdown above');
+    }
     if (!clientName.trim()) return setError('Client name is required');
     if (!clientPhone.trim()) return setError('Client phone is required');
     if (!clientEmail.trim()) return setError('Client email is required');
@@ -86,12 +91,15 @@ export default function VSaleForm() {
       amount: amountNum,
     };
 
+    console.log('[VSaleForm] Sending POST /api/vicidial-form/sale', payload);
     setSubmitting(true);
     try {
       const res = await submitVicidialSale(payload);
+      console.log('[VSaleForm] Sale registered', res);
       setSuccess(`Sale #${res.id} registered successfully`);
       reset();
     } catch (err: unknown) {
+      console.error('[VSaleForm] Submit failed', err);
       setError(extractErrorMessage(err, 'Could not register the sale'));
     } finally {
       setSubmitting(false);
@@ -226,7 +234,7 @@ export default function VSaleForm() {
         <div className="flex justify-end pt-2">
           <button
             type="submit"
-            disabled={submitting || loadingAgents || !!agentsError || !salesRep}
+            disabled={submitting}
             className="bg-emerald-signal hover:bg-emerald-signal/90 text-white font-medium px-6 py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
           >
             {submitting ? (
@@ -241,6 +249,11 @@ export default function VSaleForm() {
               </>
             )}
           </button>
+          {!salesRep && !loadingAgents && !agentsError && (
+            <p className="text-xs text-secondary dark:text-gray-400 mt-2 text-right">
+              Select your user above to enable registration
+            </p>
+          )}
         </div>
       </div>
     </form>

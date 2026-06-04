@@ -64,8 +64,9 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         cmd.Parameters.AddWithValue("@Bundle", bundleDisplayName);
         cmd.Parameters.AddWithValue("@Amount", request.Amount);
 
-        var newId = await cmd.ExecuteScalarAsync(ct);
-        _logger.LogInformation("Vicidial sale recorded: {SalesRep} | {Bundle} | ${Amount}", request.SalesRep, bundleDisplayName, request.Amount);
+        await cmd.ExecuteNonQueryAsync(ct);
+        var newId = cmd.LastInsertedId;
+        _logger.LogInformation("Vicidial sale recorded: {SalesRep} | {Bundle} | ${Amount} | Id={Id}", request.SalesRep, bundleDisplayName, request.Amount, newId);
         return Convert.ToInt32(newId);
     }
 
