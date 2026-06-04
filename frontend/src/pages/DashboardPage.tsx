@@ -258,6 +258,9 @@ export default function DashboardPage() {
 
       {/* ========== HERO KPI ROW (6 cards) ========== */}
       <section>
+        <h2 className="font-bold text-sm text-secondary uppercase tracking-wider font-metadata-mono mb-3">
+          Operational Summary: Call History
+        </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           <KpiCard
             title="Leads Dialed"
@@ -463,7 +466,7 @@ export default function DashboardPage() {
                 {agents.slice(0, 6).map((agent, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between group hover:bg-surface-container-low -mx-2 px-2 py-1.5 rounded transition-colors"
+                    className="flex items-center justify-between group hover:bg-surface-container-low dark:hover:bg-gray-800 -mx-2 px-2 py-1.5 rounded transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <div

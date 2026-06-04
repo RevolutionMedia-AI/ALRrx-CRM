@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel, getGoogleSheetsSales } from '../services/api';
+import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel, getGoogleSheetsSales, getStaffing } from '../services/api';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto, SalesSummary } from '../types';
 import DispositionLegend, { type DispositionItem } from '../components/dashboard/DispositionLegend';
 import PeriodComparisonModal from '../components/PeriodComparisonModal';
@@ -118,6 +118,7 @@ export default function AnalyticsPage() {
   const [prevSummary, setPrevSummary] = useState<DashboardSummaryDto | null>(null);
   const [contactReport, setContactReport] = useState<ReportDto | null>(null);
   const [agentReport, setAgentReport] = useState<ReportDto | null>(null);
+  const [staffingReport, setStaffingReport] = useState<ReportDto | null>(null);
   const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [salesLoading, setSalesLoading] = useState(false);
@@ -142,17 +143,19 @@ export default function AnalyticsPage() {
     setError(null);
     try {
       const filterResult = filter(p);
-      const [s, prev, contact, agents, sales] = await Promise.all([
+      const [s, prev, contact, agents, st, sales] = await Promise.all([
         getDashboardSummary(filterResult),
         getDashboardSummary(previousPeriod(p)).catch(() => null),
         getReport('contact_vs_nocontact', filterResult).catch(() => null),
         getReport('agent_performance', filterResult).catch(() => null),
+        getStaffing().catch(() => null),
         getGoogleSheetsSales(filterResult).catch(() => null),
       ]);
       setSummary(s);
       setPrevSummary(prev);
       setContactReport(contact);
       setAgentReport(agents);
+      setStaffingReport(st);
       setSalesSummary(sales);
     } catch {
       setError('Failed to load analytics data');
@@ -218,6 +221,22 @@ export default function AnalyticsPage() {
   const leadsDialed = summary ? findMetric(summary.metrics, 'Leads Dialed') : undefined;
   const leadsContacted = summary ? findMetric(summary.metrics, 'Leads Contacted') : undefined;
   const contactRateMetric = summary ? findMetric(summary.metrics, 'Contact Rate') : undefined;
+  const ahtMetric = summary ? findMetric(summary.metrics, 'Handle Time') : undefined;
+  const occupancyMetric = summary ? findMetric(summary.metrics, 'Occupancy') : undefined;
+
+  const staffRows = staffingReport?.rows ?? [];
+  const activeAgents = staffRows.filter((r) => {
+    const s = String(r.Status ?? '').toUpperCase();
+    return ['READY', 'INCALL', 'QUEUE', 'PAUSED'].includes(s);
+  }).length;
+
+  const dialedNum = parseMetricNumber(leadsDialed?.value);
+  const salesNum = parseMetricNumber(salesMetric?.value);
+  const conversionRate = dialedNum > 0 ? ((salesNum / dialedNum) * 100).toFixed(2) + '%' : '--';
+  const revenueNum = salesSummary?.totalSales ?? 0;
+  const averageSaleValue = salesNum > 0 && revenueNum > 0
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(revenueNum / salesNum)
+    : '--';
 
   const prevSales = prevSummary ? findMetric(prevSummary.metrics, 'Sales Today') : undefined;
   const prevContacts = prevSummary ? findMetric(prevSummary.metrics, 'Contacts') : undefined;
@@ -333,13 +352,15 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* ========== HERO KPI ROW (6 cards) ========== */}
+      {/* ========== SECTION 1: Operational Summary (6 cards) ========== */}
       <section>
+        <h2 className="font-bold text-sm text-secondary uppercase tracking-wider font-metadata-mono mb-3">
+          Operational Summary
+        </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           <KpiCard
             title="Leads Dialed"
             value={leadsDialed?.value ?? '0'}
-            change={pctChange(leadsDialed?.value ?? '0')?.pct}
             icon="phone_forwarded"
             valueColor="var(--card-value-blue)"
             loading={loading}
@@ -347,9 +368,15 @@ export default function AnalyticsPage() {
           <KpiCard
             title="Total Calls"
             value={totalCallsMetric?.value ?? '0'}
-            change={pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value)?.pct}
             icon="call"
             valueColor="var(--card-value-dark)"
+            loading={loading}
+          />
+          <KpiCard
+            title="Active Agents"
+            value={String(activeAgents)}
+            icon="groups"
+            valueColor="var(--card-value-emerald)"
             loading={loading}
           />
           <KpiCard
@@ -367,9 +394,24 @@ export default function AnalyticsPage() {
             loading={loading}
           />
           <KpiCard
+            title="No Contacts"
+            value={noContactsMetric?.value ?? '0'}
+            icon="call_end"
+            valueColor="var(--card-value-red)"
+            loading={loading}
+          />
+        </div>
+      </section>
+
+      {/* ========== SECTION 2: Sales & Performance (6 cards) ========== */}
+      <section>
+        <h2 className="font-bold text-sm text-secondary uppercase tracking-wider font-metadata-mono mb-3">
+          Sales & Performance
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <KpiCard
             title="Sales"
             value={salesMetric?.value ?? '0'}
-            change={pctChange(salesMetric?.value ?? '0', prevSales?.value)?.pct}
             icon="confirmation_number"
             valueColor="var(--card-value-emerald)"
             loading={loading}
@@ -383,67 +425,36 @@ export default function AnalyticsPage() {
             isCurrency
             isSales
           />
+          <KpiCard
+            title="Avg Sale Value"
+            value={averageSaleValue}
+            icon="trending_up"
+            valueColor="var(--card-value-emerald)"
+            loading={salesLoading}
+            isCurrency
+          />
+          <KpiCard
+            title="Conversion Rate"
+            value={conversionRate}
+            icon="percent"
+            valueColor="#8B5CF6"
+            loading={loading}
+          />
+          <KpiCard
+            title="Avg Handle Time"
+            value={ahtMetric?.value ?? '--'}
+            icon="timer"
+            valueColor="var(--card-value-blue)"
+            loading={loading}
+          />
+          <KpiCard
+            title="Occupancy"
+            value={occupancyMetric?.value ?? '--'}
+            icon="pie_chart"
+            valueColor="var(--card-value-blue)"
+            loading={loading}
+          />
         </div>
-      </section>
-
-      {/* ========== RESTORED 3-CARD ROW: Leads breakdown ========== */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        {[
-          { label: 'Leads Dialed', value: leadsDialed?.value ?? '--', valueColor: 'var(--card-value-blue)' },
-          { label: 'Leads Contacted', value: leadsContacted?.value ?? '--', valueColor: 'var(--card-value-emerald)' },
-          { label: 'Contact Rate', value: contactRateMetric?.value ?? '--%', valueColor: '#8B5CF6' },
-        ].map((l) => (
-          <div
-            key={l.label}
-            className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-8 shadow-card"
-          >
-            <p className="text-card-label text-[13px] font-medium">{l.label}</p>
-            <p className="text-[2.2rem] font-bold mt-1 leading-none" style={{ color: l.valueColor }}>
-              {loading ? '--' : l.value}
-            </p>
-          </div>
-        ))}
-      </section>
-
-      {/* ========== RESTORED 4-CARD ROW: Performance metrics with deltas ========== */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {[
-          { title: 'Sales Today', value: salesMetric?.value ?? '--', change: pctChange(salesMetric?.value ?? '0', prevSales?.value), icon: PaymentSuccess01Icon, valueColor: 'var(--card-value-emerald)' },
-          { title: 'Contacts', value: contactsMetric?.value ?? '--', change: pctChange(contactsMetric?.value ?? '0', prevContacts?.value), icon: CallOutgoing01Icon, valueColor: 'var(--card-value-emerald)' },
-          { title: 'No Contacts', value: noContactsMetric?.value ?? '--', change: pctChange(noContactsMetric?.value ?? '0', prevNoContacts?.value), icon: CallReceived02Icon, valueColor: 'var(--card-value-red)' },
-          { title: 'Total Calls', value: totalCallsMetric?.value ?? '--', change: pctChange(totalCallsMetric?.value ?? '0', prevTotalCalls?.value), icon: Call02Icon, valueColor: 'var(--card-value-dark)' },
-        ].map((card) => (
-          <div
-            key={card.title}
-            className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg py-8 px-7 shadow-card"
-          >
-            <div className="flex justify-between items-start mb-5">
-              <p className="text-card-label text-[13px] font-medium">{card.title}</p>
-              <div className="p-4 bg-card-icon-bg dark:bg-gray-800 rounded-xl">
-                <card.icon size={20} className="text-card-label" />
-              </div>
-            </div>
-            {loading ? (
-              <div className="h-8 w-28 bg-surface-container rounded animate-pulse" />
-            ) : (
-              <div className="flex items-baseline gap-3">
-                <h2 className="text-[2.2rem] font-bold leading-none tracking-tight" style={{ color: card.valueColor }}>{card.value}</h2>
-                {card.change && (
-                  <span className={`text-sm font-medium flex items-center font-metadata-mono ${
-                    card.change.direction === 'up' ? 'text-emerald-signal'
-                    : card.change.direction === 'down' ? 'text-deep-rose'
-                    : 'text-muted-slate'
-                  }`}>
-                    {card.change.direction === 'up' ? <AnalyticsUpIcon size={15} />
-                        : card.change.direction === 'down' ? <AnalyticsDownIcon size={15} />
-                        : <MinusSignCircleIcon size={15} />}
-                    {card.change.pct}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
       </section>
 
       {/* ========== 2-COLUMN BODY ========== */}

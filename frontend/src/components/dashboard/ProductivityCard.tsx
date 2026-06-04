@@ -34,7 +34,7 @@ export default function ProductivityCard({ aht, occupancy, loading, occupancySta
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg text-xs text-secondary hover:text-primary hover:border-electric-blue/40 transition-all shadow-sm"
+        className="flex items-center gap-2 px-3 py-1.5 bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg text-xs text-secondary hover:text-primary dark:hover:text-white hover:border-electric-blue/40 transition-all shadow-sm"
         aria-label="Show productivity details"
       >
         <span className="material-symbols-outlined text-[16px] text-electric-blue">monitoring</span>
