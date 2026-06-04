@@ -2,7 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardSummary, getReport, getStaffing, getGoogleSheetsSales } from '../services/api';
+import { getDashboardSummary, getReport, getStaffing } from '../services/api';
+import { getVicidialSalesSummary } from '../services/vicidialFormApi';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto, SalesSummary } from '../types';
 import FunnelBlock from '../components/dashboard/FunnelBlock';
 import DispositionLegend, { type DispositionItem } from '../components/dashboard/DispositionLegend';
@@ -116,13 +117,14 @@ export default function DashboardPage() {
     setError(null);
     try {
       const filterResult = filter(p, customStart, customEnd);
+      const vicidialParams = buildVicidialParams(p, customStart, customEnd);
       const s = await getDashboardSummary(filterResult);
       setSummary(s);
       const [a, st, c, sales] = await Promise.all([
         getReport('agent_performance', filterResult).catch(() => null),
         getStaffing().catch(() => null),
         getReport('all_calls', filterResult).catch(() => null),
-        getGoogleSheetsSales(filterResult).catch(() => null),
+        getVicidialSalesSummary(vicidialParams.from, vicidialParams.to, 500).catch(() => null),
       ]);
       setAgentReport(a);
       setStaffingReport(st);
@@ -717,4 +719,61 @@ function StatusBar({ label, count, total, color }: { label: string; count: numbe
       </div>
     </div>
   );
+}
+
+const BUSINESS_TZ = 'America/Tijuana';
+
+const TIJUANA_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
+
+const TIJUANA_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+function formatTijuanaDateTime(d: Date): string {
+  const parts = TIJUANA_FMT.formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+}
+
+function getTijuanaDateParts(d: Date): { year: number; month: number; day: number; dayOfWeek: number } {
+  const dateStr = TIJUANA_DATE_FMT.format(d);
+  const [y, m, day] = dateStr.split('-').map(Number);
+  const dayOfWeek = new Date(y, m - 1, day).getDay();
+  return { year: y, month: m, day, dayOfWeek };
+}
+
+function buildVicidialParams(p: Period, customStartDate: string, customEndDate: string): { from?: string; to?: string } {
+  if (p === 'Custom') {
+    return { from: `${customStartDate} 00:00:00`, to: `${customEndDate} 23:59:59` };
+  }
+  const now = new Date();
+  const tp = getTijuanaDateParts(now);
+  const todayLocalMidnight = new Date(tp.year, tp.month - 1, tp.day, 0, 0, 0);
+  const tomorrow = new Date(todayLocalMidnight.getTime() + 24 * 60 * 60 * 1000);
+  if (p === 'Today') {
+    return { from: formatTijuanaDateTime(todayLocalMidnight), to: formatTijuanaDateTime(tomorrow) };
+  }
+  if (p === 'Week') {
+    const daysSinceMonday = tp.dayOfWeek === 0 ? 6 : tp.dayOfWeek - 1;
+    const startLocalMidnight = new Date(todayLocalMidnight.getTime() - daysSinceMonday * 24 * 60 * 60 * 1000);
+    return { from: formatTijuanaDateTime(startLocalMidnight), to: formatTijuanaDateTime(tomorrow) };
+  }
+  if (p === 'Month') {
+    const startLocalMidnight = new Date(tp.year, tp.month - 1, 1, 0, 0, 0);
+    const nextMonthStart = new Date(tp.year, tp.month, 1, 0, 0, 0);
+    return { from: formatTijuanaDateTime(startLocalMidnight), to: formatTijuanaDateTime(nextMonthStart) };
+  }
+  return {};
 }

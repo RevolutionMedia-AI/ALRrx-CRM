@@ -21,16 +21,16 @@ public sealed class ExportDashboardUseCase
 {
     private readonly IQueryService _queryService;
     private readonly IDashboardPdfService _pdfService;
-    private readonly IGoogleSheetsImportService _googleSheetsService;
+    private readonly IVicidialSalesRepository _vicidialSalesRepository;
 
     public ExportDashboardUseCase(
         IQueryService queryService,
         IDashboardPdfService pdfService,
-        IGoogleSheetsImportService googleSheetsService)
+        IVicidialSalesRepository vicidialSalesRepository)
     {
         _queryService = queryService;
         _pdfService = pdfService;
-        _googleSheetsService = googleSheetsService;
+        _vicidialSalesRepository = vicidialSalesRepository;
     }
 
     public async Task<byte[]> ExecuteAsync(TimeFilterDto filter, CancellationToken ct = default)
@@ -54,7 +54,7 @@ public sealed class ExportDashboardUseCase
             _queryService.ExecuteQueryAsync("leads_contact_rate", timeRange, ct)
         );
 
-        GoogleSheetsSummary googleSheets = await BuildGoogleSheetsSummaryAsync(timeRange, ct);
+        VicidialSalesSummary vicidial = await BuildVicidialSummaryAsync(filter, timeRange, ct);
 
         var salesResult = tasks[0];
         var contactResult = tasks[1];
@@ -90,10 +90,10 @@ public sealed class ExportDashboardUseCase
         if (tasks[6].Rows.Length > 0)
             kpis.Add(new KpiRow { Label = "Occupancy", Value = $"{tasks[6].Rows[0].GetValueOrDefault("Occupancy_Pct") ?? 0}%", Color = "#8B5CF6" });
 
-        kpis.Add(new KpiRow { Label = "Google Sheets Sales", Value = $"${googleSheets.TotalSales:F0}", Color = "#10B981" });
-        kpis.Add(new KpiRow { Label = "Google Sheets Count", Value = googleSheets.TotalCount.ToString(), Color = "#3B82F6" });
-        if (googleSheets.LastSale != null)
-            kpis.Add(new KpiRow { Label = "Last GS Sale", Value = $"${googleSheets.LastSale.Amount:F0}", Color = "#F59E0B" });
+        kpis.Add(new KpiRow { Label = "Vicidial Sales", Value = $"${vicidial.TotalSales:F0}", Color = "#10B981" });
+        kpis.Add(new KpiRow { Label = "Vicidial Count", Value = vicidial.TotalCount.ToString(), Color = "#3B82F6" });
+        if (vicidial.LastSale != null)
+            kpis.Add(new KpiRow { Label = "Last Sale", Value = $"${vicidial.LastSale.Amount:F0}", Color = "#F59E0B" });
 
         ContactSummary? contactData = null;
         if (contactResult.Rows.Length > 0)
@@ -139,52 +139,29 @@ public sealed class ExportDashboardUseCase
             Dispositions = dispositions,
             RecentCalls = recentCalls,
             ContactData = contactData,
-            GoogleSheets = googleSheets,
+            VicidialSales = vicidial,
         };
 
         return data;
     }
 
-    private async Task<GoogleSheetsSummary> BuildGoogleSheetsSummaryAsync(Domain.ValueObjects.TimeRange timeRange, CancellationToken ct)
+    private async Task<VicidialSalesSummary> BuildVicidialSummaryAsync(TimeFilterDto filter, Domain.ValueObjects.TimeRange timeRange, CancellationToken ct)
     {
         try
         {
-            var allSales = await _googleSheetsService.GetSalesAsync(ct);
-            var filtered = allSales
-                .Where(s => s.SaleDate >= timeRange.Start && s.SaleDate <= timeRange.End)
-                .OrderByDescending(s => s.Timestamp)
-                .ToList();
+            var summary = await _vicidialSalesRepository.GetSummaryAsync(timeRange.Start.ToString("yyyy-MM-dd HH:mm:ss"), timeRange.End.ToString("yyyy-MM-dd HH:mm:ss"), 500, ct);
 
-            var lastSale = filtered.FirstOrDefault();
-            var lastSaleDto = lastSale == null ? null : new SaleRecord
+            return new VicidialSalesSummary
             {
-                Timestamp = lastSale.Timestamp,
-                SellerName = lastSale.SellerName,
-                SaleDate = lastSale.SaleDate,
-                CustomerEmail = lastSale.CustomerEmail,
-                Package = lastSale.Package,
-                Amount = lastSale.Amount,
-            };
-
-            return new GoogleSheetsSummary
-            {
-                TotalSales = filtered.Sum(s => s.Amount),
-                TotalCount = filtered.Count,
-                LastSale = lastSaleDto,
-                Sales = filtered.Select(s => new SaleRecord
-                {
-                    Timestamp = s.Timestamp,
-                    SellerName = s.SellerName,
-                    SaleDate = s.SaleDate,
-                    CustomerEmail = s.CustomerEmail,
-                    Package = s.Package,
-                    Amount = s.Amount,
-                }).ToList(),
+                TotalSales = summary.TotalSales,
+                TotalCount = summary.TotalCount,
+                LastSale = summary.LastSale,
+                Sales = summary.AllSales,
             };
         }
         catch
         {
-            return new GoogleSheetsSummary();
+            return new VicidialSalesSummary();
         }
     }
 
@@ -207,7 +184,7 @@ public sealed class DashboardPdfData
     public List<DispositionRow> Dispositions { get; init; } = [];
     public List<CallRow> RecentCalls { get; init; } = [];
     public ContactSummary? ContactData { get; init; }
-    public GoogleSheetsSummary GoogleSheets { get; init; } = new();
+    public VicidialSalesSummary VicidialSales { get; init; } = new();
 }
 
 public sealed class KpiRow
@@ -250,7 +227,7 @@ public sealed class ContactSummary
     public string ContactRate { get; init; } = "0%";
 }
 
-public sealed class GoogleSheetsSummary
+public sealed class VicidialSalesSummary
 {
     public decimal TotalSales { get; init; } = 0m;
     public int TotalCount { get; init; } = 0;

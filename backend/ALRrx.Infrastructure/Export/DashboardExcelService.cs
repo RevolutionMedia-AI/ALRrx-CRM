@@ -30,8 +30,8 @@ public sealed class DashboardExcelService : IDashboardExcelService
         var contactSheet = package.Workbook.Worksheets.Add("Contact Summary");
         WriteContactSheet(contactSheet, data);
 
-        var googleSheet = package.Workbook.Worksheets.Add("Google Sheets Sales");
-        WriteGoogleSheetsSheet(googleSheet, data);
+        var vicidialSheet = package.Workbook.Worksheets.Add("Vicidial Form Sales");
+        WriteVicidialSalesSheet(vicidialSheet, data);
 
         return package.GetAsByteArray();
     }
@@ -193,11 +193,11 @@ public sealed class DashboardExcelService : IDashboardExcelService
         ws.Cells.AutoFitColumns();
     }
 
-    private static void WriteGoogleSheetsSheet(ExcelWorksheet ws, DashboardPdfData data)
+    private static void WriteVicidialSalesSheet(ExcelWorksheet ws, DashboardPdfData data)
     {
-        var gs = data.GoogleSheets;
+        var vs = data.VicidialSales;
 
-        ws.Cells[1, 1].Value = "ALTRX — Google Sheets Sales Report";
+        ws.Cells[1, 1].Value = "ALTRX — Vicidial Form Sales Report";
         ws.Cells[1, 1].Style.Font.Bold = true;
         ws.Cells[1, 1].Style.Font.Size = 14;
         ws.Cells[2, 1].Value = $"Period: {data.Period} | Generated: {data.GeneratedAt} UTC";
@@ -209,28 +209,28 @@ public sealed class DashboardExcelService : IDashboardExcelService
         ws.Cells[4, 1].Style.Font.Size = 12;
 
         ws.Cells[5, 1].Value = "Total Sales";
-        ws.Cells[5, 2].Value = gs.TotalSales;
+        ws.Cells[5, 2].Value = vs.TotalSales;
         ws.Cells[5, 2].Style.Numberformat.Format = "$#,##0.00";
         ws.Cells[5, 2].Style.Font.Bold = true;
         ws.Cells[5, 2].Style.Font.Color.SetColor(System.Drawing.Color.FromArgb(16, 185, 129));
 
         ws.Cells[6, 1].Value = "Total Count";
-        ws.Cells[6, 2].Value = gs.TotalCount;
+        ws.Cells[6, 2].Value = vs.TotalCount;
         ws.Cells[6, 2].Style.Font.Bold = true;
 
-        if (gs.LastSale != null)
+        if (vs.LastSale != null)
         {
             ws.Cells[7, 1].Value = "Last Sale";
-            ws.Cells[7, 2].Value = gs.LastSale.Amount;
+            ws.Cells[7, 2].Value = vs.LastSale.Amount;
             ws.Cells[7, 2].Style.Numberformat.Format = "$#,##0.00";
             ws.Cells[7, 2].Style.Font.Bold = true;
             ws.Cells[7, 2].Style.Font.Color.SetColor(System.Drawing.Color.FromArgb(245, 158, 11));
 
             ws.Cells[8, 1].Value = "Last Sale By";
-            ws.Cells[8, 2].Value = gs.LastSale.SellerName;
+            ws.Cells[8, 2].Value = vs.LastSale.SellerName;
 
             ws.Cells[9, 1].Value = "Last Sale Date";
-            ws.Cells[9, 2].Value = gs.LastSale.Timestamp;
+            ws.Cells[9, 2].Value = vs.LastSale.Timestamp;
             ws.Cells[9, 2].Style.Numberformat.Format = "yyyy-mm-dd hh:mm:ss";
         }
 
@@ -253,9 +253,9 @@ public sealed class DashboardExcelService : IDashboardExcelService
             range.Style.Font.Color.SetColor(System.Drawing.Color.White);
         }
 
-        for (var i = 0; i < gs.Sales.Count; i++)
+        for (var i = 0; i < vs.Sales.Count; i++)
         {
-            var sale = gs.Sales[i];
+            var sale = vs.Sales[i];
             var row = headerRow + 1 + i;
             ws.Cells[row, 1].Value = sale.Timestamp;
             ws.Cells[row, 1].Style.Numberformat.Format = "yyyy-mm-dd hh:mm:ss";
@@ -272,16 +272,16 @@ public sealed class DashboardExcelService : IDashboardExcelService
 
         ws.Cells.AutoFitColumns();
 
-        if (gs.Sales.Count > 0)
+        if (vs.Sales.Count > 0)
         {
-            var chart = ws.Drawings.AddChart("GoogleSheetsBar", eChartType.ColumnClustered);
+            var chart = ws.Drawings.AddChart("VicidialSalesBar", eChartType.ColumnClustered);
             chart.Title.Text = "Sales Amount by Seller";
             chart.SetPosition(headerRow + 1, 0, 8, 0);
             chart.SetSize(520, 320);
 
             var dataStart = headerRow + 1;
-            var dataEnd = headerRow + gs.Sales.Count;
-            var sellerGroups = gs.Sales
+            var dataEnd = headerRow + vs.Sales.Count;
+            var sellerGroups = vs.Sales
                 .GroupBy(s => s.SellerName)
                 .Select(g => new { Seller = g.Key, Total = g.Sum(s => s.Amount) })
                 .OrderByDescending(x => x.Total)

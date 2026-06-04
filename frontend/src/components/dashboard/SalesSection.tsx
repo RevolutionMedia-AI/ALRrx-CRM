@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getGoogleSheetsSales, exportDashboardPdf, exportDashboardExcel } from '../../services/api';
+import { exportDashboardPdf, exportDashboardExcel } from '../../services/api';
+import { getVicidialSalesSummary } from '../../services/vicidialFormApi';
 import type { SalesSummary, TimeFilterDto } from '../../types';
 
 interface SalesSectionProps {
@@ -43,6 +44,67 @@ function getInitials(name: string): string {
   return name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase();
 }
 
+const BUSINESS_TZ = 'America/Tijuana';
+
+const TIJUANA_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
+
+const TIJUANA_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+function formatTijuanaDateTime(d: Date): string {
+  const parts = TIJUANA_FMT.formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+}
+
+function getTijuanaDateParts(d: Date): { year: number; month: number; day: number; dayOfWeek: number } {
+  const dateStr = TIJUANA_DATE_FMT.format(d);
+  const [y, m, day] = dateStr.split('-').map(Number);
+  const dayOfWeek = new Date(y, m - 1, day).getDay();
+  return { year: y, month: m, day, dayOfWeek };
+}
+
+function buildVicidialParams(filter: TimeFilterDto): { from?: string; to?: string } {
+  if (filter.period === 'All') return {};
+  const now = new Date();
+  const tp = getTijuanaDateParts(now);
+  const todayLocalMidnight = new Date(tp.year, tp.month - 1, tp.day, 0, 0, 0);
+  const tomorrow = new Date(todayLocalMidnight.getTime() + 24 * 60 * 60 * 1000);
+  if (filter.period === 'Today') {
+    return { from: formatTijuanaDateTime(todayLocalMidnight), to: formatTijuanaDateTime(tomorrow) };
+  }
+  if (filter.period === 'Week') {
+    const daysSinceMonday = tp.dayOfWeek === 0 ? 6 : tp.dayOfWeek - 1;
+    const startLocalMidnight = new Date(todayLocalMidnight.getTime() - daysSinceMonday * 24 * 60 * 60 * 1000);
+    return { from: formatTijuanaDateTime(startLocalMidnight), to: formatTijuanaDateTime(tomorrow) };
+  }
+  if (filter.period === 'Month') {
+    const startLocalMidnight = new Date(tp.year, tp.month - 1, 1, 0, 0, 0);
+    const nextMonthStart = new Date(tp.year, tp.month, 1, 0, 0, 0);
+    return { from: formatTijuanaDateTime(startLocalMidnight), to: formatTijuanaDateTime(nextMonthStart) };
+  }
+  if (filter.period === 'Custom' && filter.customStart && filter.customEnd) {
+    return {
+      from: `${filter.customStart} 00:00:00`,
+      to: `${filter.customEnd} 23:59:59`,
+    };
+  }
+  return {};
+}
+
 export default function SalesSection({ filter, periodLabel, onError }: SalesSectionProps) {
   const [data, setData] = useState<SalesSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,7 +117,8 @@ export default function SalesSection({ filter, periodLabel, onError }: SalesSect
   const load = async () => {
     try {
       setLoading(true);
-      const result = await getGoogleSheetsSales(filter, sellerFilter, packageFilter);
+      const { from, to } = buildVicidialParams(filter);
+      const result = await getVicidialSalesSummary(from, to, 500);
       setData(result);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch {
@@ -107,7 +170,12 @@ export default function SalesSection({ filter, periodLabel, onError }: SalesSect
     }
   };
 
-  const hasSales = data && data.allSales.length > 0;
+  const visibleSales = (data?.allSales ?? []).filter((s) => {
+    const sellerMatch = sellerFilter === 'all' || s.sellerName === sellerFilter;
+    const packageMatch = packageFilter === 'all' || s.package === packageFilter;
+    return sellerMatch && packageMatch;
+  });
+  const hasSales = visibleSales.length > 0;
 
   return (
     <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused overflow-hidden">
@@ -121,7 +189,7 @@ export default function SalesSection({ filter, periodLabel, onError }: SalesSect
             <p className="text-[12px] text-secondary mt-1 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-signal" />
               <span>
-                Synced from Google Forms · Click refresh to update{lastUpdated && ` • ${lastUpdated}`}
+                Source: Vicidial Form submissions{lastUpdated && ` • Last updated ${lastUpdated}`}
               </span>
             </p>
           </div>
@@ -221,7 +289,7 @@ export default function SalesSection({ filter, periodLabel, onError }: SalesSect
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {data!.allSales.slice(0, 50).map((sale, i) => (
+                {visibleSales.slice(0, 50).map((sale, i) => (
                   <tr
                     key={i}
                     className="border-b border-whisper-border hover:bg-surface-container-lowest dark:hover:bg-gray-800 transition-colors"
@@ -252,9 +320,9 @@ export default function SalesSection({ filter, periodLabel, onError }: SalesSect
                 ))}
               </tbody>
             </table>
-            {data!.allSales.length > 50 && (
+            {visibleSales.length > 50 && (
               <div className="p-4 text-center text-xs text-muted-slate border-t border-whisper-border">
-                Showing 50 of {data!.allSales.length} sales
+                Showing 50 of {visibleSales.length} sales
               </div>
             )}
           </div>
@@ -263,11 +331,11 @@ export default function SalesSection({ filter, periodLabel, onError }: SalesSect
             <div className="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center mb-3">
               <span className="material-symbols-outlined text-3xl text-muted-slate/50">inventory_2</span>
             </div>
-            <p className="text-sm font-medium text-primary">No sales yet today</p>
+            <p className="text-sm font-medium text-primary">No sales in this period</p>
             <p className="text-xs text-muted-slate mt-1">
               {sellerFilter !== 'all' || packageFilter !== 'all'
                 ? 'Try changing the seller or package filter'
-                : 'Sales will appear here once they are synced from Google Forms'}
+                : 'Sales will appear here once they are submitted via the Vicidial form'}
             </p>
           </div>
         )}
