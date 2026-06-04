@@ -297,14 +297,7 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
   const saleToDelete = deletingId !== null ? sales.find((s) => s.id === deletingId) ?? null : null;
 
   return (
-    <section
-      className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg shadow-card"
-      style={{
-        opacity: 0,
-        transform: 'translateY(12px)',
-        animation: 'fadeSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-      }}
-    >
+    <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg shadow-card">
       <header className="p-6 border-b border-whisper-border dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
           <h3 className="font-bold text-lg text-primary dark:text-gray-100">
