@@ -70,19 +70,19 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         return Convert.ToInt32(newId);
     }
 
-    public async Task<List<VicidialSaleDto>> GetBySalesRepAsync(string salesRep, DateTime? from, DateTime? to, int limit, CancellationToken ct = default)
+    public async Task<List<VicidialSaleDto>> GetBySalesRepAsync(string salesRep, string? from, string? to, int limit, CancellationToken ct = default)
     {
         var clampedLimit = Math.Clamp(limit, 1, 1000);
         var sql = "SELECT Id, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt FROM vicidial_form_sales WHERE SalesRep = @SalesRep";
-        if (from.HasValue) sql += " AND SaleDate >= @From";
-        if (to.HasValue) sql += " AND SaleDate < @To";
+        if (!string.IsNullOrWhiteSpace(from)) sql += " AND SaleDate >= STR_TO_DATE(@From, '%Y-%m-%d %H:%i:%s')";
+        if (!string.IsNullOrWhiteSpace(to)) sql += " AND SaleDate < STR_TO_DATE(@To, '%Y-%m-%d %H:%i:%s')";
         sql += $" ORDER BY SaleDate DESC LIMIT {clampedLimit}";
 
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(sql, connection);
         cmd.Parameters.Add("@SalesRep", MySqlDbType.VarChar).Value = salesRep;
-        if (from.HasValue) cmd.Parameters.Add("@From", MySqlDbType.DateTime).Value = from.Value;
-        if (to.HasValue) cmd.Parameters.Add("@To", MySqlDbType.DateTime).Value = to.Value;
+        if (!string.IsNullOrWhiteSpace(from)) cmd.Parameters.Add("@From", MySqlDbType.VarChar).Value = from;
+        if (!string.IsNullOrWhiteSpace(to)) cmd.Parameters.Add("@To", MySqlDbType.VarChar).Value = to;
 
         var results = new List<VicidialSaleDto>();
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -104,20 +104,20 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         return results;
     }
 
-    public async Task<List<VicidialSaleDto>> GetAllAsync(DateTime? from, DateTime? to, int limit, CancellationToken ct = default)
+    public async Task<List<VicidialSaleDto>> GetAllAsync(string? from, string? to, int limit, CancellationToken ct = default)
     {
         var clampedLimit = Math.Clamp(limit, 1, 1000);
         var sql = "SELECT Id, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt FROM vicidial_form_sales WHERE 1=1";
-        if (from.HasValue) sql += " AND SaleDate >= @From";
-        if (to.HasValue) sql += " AND SaleDate < @To";
+        if (!string.IsNullOrWhiteSpace(from)) sql += " AND SaleDate >= STR_TO_DATE(@From, '%Y-%m-%d %H:%i:%s')";
+        if (!string.IsNullOrWhiteSpace(to)) sql += " AND SaleDate < STR_TO_DATE(@To, '%Y-%m-%d %H:%i:%s')";
         sql += $" ORDER BY SaleDate DESC LIMIT {clampedLimit}";
 
-        _logger.LogInformation("Vicidial GetAllAsync SQL: {Sql}", sql);
+        _logger.LogInformation("Vicidial GetAllAsync SQL: {Sql} (from={From}, to={To})", sql, from, to);
 
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(sql, connection);
-        if (from.HasValue) cmd.Parameters.Add("@From", MySqlDbType.DateTime).Value = from.Value;
-        if (to.HasValue) cmd.Parameters.Add("@To", MySqlDbType.DateTime).Value = to.Value;
+        if (!string.IsNullOrWhiteSpace(from)) cmd.Parameters.Add("@From", MySqlDbType.VarChar).Value = from;
+        if (!string.IsNullOrWhiteSpace(to)) cmd.Parameters.Add("@To", MySqlDbType.VarChar).Value = to;
 
         try
         {
@@ -148,19 +148,19 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         }
     }
 
-    public async Task<SalesSummaryDto> GetSummaryAsync(DateTime? from, DateTime? to, int limit, CancellationToken ct = default)
+    public async Task<SalesSummaryDto> GetSummaryAsync(string? from, string? to, int limit, CancellationToken ct = default)
     {
         var clampedLimit = Math.Clamp(limit, 1, 1000);
         var where = "WHERE 1=1";
-        if (from.HasValue) where += " AND SaleDate >= @From";
-        if (to.HasValue) where += " AND SaleDate < @To";
+        if (!string.IsNullOrWhiteSpace(from)) where += " AND SaleDate >= STR_TO_DATE(@From, '%Y-%m-%d %H:%i:%s')";
+        if (!string.IsNullOrWhiteSpace(to)) where += " AND SaleDate < STR_TO_DATE(@To, '%Y-%m-%d %H:%i:%s')";
 
         var listSql = $"SELECT Id, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt FROM vicidial_form_sales {where} ORDER BY SaleDate DESC LIMIT {clampedLimit}";
 
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var listCmd = new MySqlCommand(listSql, connection);
-        if (from.HasValue) listCmd.Parameters.Add("@From", MySqlDbType.DateTime).Value = from.Value;
-        if (to.HasValue) listCmd.Parameters.Add("@To", MySqlDbType.DateTime).Value = to.Value;
+        if (!string.IsNullOrWhiteSpace(from)) listCmd.Parameters.Add("@From", MySqlDbType.VarChar).Value = from;
+        if (!string.IsNullOrWhiteSpace(to)) listCmd.Parameters.Add("@To", MySqlDbType.VarChar).Value = to;
 
         var results = new List<VicidialSaleDto>();
         await using (var reader = await listCmd.ExecuteReaderAsync(ct))

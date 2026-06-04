@@ -20,30 +20,74 @@ const ALLOWED_EDIT_EMAILS = new Set<string>([
   'kevin.escalante@revolutionmedia.ai',
 ]);
 
+const BUSINESS_TZ = 'America/Tijuana';
+
+const TIJUANA_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
+
+const TIJUANA_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+function formatTijuanaDateTime(d: Date): string {
+  const parts = TIJUANA_FMT.formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+}
+
+function formatTijuanaDate(d: Date): string {
+  const parts = TIJUANA_DATE_FMT.formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function getTijuanaDateParts(d: Date): { year: number; month: number; day: number; dayOfWeek: number } {
+  const dateStr = formatTijuanaDate(d);
+  const [y, m, day] = dateStr.split('-').map(Number);
+  const dayOfWeek = new Date(y, m - 1, day).getDay();
+  return { year: y, month: m, day, dayOfWeek };
+}
+
+function addDays(d: Date, n: number): Date {
+  return new Date(d.getTime() + n * 24 * 60 * 60 * 1000);
+}
+
 function getPeriodRange(period: Period, customStart: string, customEnd: string): { from: string; to: string } {
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tp = getTijuanaDateParts(now);
+  const todayLocalMidnight = new Date(tp.year, tp.month - 1, tp.day, 0, 0, 0);
   if (period === 'Today') {
-    const end = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-    return { from: today.toISOString(), to: end.toISOString() };
+    const tomorrow = addDays(todayLocalMidnight, 1);
+    return { from: formatTijuanaDateTime(todayLocalMidnight), to: formatTijuanaDateTime(tomorrow) };
   }
   if (period === 'Week') {
-    const dayOfWeek = today.getDay();
-    const start = new Date(today.getTime() - dayOfWeek * 24 * 60 * 60 * 1000);
-    const end = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-    return { from: start.toISOString(), to: end.toISOString() };
+    const daysSinceMonday = tp.dayOfWeek === 0 ? 6 : tp.dayOfWeek - 1;
+    const startLocalMidnight = addDays(todayLocalMidnight, -daysSinceMonday);
+    const tomorrow = addDays(todayLocalMidnight, 1);
+    return { from: formatTijuanaDateTime(startLocalMidnight), to: formatTijuanaDateTime(tomorrow) };
   }
   if (period === 'Month') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    return { from: start.toISOString(), to: end.toISOString() };
+    const startLocalMidnight = new Date(tp.year, tp.month - 1, 1, 0, 0, 0);
+    const nextMonthStart = new Date(tp.year, tp.month, 1, 0, 0, 0);
+    return { from: formatTijuanaDateTime(startLocalMidnight), to: formatTijuanaDateTime(nextMonthStart) };
   }
   if (period === 'All') {
     return { from: '', to: '' };
   }
   return {
-    from: new Date(`${customStart}T00:00:00`).toISOString(),
-    to: new Date(`${customEnd}T23:59:59`).toISOString(),
+    from: `${customStart} 00:00:00`,
+    to: `${customEnd} 23:59:59`,
   };
 }
 

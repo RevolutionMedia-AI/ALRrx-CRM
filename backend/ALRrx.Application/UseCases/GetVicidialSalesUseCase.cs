@@ -17,8 +17,8 @@ public sealed class GetVicidialSalesUseCase
 
     public async Task<List<VicidialSaleDto>> ExecuteAsync(
         string? salesRep,
-        DateTime? from,
-        DateTime? to,
+        string? from,
+        string? to,
         int limit = 50,
         CancellationToken ct = default)
     {
@@ -34,8 +34,8 @@ public sealed class GetVicidialSalesUseCase
     }
 
     public async Task<SalesSummaryDto> ExecuteSummaryAsync(
-        DateTime? from,
-        DateTime? to,
+        string? from,
+        string? to,
         int limit = 500,
         CancellationToken ct = default)
     {

@@ -53,8 +53,8 @@ public sealed class VicidialFormController : ControllerBase
     [HttpGet("sales")]
     public async Task<ActionResult<List<VicidialSaleDto>>> ListSales(
         [FromQuery] string? salesRep = null,
-        [FromQuery] DateTime? from = null,
-        [FromQuery] DateTime? to = null,
+        [FromQuery] string? from = null,
+        [FromQuery] string? to = null,
         [FromQuery] int limit = 50,
         CancellationToken ct = default)
     {
@@ -71,8 +71,8 @@ public sealed class VicidialFormController : ControllerBase
 
     [HttpGet("sales/summary")]
     public async Task<ActionResult<SalesSummaryDto>> GetSalesSummary(
-        [FromQuery] DateTime? from = null,
-        [FromQuery] DateTime? to = null,
+        [FromQuery] string? from = null,
+        [FromQuery] string? to = null,
         [FromQuery] int limit = 500,
         CancellationToken ct = default)
     {

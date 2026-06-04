@@ -68,8 +68,6 @@ export default function VSaleForm() {
     setError(null);
     setSuccess(null);
 
-    console.log('[VSaleForm] Submit clicked', { salesRep, clientName, clientPhone, clientEmail, amount, bundle });
-
     if (!salesRep.trim()) {
       console.warn('[VSaleForm] Blocked: no sales rep selected');
       return setError('Please select your user from the dropdown above');
@@ -91,11 +89,9 @@ export default function VSaleForm() {
       amount: amountNum,
     };
 
-    console.log('[VSaleForm] Sending POST /api/vicidial-form/sale', payload);
     setSubmitting(true);
     try {
       const res = await submitVicidialSale(payload);
-      console.log('[VSaleForm] Sale registered', res);
       setSuccess(`Sale #${res.id} registered successfully`);
       reset();
     } catch (err: unknown) {
