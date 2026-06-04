@@ -645,29 +645,29 @@ export default function AnalyticsPage() {
               <div className="h-64 bg-surface-container rounded animate-pulse" />
             ) : contactAreaData.length > 0 ? (
               <div className="flex flex-col gap-4">
-                <div className="border-2 border-black dark:border-black rounded-lg p-2">
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Contact', value: contactAreaData[0].Contact, color: '#10b981' },
-                          { name: 'No Contact', value: contactAreaData[0]['No Contact'], color: '#ef4444' },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={55}
-                        outerRadius={90}
-                        paddingAngle={2}
-                        dataKey="value"
-                        isAnimationActive={false}
-                      >
-                        <Cell fill="#10b981" />
-                        <Cell fill="#ef4444" />
-                      </Pie>
-                      <Tooltip content={<DarkTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Contact', value: contactAreaData[0].Contact, color: '#10b981' },
+                        { name: 'No Contact', value: contactAreaData[0]['No Contact'], color: '#ef4444' },
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={90}
+                      paddingAngle={2}
+                      dataKey="value"
+                      stroke="#000000"
+                      strokeWidth={2}
+                      isAnimationActive={false}
+                    >
+                      <Cell fill="#10b981" />
+                      <Cell fill="#ef4444" />
+                    </Pie>
+                    <Tooltip content={<DarkTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
@@ -802,7 +802,12 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Vicidial Sales Section (full width) */}
-      <VicidialSalesSection refreshKey={vicidialRefreshKey} />
+      <VicidialSalesSection
+        refreshKey={vicidialRefreshKey}
+        pagePeriod={period}
+        pageCustomStart={customStart}
+        pageCustomEnd={customEnd}
+      />
 
       <PeriodComparisonModal isOpen={showPeriodComparison} onClose={() => setShowPeriodComparison(false)} />
     </>

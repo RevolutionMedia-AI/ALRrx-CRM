@@ -4,9 +4,13 @@ import type { VicidialSaleDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
 type Period = 'Today' | 'Week' | 'Month' | 'All' | 'Custom';
+type PagePeriod = 'Today' | 'Week' | 'Month' | 'Custom';
 
 interface VicidialSalesSectionProps {
   refreshKey?: number;
+  pagePeriod?: PagePeriod;
+  pageCustomStart?: string;
+  pageCustomEnd?: string;
 }
 
 function getPeriodRange(period: Period, customStart: string, customEnd: string): { from: string; to: string } {
@@ -51,7 +55,7 @@ function formatDate(iso: string): string {
   }
 }
 
-export default function VicidialSalesSection({ refreshKey = 0 }: VicidialSalesSectionProps) {
+export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageCustomStart, pageCustomEnd }: VicidialSalesSectionProps) {
   const [period, setPeriod] = useState<Period>('All');
   const [customStart, setCustomStart] = useState(() => {
     const d = new Date();
@@ -66,6 +70,21 @@ export default function VicidialSalesSection({ refreshKey = 0 }: VicidialSalesSe
   const [error, setError] = useState<string | null>(null);
   const [repFilter, setRepFilter] = useState<string>('all');
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const [userOverridden, setUserOverridden] = useState(false);
+
+  useEffect(() => {
+    if (!pagePeriod) return;
+    setUserOverridden(false);
+    setPeriod(pagePeriod);
+  }, [pagePeriod]);
+
+  useEffect(() => {
+    if (pageCustomStart) setCustomStart(pageCustomStart);
+  }, [pageCustomStart]);
+
+  useEffect(() => {
+    if (pageCustomEnd) setCustomEnd(pageCustomEnd);
+  }, [pageCustomEnd]);
 
   const range = useMemo(() => getPeriodRange(period, customStart, customEnd), [period, customStart, customEnd]);
 
@@ -146,11 +165,21 @@ export default function VicidialSalesSection({ refreshKey = 0 }: VicidialSalesSe
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`text-[10px] font-metadata-mono uppercase tracking-wider px-2 py-0.5 rounded ${
+              userOverridden
+                ? 'bg-amber-warmth/15 text-amber-warmth'
+                : 'bg-electric-blue/10 text-electric-blue'
+            }`}
+            title={userOverridden ? 'Using local period override' : 'Synced with page period'}
+          >
+            {userOverridden ? 'Local override' : 'Synced with page'}
+          </span>
           <div className="bg-surface-container-low border border-whisper-border rounded flex text-xs overflow-hidden">
             {(['Today', 'Week', 'Month', 'All', 'Custom'] as Period[]).map((p) => (
               <button
                 key={p}
-                onClick={() => setPeriod(p)}
+                onClick={() => { setUserOverridden(true); setPeriod(p); }}
                 className={`px-3 py-1 border-r border-whisper-border last:border-r-0 transition-colors ${
                   period === p
                     ? 'bg-pure-surface text-primary font-medium'
