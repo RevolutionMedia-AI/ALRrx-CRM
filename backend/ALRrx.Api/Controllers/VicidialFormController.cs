@@ -13,17 +13,20 @@ public sealed class VicidialFormController : ControllerBase
 {
     private readonly SubmitVicidialSaleUseCase _submit;
     private readonly GetVicidialSalesUseCase _list;
+    private readonly UpdateVicidialSaleUseCase _update;
     private readonly GetActiveAltrxAgentsUseCase _activeAgents;
     private readonly ILogger<VicidialFormController> _logger;
 
     public VicidialFormController(
         SubmitVicidialSaleUseCase submit,
         GetVicidialSalesUseCase list,
+        UpdateVicidialSaleUseCase update,
         GetActiveAltrxAgentsUseCase activeAgents,
         ILogger<VicidialFormController> logger)
     {
         _submit = submit;
         _list = list;
+        _update = update;
         _activeAgents = activeAgents;
         _logger = logger;
     }
@@ -82,6 +85,32 @@ public sealed class VicidialFormController : ControllerBase
         {
             _logger.LogError(ex, "Failed to compute Vicidial sales summary");
             return StatusCode(500, new { error = "Could not compute sales summary" });
+        }
+    }
+
+    [HttpPatch("sale/{id:int}")]
+    public async Task<ActionResult> UpdateSale(
+        int id,
+        [FromBody] VicidialSaleUpdateRequest request,
+        CancellationToken ct = default)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var ok = await _update.ExecuteAsync(id, request, ct);
+            if (!ok) return NotFound(new { error = $"Sale #{id} not found or no changes applied" });
+            return Ok(new { id, message = "Sale updated successfully" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Vicidial sale #{Id} update denied: {Reason}", id, ex.Message);
+            return StatusCode(403, new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
         }
     }
 

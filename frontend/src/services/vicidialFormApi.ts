@@ -33,3 +33,18 @@ export async function getActiveAltrxAgents(): Promise<ActiveAltrxAgentDto[]> {
   const { data } = await vicidialClient.get<ActiveAltrxAgentDto[]>('/vicidial-form/active-agents');
   return data;
 }
+
+export interface VicidialSaleUpdatePayload {
+  editorEmail?: string;
+  saleDate?: string;
+  clientPhone?: string;
+  clientName?: string;
+  clientEmail?: string;
+  bundle?: string;
+  amount?: number;
+}
+
+export async function updateVicidialSale(id: number, payload: VicidialSaleUpdatePayload): Promise<{ id: number; message: string }> {
+  const { data } = await vicidialClient.patch<{ id: number; message: string }>(`/vicidial-form/sale/${id}`, payload);
+  return data;
+}

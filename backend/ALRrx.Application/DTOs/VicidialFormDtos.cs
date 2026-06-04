@@ -78,6 +78,19 @@ public sealed record VicidialSaleDto
     public DateTime CreatedAt { get; init; }
 }
 
+public sealed class VicidialSaleUpdateRequest
+{
+    [Required]
+    public string EditorEmail { get; init; } = string.Empty;
+
+    public DateTime? SaleDate { get; init; }
+    public string? ClientPhone { get; init; }
+    public string? ClientName { get; init; }
+    public string? ClientEmail { get; init; }
+    public string? Bundle { get; init; }
+    public decimal? Amount { get; init; }
+}
+
 public sealed record ActiveAltrxAgentDto
 {
     public string User { get; init; } = string.Empty;

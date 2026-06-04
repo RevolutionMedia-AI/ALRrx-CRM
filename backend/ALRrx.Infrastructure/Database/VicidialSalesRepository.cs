@@ -213,4 +213,54 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
             AvailablePackages = packages,
         };
     }
+
+    public async Task<bool> UpdateAsync(int id, VicidialSaleUpdateRequest request, string bundleDisplayName, CancellationToken ct = default)
+    {
+        var sets = new List<string>();
+        var parameters = new List<MySqlParameter>
+        {
+            new("@Id", MySqlDbType.Int32) { Value = id },
+        };
+
+        if (request.SaleDate.HasValue)
+        {
+            sets.Add("SaleDate = @SaleDate");
+            parameters.Add(new MySqlParameter("@SaleDate", MySqlDbType.DateTime) { Value = request.SaleDate.Value });
+        }
+        if (request.ClientPhone != null)
+        {
+            sets.Add("ClientPhone = @ClientPhone");
+            parameters.Add(new MySqlParameter("@ClientPhone", MySqlDbType.VarChar) { Value = request.ClientPhone.Trim() });
+        }
+        if (request.ClientName != null)
+        {
+            sets.Add("ClientName = @ClientName");
+            parameters.Add(new MySqlParameter("@ClientName", MySqlDbType.VarChar) { Value = request.ClientName.Trim() });
+        }
+        if (request.ClientEmail != null)
+        {
+            sets.Add("ClientEmail = @ClientEmail");
+            parameters.Add(new MySqlParameter("@ClientEmail", MySqlDbType.VarChar) { Value = request.ClientEmail.Trim().ToLowerInvariant() });
+        }
+        if (request.Bundle != null)
+        {
+            sets.Add("Bundle = @Bundle");
+            parameters.Add(new MySqlParameter("@Bundle", MySqlDbType.VarChar) { Value = bundleDisplayName });
+        }
+        if (request.Amount.HasValue)
+        {
+            sets.Add("Amount = @Amount");
+            parameters.Add(new MySqlParameter("@Amount", MySqlDbType.Decimal) { Value = request.Amount.Value });
+        }
+
+        if (sets.Count == 0) return false;
+
+        var sql = $"UPDATE vicidial_form_sales SET {string.Join(", ", sets)} WHERE Id = @Id";
+        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.AddRange(parameters.ToArray());
+        var affected = await cmd.ExecuteNonQueryAsync(ct);
+        _logger.LogInformation("Vicidial sale #{Id} updated by {Email}: fields={Fields}", id, request.EditorEmail, sets.Count);
+        return affected > 0;
+    }
 }
