@@ -68,15 +68,67 @@ export async function getGoogleSheetsSales(
   _pkg?: string
 ): Promise<SalesSummary> {
   const params: Record<string, string> = {};
-  if (filter.period === 'Custom' && filter.customStart) params.from = filter.customStart;
-  if (filter.period === 'Custom' && filter.customEnd) params.to = filter.customEnd;
+  if (filter.period === 'Custom' && filter.customStart) params.from = `${filter.customStart} 00:00:00`;
+  if (filter.period === 'Custom' && filter.customEnd) params.to = `${filter.customEnd} 23:59:59`;
   if (filter.period === 'Today') {
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-    params.from = start.toISOString();
-    params.to = end.toISOString();
+    const tp = getTijuanaDateParts(now);
+    const todayLocalMidnight = new Date(tp.year, tp.month - 1, tp.day, 0, 0, 0);
+    const tomorrow = new Date(todayLocalMidnight.getTime() + 24 * 60 * 60 * 1000);
+    params.from = formatTijuanaDateTime(todayLocalMidnight);
+    params.to = formatTijuanaDateTime(tomorrow);
+  }
+  if (filter.period === 'Week') {
+    const now = new Date();
+    const tp = getTijuanaDateParts(now);
+    const todayLocalMidnight = new Date(tp.year, tp.month - 1, tp.day, 0, 0, 0);
+    const daysSinceMonday = tp.dayOfWeek === 0 ? 6 : tp.dayOfWeek - 1;
+    const startLocalMidnight = new Date(todayLocalMidnight.getTime() - daysSinceMonday * 24 * 60 * 60 * 1000);
+    const tomorrow = new Date(todayLocalMidnight.getTime() + 24 * 60 * 60 * 1000);
+    params.from = formatTijuanaDateTime(startLocalMidnight);
+    params.to = formatTijuanaDateTime(tomorrow);
+  }
+  if (filter.period === 'Month') {
+    const now = new Date();
+    const tp = getTijuanaDateParts(now);
+    const startLocalMidnight = new Date(tp.year, tp.month - 1, 1, 0, 0, 0);
+    const nextMonthStart = new Date(tp.year, tp.month, 1, 0, 0, 0);
+    params.from = formatTijuanaDateTime(startLocalMidnight);
+    params.to = formatTijuanaDateTime(nextMonthStart);
   }
   const { data } = await client.get<SalesSummary>('/vicidial-form/sales/summary', { params });
   return data;
+}
+
+const BUSINESS_TZ = 'America/Tijuana';
+
+const TIJUANA_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: false,
+});
+
+const TIJUANA_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+function formatTijuanaDateTime(d: Date): string {
+  const parts = TIJUANA_FMT.formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+}
+
+function getTijuanaDateParts(d: Date): { year: number; month: number; day: number; dayOfWeek: number } {
+  const dateStr = TIJUANA_DATE_FMT.format(d);
+  const [y, m, day] = dateStr.split('-').map(Number);
+  const dayOfWeek = new Date(y, m - 1, day).getDay();
+  return { year: y, month: m, day, dayOfWeek };
 }
