@@ -147,4 +147,70 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
             throw;
         }
     }
+
+    public async Task<SalesSummaryDto> GetSummaryAsync(DateTime? from, DateTime? to, int limit, CancellationToken ct = default)
+    {
+        var clampedLimit = Math.Clamp(limit, 1, 1000);
+        var where = "WHERE 1=1";
+        if (from.HasValue) where += " AND SaleDate >= @From";
+        if (to.HasValue) where += " AND SaleDate < @To";
+
+        var listSql = $"SELECT Id, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt FROM vicidial_form_sales {where} ORDER BY SaleDate DESC LIMIT {clampedLimit}";
+
+        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var listCmd = new MySqlCommand(listSql, connection);
+        if (from.HasValue) listCmd.Parameters.Add("@From", MySqlDbType.DateTime).Value = from.Value;
+        if (to.HasValue) listCmd.Parameters.Add("@To", MySqlDbType.DateTime).Value = to.Value;
+
+        var results = new List<VicidialSaleDto>();
+        await using (var reader = await listCmd.ExecuteReaderAsync(ct))
+        {
+            while (await reader.ReadAsync(ct))
+            {
+                results.Add(new VicidialSaleDto
+                {
+                    Id = reader.GetInt32("Id"),
+                    SalesRep = reader.GetString("SalesRep"),
+                    SaleDate = reader.GetDateTime("SaleDate"),
+                    ClientPhone = reader.GetString("ClientPhone"),
+                    ClientName = reader.GetString("ClientName"),
+                    ClientEmail = reader.GetString("ClientEmail"),
+                    Bundle = reader.GetString("Bundle"),
+                    Amount = reader.GetDecimal("Amount"),
+                    CreatedAt = reader.GetDateTime("CreatedAt"),
+                });
+            }
+        }
+
+        var totalSales = results.Sum(r => r.Amount);
+        var sellers = results.Select(r => r.SalesRep).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().OrderBy(s => s).ToList();
+        var packages = results.Select(r => r.Bundle).Where(b => !string.IsNullOrWhiteSpace(b)).Distinct().OrderBy(b => b).ToList();
+        var first = results.FirstOrDefault();
+
+        return new SalesSummaryDto
+        {
+            TotalSales = totalSales,
+            TotalCount = results.Count,
+            AllSales = results.Select(r => new SaleRecord
+            {
+                Timestamp = r.CreatedAt,
+                SellerName = r.SalesRep,
+                SaleDate = r.SaleDate,
+                CustomerEmail = r.ClientEmail,
+                Package = r.Bundle,
+                Amount = r.Amount,
+            }).ToList(),
+            LastSale = first == null ? null : new SaleRecord
+            {
+                Timestamp = first.CreatedAt,
+                SellerName = first.SalesRep,
+                SaleDate = first.SaleDate,
+                CustomerEmail = first.ClientEmail,
+                Package = first.Bundle,
+                Amount = first.Amount,
+            },
+            AvailableSellers = sellers,
+            AvailablePackages = packages,
+        };
+    }
 }

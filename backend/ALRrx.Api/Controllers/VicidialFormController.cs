@@ -66,6 +66,25 @@ public sealed class VicidialFormController : ControllerBase
         }
     }
 
+    [HttpGet("sales/summary")]
+    public async Task<ActionResult<SalesSummaryDto>> GetSalesSummary(
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] int limit = 500,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var summary = await _list.ExecuteSummaryAsync(from, to, limit, ct);
+            return Ok(summary);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to compute Vicidial sales summary");
+            return StatusCode(500, new { error = "Could not compute sales summary" });
+        }
+    }
+
     [HttpGet("active-agents")]
     public async Task<ActionResult<List<ActiveAltrxAgentDto>>> ListActiveAgents(CancellationToken ct = default)
     {

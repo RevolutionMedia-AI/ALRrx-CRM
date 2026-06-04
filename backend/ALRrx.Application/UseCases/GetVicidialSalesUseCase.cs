@@ -32,4 +32,14 @@ public sealed class GetVicidialSalesUseCase
 
         return await _repo.GetBySalesRepAsync(salesRep.Trim(), from, to, clamped, ct);
     }
+
+    public async Task<SalesSummaryDto> ExecuteSummaryAsync(
+        DateTime? from,
+        DateTime? to,
+        int limit = 500,
+        CancellationToken ct = default)
+    {
+        var clamped = Math.Clamp(limit, 1, 1000);
+        return await _repo.GetSummaryAsync(from, to, clamped, ct);
+    }
 }

@@ -64,14 +64,19 @@ export async function exportPeriodComparisonExcel(period1: TimeFilterDto, period
 
 export async function getGoogleSheetsSales(
   filter: TimeFilterDto,
-  seller?: string,
-  pkg?: string
+  _seller?: string,
+  _pkg?: string
 ): Promise<SalesSummary> {
-  const params: Record<string, string> = { period: filter.period };
-  if (filter.customStart) params.customStart = filter.customStart;
-  if (filter.customEnd) params.customEnd = filter.customEnd;
-  if (seller && seller !== 'all') params.seller = seller;
-  if (pkg && pkg !== 'all') params.package = pkg;
-  const { data } = await client.get<SalesSummary>('/dashboard/google-sheets/sales', { params });
+  const params: Record<string, string> = {};
+  if (filter.period === 'Custom' && filter.customStart) params.from = filter.customStart;
+  if (filter.period === 'Custom' && filter.customEnd) params.to = filter.customEnd;
+  if (filter.period === 'Today') {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    params.from = start.toISOString();
+    params.to = end.toISOString();
+  }
+  const { data } = await client.get<SalesSummary>('/vicidial-form/sales/summary', { params });
   return data;
 }

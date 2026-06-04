@@ -8,4 +8,5 @@ public interface IVicidialSalesRepository
     Task<int> InsertAsync(VicidialSaleRequest request, string bundleDisplayName, CancellationToken ct = default);
     Task<List<VicidialSaleDto>> GetBySalesRepAsync(string salesRep, DateTime? from, DateTime? to, int limit, CancellationToken ct = default);
     Task<List<VicidialSaleDto>> GetAllAsync(DateTime? from, DateTime? to, int limit, CancellationToken ct = default);
+    Task<SalesSummaryDto> GetSummaryAsync(DateTime? from, DateTime? to, int limit, CancellationToken ct = default);
 }
