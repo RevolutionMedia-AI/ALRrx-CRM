@@ -290,6 +290,7 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
       setRefreshNonce((n) => n + 1);
     } catch (err: unknown) {
       setDeleteError(extractErrorMessage(err, 'Could not delete the sale'));
+    } finally {
       setSavingEdit(false);
     }
   };
