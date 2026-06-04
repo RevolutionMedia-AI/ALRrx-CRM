@@ -373,10 +373,10 @@ export default function AnalyticsPage() {
             loading={loading}
           />
           <KpiCard
-            title="Active Agents"
-            value={String(activeAgents)}
-            icon="groups"
-            valueColor="var(--card-value-emerald)"
+            title="No Contacts"
+            value={noContactsMetric?.value ?? '0'}
+            icon="call_end"
+            valueColor="var(--card-value-red)"
             loading={loading}
           />
           <KpiCard
@@ -394,21 +394,21 @@ export default function AnalyticsPage() {
             loading={loading}
           />
           <KpiCard
-            title="No Contacts"
-            value={noContactsMetric?.value ?? '0'}
-            icon="call_end"
-            valueColor="var(--card-value-red)"
+            title="Active Agents"
+            value={String(activeAgents)}
+            icon="groups"
+            valueColor="var(--card-value-emerald)"
             loading={loading}
           />
         </div>
       </section>
 
-      {/* ========== SECTION 2: Sales & Performance (6 cards) ========== */}
+      {/* ========== SECTION 2: Sales (3 cards) ========== */}
       <section>
         <h2 className="font-bold text-sm text-secondary uppercase tracking-wider font-metadata-mono mb-3">
-          Sales & Performance
+          Sales
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiCard
             title="Sales"
             value={salesMetric?.value ?? '0'}
@@ -433,11 +433,17 @@ export default function AnalyticsPage() {
             loading={salesLoading}
             isCurrency
           />
-          <KpiCard
-            title="Conversion Rate"
+        </div>
+      </section>
+
+      {/* ========== SECTION 3: Performance (3 cards + Conversion Rate explanation) ========== */}
+      <section>
+        <h2 className="font-bold text-sm text-secondary uppercase tracking-wider font-metadata-mono mb-3">
+          Performance
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <ConversionRateCard
             value={conversionRate}
-            icon="percent"
-            valueColor="#8B5CF6"
             loading={loading}
           />
           <KpiCard
@@ -630,7 +636,7 @@ export default function AnalyticsPage() {
         {/* RIGHT SIDEBAR (4/12) */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           {/* Contact vs No Contact */}
-          <section className="bg-pure-surface border border-whisper-border rounded-xl p-6 shadow-diffused">
+          <section className="bg-pure-surface border-2 border-black dark:border-black rounded-xl p-6 shadow-diffused">
             <h3 className="font-bold text-lg text-primary mb-5 flex items-center gap-2">
               <span className="material-symbols-outlined text-electric-blue">pie_chart</span>
               Contact vs No Contact
@@ -862,6 +868,36 @@ function KpiCard({
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+function ConversionRateCard({ value, loading }: { value: string; loading?: boolean }) {
+  return (
+    <div className="relative overflow-hidden bg-gradient-to-br from-electric-blue/15 via-electric-blue/5 to-transparent border-2 border-electric-blue/30 dark:border-electric-blue/40 rounded-lg p-5 shadow-card transition-transform hover:scale-[1.01]">
+      <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-electric-blue/10 blur-2xl pointer-events-none" />
+      <div className="relative flex justify-between items-start mb-3">
+        <div>
+          <p className="text-card-label text-[12px] font-bold uppercase tracking-wider text-electric-blue">Conversion Rate</p>
+          <p className="text-[10px] text-secondary font-metadata-mono mt-0.5">Sales ÷ Leads Dialed</p>
+        </div>
+        <div className="p-1.5 bg-electric-blue/15 rounded-md">
+          <span className="material-symbols-outlined text-[16px] text-electric-blue">percent</span>
+        </div>
+      </div>
+      {loading ? (
+        <div className="h-7 w-24 bg-surface-container rounded animate-pulse" />
+      ) : (
+        <h2 className="text-[1.8rem] font-bold leading-none tracking-tight text-electric-blue font-metadata-mono">
+          {value}
+        </h2>
+      )}
+      <div className="relative mt-3 pt-3 border-t border-electric-blue/20">
+        <p className="text-[11px] text-secondary leading-relaxed">
+          <span className="font-semibold text-primary">How it's calculated:</span>{' '}
+          Total sales divided by total leads dialed for the selected period. Measures the percentage of dialed leads that became paying customers.
+        </p>
+      </div>
     </div>
   );
 }

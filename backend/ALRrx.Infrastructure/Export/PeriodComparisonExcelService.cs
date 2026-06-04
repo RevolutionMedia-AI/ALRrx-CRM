@@ -79,25 +79,41 @@ public sealed class PeriodComparisonExcelService : IPeriodComparisonExcelService
         ws.Cells[dataStartRow, 3].Value = "Contacts";
         ws.Cells[dataStartRow, 4].Value = "Total Calls";
 
+        using var chartHeader = ws.Cells[dataStartRow, 1, dataStartRow, 4];
+        chartHeader.Style.Font.Bold = true;
+        chartHeader.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+        chartHeader.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(99, 102, 241));
+        chartHeader.Style.Font.Color.SetColor(System.Drawing.Color.White);
+
         ws.Cells[dataStartRow + 1, 1].Value = data.Period1Label;
-        ws.Cells[dataStartRow + 1, 2].Value = GetKpiValue(data.Period1Kpis, "Sales Today");
-        ws.Cells[dataStartRow + 1, 3].Value = GetKpiValue(data.Period1Kpis, "Contacts");
-        ws.Cells[dataStartRow + 1, 4].Value = GetKpiValue(data.Period1Kpis, "Total Calls");
+        ws.Cells[dataStartRow + 1, 2].Value = ParseKpiNumeric(GetKpiValue(data.Period1Kpis, "Sales Today"));
+        ws.Cells[dataStartRow + 1, 3].Value = ParseKpiNumeric(GetKpiValue(data.Period1Kpis, "Contacts"));
+        ws.Cells[dataStartRow + 1, 4].Value = ParseKpiNumeric(GetKpiValue(data.Period1Kpis, "Total Calls"));
 
         ws.Cells[dataStartRow + 2, 1].Value = data.Period2Label;
-        ws.Cells[dataStartRow + 2, 2].Value = GetKpiValue(data.Period2Kpis, "Sales Today");
-        ws.Cells[dataStartRow + 2, 3].Value = GetKpiValue(data.Period2Kpis, "Contacts");
-        ws.Cells[dataStartRow + 2, 4].Value = GetKpiValue(data.Period2Kpis, "Total Calls");
+        ws.Cells[dataStartRow + 2, 2].Value = ParseKpiNumeric(GetKpiValue(data.Period2Kpis, "Sales Today"));
+        ws.Cells[dataStartRow + 2, 3].Value = ParseKpiNumeric(GetKpiValue(data.Period2Kpis, "Contacts"));
+        ws.Cells[dataStartRow + 2, 4].Value = ParseKpiNumeric(GetKpiValue(data.Period2Kpis, "Total Calls"));
 
         var chart = ws.Drawings.AddChart("KpiComparisonBar", eChartType.ColumnClustered);
         chart.Title.Text = "KPI Comparison by Period";
         chart.SetPosition(chartRow + 5, 0, 0, 0);
         chart.SetSize(700, 350);
 
-        var series1 = chart.Series.Add(ws.Cells[kpiStartRow + 1, 2, kpiStartRow + data.Period1Kpis.Count, 2], ws.Cells[kpiStartRow, 1, kpiStartRow, 1]);
-        series1.HeaderAddress = ws.Cells[kpiStartRow, 2];
-        var series2 = chart.Series.Add(ws.Cells[kpiStartRow + 1, 3, kpiStartRow + data.Period1Kpis.Count, 3], ws.Cells[kpiStartRow, 1, kpiStartRow, 1]);
-        series2.HeaderAddress = ws.Cells[kpiStartRow, 3];
+        var s1 = chart.Series.Add(
+            ws.Cells[dataStartRow + 1, 2, dataStartRow + 2, 2],
+            ws.Cells[dataStartRow + 1, 1, dataStartRow + 2, 1]);
+        s1.HeaderAddress = ws.Cells[dataStartRow, 2];
+
+        var s2 = chart.Series.Add(
+            ws.Cells[dataStartRow + 1, 3, dataStartRow + 2, 3],
+            ws.Cells[dataStartRow + 1, 1, dataStartRow + 2, 1]);
+        s2.HeaderAddress = ws.Cells[dataStartRow, 3];
+
+        var s3 = chart.Series.Add(
+            ws.Cells[dataStartRow + 1, 4, dataStartRow + 2, 4],
+            ws.Cells[dataStartRow + 1, 1, dataStartRow + 2, 1]);
+        s3.HeaderAddress = ws.Cells[dataStartRow, 4];
 
         var changeRow = dataStartRow + 5;
         ws.Cells[changeRow, 1].Value = "% Change Summary";
@@ -252,16 +268,17 @@ public sealed class PeriodComparisonExcelService : IPeriodComparisonExcelService
             ws.Cells[currentRow, 2].Value = data.ContactComparison.Period1Rate;
             ws.Cells[currentRow, 3].Value = data.ContactComparison.Period2Rate;
 
-            var chartDataStart = currentRow - 2;
+            var contactsRow = currentRow - 2;
+            var noContactsRow = currentRow - 1;
             var chart = ws.Drawings.AddChart("ContactComparison", eChartType.ColumnClustered);
             chart.Title.Text = "Contact vs No Contact by Period";
             chart.SetPosition(currentRow + 3, 0, 0, 0);
             chart.SetSize(500, 300);
 
-            chart.Series.Add(ws.Cells[chartDataStart + 1, 2, chartDataStart + 2, 2], ws.Cells[chartDataStart + 1, 1, chartDataStart + 2, 1]);
-            chart.Series[0].HeaderAddress = ws.Cells[chartDataStart, 2];
-            chart.Series.Add(ws.Cells[chartDataStart + 1, 3, chartDataStart + 2, 3], ws.Cells[chartDataStart + 1, 1, chartDataStart + 2, 1]);
-            chart.Series[1].HeaderAddress = ws.Cells[chartDataStart, 3];
+            chart.Series.Add(ws.Cells[contactsRow, 2, noContactsRow, 2], ws.Cells[contactsRow, 1, noContactsRow, 1]);
+            chart.Series[0].HeaderAddress = ws.Cells[contactsRow - 1, 2];
+            chart.Series.Add(ws.Cells[contactsRow, 3, noContactsRow, 3], ws.Cells[contactsRow, 1, noContactsRow, 1]);
+            chart.Series[1].HeaderAddress = ws.Cells[contactsRow - 1, 3];
         }
 
         ws.Cells.AutoFitColumns();
@@ -270,6 +287,13 @@ public sealed class PeriodComparisonExcelService : IPeriodComparisonExcelService
     private static string GetKpiValue(List<KpiRow> kpis, string label)
     {
         return kpis.FirstOrDefault(k => k.Label == label)?.Value ?? "0";
+    }
+
+    private static double ParseKpiNumeric(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return 0;
+        var cleaned = value.Replace("%", "").Replace(",", "").Trim();
+        return double.TryParse(cleaned, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : 0;
     }
 }
 
