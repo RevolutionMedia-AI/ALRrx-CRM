@@ -158,6 +158,7 @@ export default function DashboardPage() {
   const leadsDialed = summary ? findMetric(summary.metrics, 'Leads Dialed') : undefined;
   const leadsContacted = summary ? findMetric(summary.metrics, 'Leads Contacted') : undefined;
   const contactRate = summary ? findMetric(summary.metrics, 'Contact Rate') : undefined;
+  const overallConversion = summary ? findMetric(summary.metrics, 'Overall Conversion') : undefined;
 
   const dispositionsChart = summary?.charts?.[0];
   const chartData = dispositionsChart
@@ -257,6 +258,16 @@ export default function DashboardPage() {
           {error}
         </div>
       )}
+
+      {/* ========== HERO: Overall Conversion (BIG card) ========== */}
+      <section>
+        <OverallConversionCard
+          value={overallConversion?.value}
+          salesCount={parseMetricNumber(salesToday?.value)}
+          contactsCount={parseMetricNumber(leadsContacted?.value)}
+          loading={summaryLoading}
+        />
+      </section>
 
       {/* ========== HERO KPI ROW (6 cards) ========== */}
       <section>
@@ -716,6 +727,93 @@ function StatusBar({ label, count, total, color }: { label: string; count: numbe
       </div>
       <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
         <div className={`${color} h-full rounded-full transition-all`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function OverallConversionCard({
+  value, salesCount, contactsCount, loading,
+}: {
+  value: string | undefined;
+  salesCount: number;
+  contactsCount: number;
+  loading: boolean;
+}) {
+  const pctNum = parseMetricNumber(value);
+  const state: 'good' | 'warn' | 'bad' | 'idle' =
+    loading ? 'idle' :
+    pctNum >= 10 ? 'good' :
+    pctNum >= 5 ? 'warn' : 'bad';
+
+  const stateColor =
+    state === 'good' ? '#10b981' :
+    state === 'warn' ? '#F59E0B' :
+    state === 'bad' ? '#E11D48' : '#94A3B8';
+
+  const stateLabel =
+    state === 'good' ? 'Strong' :
+    state === 'warn' ? 'Moderate' :
+    state === 'bad' ? 'Low' : 'Loading';
+
+  return (
+    <div className="bg-gradient-to-br from-pure-surface to-surface-container-low dark:from-gray-900 dark:to-gray-800 border border-card-border dark:border-gray-700 rounded-2xl shadow-card p-6 md:p-8">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-emerald-signal/10 border border-emerald-signal/20">
+            <span className="material-symbols-outlined text-emerald-signal text-3xl">trending_up</span>
+          </div>
+          <div>
+            <p className="text-[11px] font-bold text-secondary uppercase tracking-wider font-metadata-mono">
+              Overall Conversion
+            </p>
+            <p className="text-[11px] text-secondary mt-0.5">
+              Sales as % of contacted leads — most important KPI
+            </p>
+          </div>
+        </div>
+        <div className="flex items-baseline gap-3">
+          {loading ? (
+            <div className="h-16 w-40 bg-surface-container rounded animate-pulse" />
+          ) : (
+            <>
+              <span
+                className="text-[5rem] md:text-[6.5rem] font-bold leading-none tracking-tighter font-metadata-mono"
+                style={{ color: stateColor }}
+              >
+                {value ?? '0%'}
+              </span>
+              <span
+                className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border"
+                style={{ color: stateColor, borderColor: stateColor, backgroundColor: `${stateColor}15` }}
+              >
+                {stateLabel}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+      <div className="mt-5 pt-5 border-t border-whisper-border dark:border-gray-700 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-emerald-signal text-[18px]">check_circle</span>
+          <span className="text-secondary">Sales:</span>
+          <span className="font-bold text-primary dark:text-gray-100 font-metadata-mono">{salesCount}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-electric-blue text-[18px]">contact_page</span>
+          <span className="text-secondary">Contacted:</span>
+          <span className="font-bold text-primary dark:text-gray-100 font-metadata-mono">{contactsCount}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-secondary text-[18px]">calculate</span>
+          <span className="text-secondary">Ratio:</span>
+          <span className="font-bold text-primary dark:text-gray-100 font-metadata-mono">
+            {salesCount} / {contactsCount}
+          </span>
+        </div>
+        <div className="ml-auto text-[11px] text-secondary font-metadata-mono">
+          Updates with period filter
+        </div>
       </div>
     </div>
   );
