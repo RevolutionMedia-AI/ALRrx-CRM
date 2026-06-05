@@ -43,7 +43,7 @@ public sealed record VicidialAuthResponse
 
 public sealed class VicidialSaleRequest
 {
-    [Required, Range(1, int.MaxValue, ErrorMessage = "LeadId is required and must be greater than zero")]
+    [Range(1, int.MaxValue, ErrorMessage = "LeadId must be greater than zero if provided")]
     public int? LeadId { get; init; }
 
     [Required]

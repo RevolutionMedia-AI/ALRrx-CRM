@@ -14,7 +14,8 @@ export default function VicidialFormPage() {
     const parts: string[] = [];
     if (salesRep) parts.push(salesRep);
     if (leadId) parts.push(`Lead #${leadId}`);
-    document.title = parts.length > 0 ? `ALTRX Sales Form — ${parts.join(' • ')}` : 'ALTRX Sales Form';
+    if (parts.length === 0) parts.push('Manual entry');
+    document.title = `ALTRX Sales Form — ${parts.join(' • ')}`;
   }, [leadId, salesRep]);
 
   const isAuthenticated = !loading && !!token && !!user;

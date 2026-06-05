@@ -112,15 +112,17 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
 
     public async Task<int> InsertAsync(VicidialSaleRequest request, string bundleDisplayName, CancellationToken ct = default)
     {
+        var source = request.LeadId.HasValue ? "VicidialForm" : "ManualForm";
+
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand("""
             INSERT INTO vicidial_form_sales
                 (LeadId, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, Source)
             VALUES
-                (@LeadId, @SalesRep, @SaleDate, @ClientPhone, @ClientName, @ClientEmail, @Bundle, @Amount, 'VicidialForm')
+                (@LeadId, @SalesRep, @SaleDate, @ClientPhone, @ClientName, @ClientEmail, @Bundle, @Amount, @Source)
             """, connection);
 
-        cmd.Parameters.Add("@LeadId", MySqlDbType.Int32).Value = request.LeadId!.Value;
+        cmd.Parameters.Add("@LeadId", MySqlDbType.Int32).Value = (object?)request.LeadId ?? DBNull.Value;
         cmd.Parameters.AddWithValue("@SalesRep", request.SalesRep.Trim());
         cmd.Parameters.AddWithValue("@SaleDate", request.SaleDate);
         cmd.Parameters.AddWithValue("@ClientPhone", request.ClientPhone.Trim());
@@ -128,11 +130,12 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         cmd.Parameters.AddWithValue("@ClientEmail", request.ClientEmail.Trim().ToLowerInvariant());
         cmd.Parameters.AddWithValue("@Bundle", bundleDisplayName);
         cmd.Parameters.AddWithValue("@Amount", request.Amount);
+        cmd.Parameters.Add("@Source", MySqlDbType.VarChar).Value = source;
 
         await cmd.ExecuteNonQueryAsync(ct);
         var newId = cmd.LastInsertedId;
-        _logger.LogInformation("Vicidial sale recorded: LeadId={LeadId} | {SalesRep} | {Bundle} | ${Amount} | Id={Id}",
-            request.LeadId, request.SalesRep, bundleDisplayName, request.Amount, newId);
+        _logger.LogInformation("Vicidial sale recorded: LeadId={LeadId} | {SalesRep} | {Bundle} | ${Amount} | Id={Id} | Source={Source}",
+            request.LeadId, request.SalesRep, bundleDisplayName, request.Amount, newId, source);
         return Convert.ToInt32(newId);
     }
 

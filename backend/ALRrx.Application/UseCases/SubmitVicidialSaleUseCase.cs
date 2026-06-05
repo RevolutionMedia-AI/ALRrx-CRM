@@ -17,8 +17,8 @@ public sealed class SubmitVicidialSaleUseCase
 
     public async Task<int> ExecuteAsync(VicidialSaleRequest request, CancellationToken ct = default)
     {
-        if (request.LeadId is null or <= 0)
-            throw new ArgumentException("LeadId is required and must be greater than zero (open this form from VICIdial with ?lead_id=XXXXX)");
+        if (request.LeadId is not null and <= 0)
+            throw new ArgumentException("LeadId must be greater than zero if provided");
         if (string.IsNullOrWhiteSpace(request.SalesRep))
             throw new ArgumentException("SalesRep is required");
         if (string.IsNullOrWhiteSpace(request.ClientName))
@@ -35,8 +35,9 @@ public sealed class SubmitVicidialSaleUseCase
         var bundleDisplayName = bundleType.ToDisplayName();
 
         var newId = await _repo.InsertAsync(request, bundleDisplayName, ct);
-        _logger.LogInformation("Vicidial sale #{Id} submitted: leadId={LeadId}, rep={Rep}, bundle={Bundle}, ${Amount}",
-            newId, request.LeadId, request.SalesRep, bundleDisplayName, request.Amount);
+        var source = request.LeadId.HasValue ? "VicidialForm" : "ManualForm";
+        _logger.LogInformation("Vicidial sale #{Id} submitted: leadId={LeadId}, rep={Rep}, bundle={Bundle}, ${Amount}, source={Source}",
+            newId, request.LeadId, request.SalesRep, bundleDisplayName, request.Amount, source);
         return newId;
     }
 }

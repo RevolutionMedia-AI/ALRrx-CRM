@@ -8,8 +8,11 @@ export type LeadLookupState =
   | { kind: 'connection-error'; message: string }
   | { kind: 'invalid'; message: string };
 
+export type FormMode = 'vicidial-with-lead' | 'vicidial-no-lead' | 'direct';
+
 interface VLeadBannerProps {
   state: LeadLookupState;
+  mode: FormMode;
 }
 
 function MaskPhone(phone: string): string {
@@ -26,14 +29,25 @@ function MaskEmail(email: string): string {
   return `${maskedUser}@${domain}`;
 }
 
-export default function VLeadBanner({ state }: VLeadBannerProps) {
+export default function VLeadBanner({ state, mode }: VLeadBannerProps) {
   if (state.kind === 'idle') {
-    return (
-      <div className="mb-4 px-3 py-2 rounded-lg bg-surface-container-low dark:bg-gray-800 border border-whisper-border dark:border-gray-700 text-xs text-secondary dark:text-gray-400 flex items-center gap-2">
-        <span className="material-symbols-outlined text-[16px]">info</span>
-        <span>Entrada manual: VICIdial no envió un <code className="font-metadata-mono text-[11px]">lead_id</code>. Complete los datos del cliente.</span>
-      </div>
-    );
+    if (mode === 'vicidial-no-lead') {
+      return (
+        <div className="mb-4 px-3 py-2 rounded-lg bg-electric-blue/5 border border-electric-blue/20 text-electric-blue text-xs flex items-center gap-2">
+          <span className="material-symbols-outlined text-[16px]">dialpad</span>
+          <span>Manual dial from VICIdial — complete the client info below.</span>
+        </div>
+      );
+    }
+    if (mode === 'direct') {
+      return (
+        <div className="mb-4 px-3 py-2 rounded-lg bg-surface-container-low dark:bg-gray-800 border border-whisper-border dark:border-gray-700 text-xs text-secondary dark:text-gray-400 flex items-center gap-2">
+          <span className="material-symbols-outlined text-[16px]">info</span>
+          <span>Direct entry — no VICIdial lead. This sale will be recorded as <code className="font-metadata-mono text-[11px]">Source = ManualForm</code>.</span>
+        </div>
+      );
+    }
+    return null;
   }
 
   if (state.kind === 'loading') {
