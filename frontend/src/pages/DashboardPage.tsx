@@ -157,7 +157,6 @@ export default function DashboardPage() {
   const occupancy = summary ? findMetric(summary.metrics, 'Occupancy') : undefined;
   const leadsDialed = summary ? findMetric(summary.metrics, 'Leads Dialed') : undefined;
   const leadsContacted = summary ? findMetric(summary.metrics, 'Leads Contacted') : undefined;
-  const contactRate = summary ? findMetric(summary.metrics, 'Contact Rate') : undefined;
   const overallConversion = summary ? findMetric(summary.metrics, 'Overall Conversion') : undefined;
 
   const dispositionsChart = summary?.charts?.[0];
@@ -259,16 +258,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ========== HERO: Overall Conversion (BIG card) ========== */}
-      <section>
-        <OverallConversionCard
-          value={overallConversion?.value}
-          salesCount={parseMetricNumber(salesToday?.value)}
-          contactsCount={parseMetricNumber(leadsContacted?.value)}
-          loading={summaryLoading}
-        />
-      </section>
-
       {/* ========== HERO KPI ROW (6 cards) ========== */}
       <section>
         <h2 className="font-bold text-sm text-secondary uppercase tracking-wider font-metadata-mono mb-3">
@@ -298,11 +287,13 @@ export default function DashboardPage() {
             loading={summaryLoading}
           />
           <KpiCard
-            title="Contact Rate"
-            value={contactRate?.value ?? '0%'}
-            icon="percent"
-            valueColor="#8B5CF6"
+            title="Overall Conversion"
+            subtitle="dialed → sale"
+            value={overallConversion?.value ?? '0%'}
+            icon="trending_up"
+            valueColor={overallConversion?.color ?? '#10b981'}
             loading={summaryLoading}
+            isHero
           />
           <KpiCard
             title="Sales"
@@ -648,9 +639,10 @@ export default function DashboardPage() {
 }
 
 function KpiCard({
-  title, value, change, icon, valueColor = 'var(--card-value-dark)', loading, isCurrency, isSales,
+  title, subtitle, value, change, icon, valueColor = 'var(--card-value-dark)', loading, isCurrency, isSales, isHero,
 }: {
   title: string;
+  subtitle?: string;
   value: string | number;
   change?: string;
   icon: string;
@@ -658,6 +650,7 @@ function KpiCard({
   loading?: boolean;
   isCurrency?: boolean;
   isSales?: boolean;
+  isHero?: boolean;
 }) {
   const isPositive = change ? !change.startsWith('-') : true;
   const numericValue = typeof value === 'number' ? value : parseMetricNumber(value);
@@ -675,19 +668,22 @@ function KpiCard({
   }
 
   return (
-    <div className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-5 shadow-card transition-transform hover:scale-[1.01] relative">
-      <div className="flex justify-between items-start mb-4">
-        <p className="text-card-label text-[12px] font-medium">{title}</p>
+    <div className={`bg-pure-surface dark:bg-gray-900 border ${isHero ? 'border-emerald-signal/40' : 'border-card-border dark:border-gray-700'} rounded-lg ${isHero ? 'p-6' : 'p-5'} shadow-card transition-transform hover:scale-[1.01] relative`}>
+      <div className={`flex justify-between items-start ${isHero ? 'mb-3' : 'mb-4'}`}>
+        <div>
+          <p className="text-card-label text-[12px] font-medium">{title}</p>
+          {subtitle && <p className="text-[10px] text-secondary font-metadata-mono mt-0.5">{subtitle}</p>}
+        </div>
         <div className="p-1.5 bg-card-icon-bg dark:bg-gray-800 rounded-md">
           <span className="material-symbols-outlined text-[16px] text-card-label">{icon}</span>
         </div>
       </div>
       {loading ? (
-        <div className="h-7 w-20 bg-surface-container rounded animate-pulse" />
+        <div className={`w-20 bg-surface-container rounded animate-pulse ${isHero ? 'h-10' : 'h-7'}`} />
       ) : (
         <div className="flex items-baseline gap-1.5">
           <h2
-            className={`text-[1.6rem] font-bold leading-none tracking-tight ${isEmpty ? 'text-muted-slate font-medium' : ''}`}
+            className={`${isHero ? 'text-[2.6rem]' : 'text-[1.6rem]'} font-bold leading-none tracking-tight ${isEmpty ? 'text-muted-slate font-medium' : ''}`}
             style={isEmpty ? undefined : { color: valueColor }}
           >
             {displayValue}
@@ -727,93 +723,6 @@ function StatusBar({ label, count, total, color }: { label: string; count: numbe
       </div>
       <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
         <div className={`${color} h-full rounded-full transition-all`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function OverallConversionCard({
-  value, salesCount, contactsCount, loading,
-}: {
-  value: string | undefined;
-  salesCount: number;
-  contactsCount: number;
-  loading: boolean;
-}) {
-  const pctNum = parseMetricNumber(value);
-  const state: 'good' | 'warn' | 'bad' | 'idle' =
-    loading ? 'idle' :
-    pctNum >= 10 ? 'good' :
-    pctNum >= 5 ? 'warn' : 'bad';
-
-  const stateColor =
-    state === 'good' ? '#10b981' :
-    state === 'warn' ? '#F59E0B' :
-    state === 'bad' ? '#E11D48' : '#94A3B8';
-
-  const stateLabel =
-    state === 'good' ? 'Strong' :
-    state === 'warn' ? 'Moderate' :
-    state === 'bad' ? 'Low' : 'Loading';
-
-  return (
-    <div className="bg-gradient-to-br from-pure-surface to-surface-container-low dark:from-gray-900 dark:to-gray-800 border border-card-border dark:border-gray-700 rounded-2xl shadow-card p-6 md:p-8">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-xl bg-emerald-signal/10 border border-emerald-signal/20">
-            <span className="material-symbols-outlined text-emerald-signal text-3xl">trending_up</span>
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-secondary uppercase tracking-wider font-metadata-mono">
-              Overall Conversion
-            </p>
-            <p className="text-[11px] text-secondary mt-0.5">
-              Sales as % of contacted leads — most important KPI
-            </p>
-          </div>
-        </div>
-        <div className="flex items-baseline gap-3">
-          {loading ? (
-            <div className="h-16 w-40 bg-surface-container rounded animate-pulse" />
-          ) : (
-            <>
-              <span
-                className="text-[5rem] md:text-[6.5rem] font-bold leading-none tracking-tighter font-metadata-mono"
-                style={{ color: stateColor }}
-              >
-                {value ?? '0%'}
-              </span>
-              <span
-                className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border"
-                style={{ color: stateColor, borderColor: stateColor, backgroundColor: `${stateColor}15` }}
-              >
-                {stateLabel}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
-      <div className="mt-5 pt-5 border-t border-whisper-border dark:border-gray-700 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-emerald-signal text-[18px]">check_circle</span>
-          <span className="text-secondary">Sales:</span>
-          <span className="font-bold text-primary dark:text-gray-100 font-metadata-mono">{salesCount}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-electric-blue text-[18px]">contact_page</span>
-          <span className="text-secondary">Contacted:</span>
-          <span className="font-bold text-primary dark:text-gray-100 font-metadata-mono">{contactsCount}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-secondary text-[18px]">calculate</span>
-          <span className="text-secondary">Ratio:</span>
-          <span className="font-bold text-primary dark:text-gray-100 font-metadata-mono">
-            {salesCount} / {contactsCount}
-          </span>
-        </div>
-        <div className="ml-auto text-[11px] text-secondary font-metadata-mono">
-          Updates with period filter
-        </div>
       </div>
     </div>
   );

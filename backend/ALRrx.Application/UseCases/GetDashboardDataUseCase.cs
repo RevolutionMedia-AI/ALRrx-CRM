@@ -98,17 +98,18 @@ public sealed class GetDashboardDataUseCase
                 Color = "#f59e0b",
                 Format = "number"
             });
+        }
 
-            var salesVal = salesResult.Rows.Length > 0
-                ? Convert.ToInt32(salesResult.Rows[0].GetValueOrDefault("Sales_Today") ?? 0)
-                : 0;
-            var contactsVal = Convert.ToInt32(row.GetValueOrDefault("Contact") ?? 0);
-            var overallConvPct = contactsVal > 0 ? Math.Round((double)salesVal / contactsVal * 100, 1) : 0;
+        if (leadsResult.Rows.Length > 0 && salesResult.Rows.Length > 0)
+        {
+            var dialedVal = Convert.ToInt32(leadsResult.Rows[0].GetValueOrDefault("Total_Dialed_Leads") ?? 0);
+            var salesVal = Convert.ToInt32(salesResult.Rows[0].GetValueOrDefault("Sales_Today") ?? 0);
+            var overallConvPct = dialedVal > 0 ? Math.Round((double)salesVal / dialedVal * 100, 2) : 0;
             metrics.Add(new MetricCardDto
             {
                 Label = "Overall Conversion",
-                Value = $"{overallConvPct:0.0}%",
-                Color = overallConvPct >= 10 ? "#10b981" : overallConvPct >= 5 ? "#f59e0b" : "#ef4444",
+                Value = $"{overallConvPct:0.00}%",
+                Color = overallConvPct >= 5 ? "#10b981" : overallConvPct >= 1 ? "#f59e0b" : "#ef4444",
                 Format = "percentage"
             });
         }
