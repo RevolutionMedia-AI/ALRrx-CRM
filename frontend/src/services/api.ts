@@ -28,6 +28,14 @@ export async function getReport(reportId: string, filter: TimeFilterDto): Promis
   return data;
 }
 
+export async function getAgentPerformanceWithSales(filter: TimeFilterDto): Promise<ReportDto> {
+  const params: Record<string, string> = { period: filter.period };
+  if (filter.customStart) params.customStart = filter.customStart;
+  if (filter.customEnd) params.customEnd = filter.customEnd;
+  const { data } = await client.get<ReportDto>('/reports/agent_performance_with_sales', { params });
+  return data;
+}
+
 export async function getStaffing(): Promise<ReportDto> {
   const { data } = await client.get<ReportDto>('/staffing');
   return data;

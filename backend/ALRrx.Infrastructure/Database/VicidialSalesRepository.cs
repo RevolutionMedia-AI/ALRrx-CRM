@@ -221,6 +221,42 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         }
     }
 
+    public async Task<Dictionary<string, FormSalesByAgentRow>> GetFormSalesByAgentAsync(string? from, string? to, CancellationToken ct = default)
+    {
+        var where = "WHERE SalesRep IS NOT NULL AND TRIM(SalesRep) <> ''";
+        if (!string.IsNullOrWhiteSpace(from)) where += " AND SaleDate >= STR_TO_DATE(@From, '%Y-%m-%d %H:%i:%s')";
+        if (!string.IsNullOrWhiteSpace(to)) where += " AND SaleDate < STR_TO_DATE(@To, '%Y-%m-%d %H:%i:%s')";
+
+        var sql = $"""
+            SELECT SalesRep,
+                   COUNT(*) AS FormSalesCount,
+                   COALESCE(SUM(Amount), 0) AS FormSalesAmount
+            FROM vicidial_form_sales
+            {where}
+            GROUP BY SalesRep
+            """;
+
+        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(sql, connection);
+        if (!string.IsNullOrWhiteSpace(from)) cmd.Parameters.Add("@From", MySqlDbType.VarChar).Value = from;
+        if (!string.IsNullOrWhiteSpace(to)) cmd.Parameters.Add("@To", MySqlDbType.VarChar).Value = to;
+
+        var result = new Dictionary<string, FormSalesByAgentRow>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var rep = reader.IsDBNull(reader.GetOrdinal("SalesRep"))
+                ? string.Empty
+                : reader.GetString(reader.GetOrdinal("SalesRep")).Trim();
+            if (string.IsNullOrEmpty(rep)) continue;
+            var count = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("FormSalesCount")));
+            var amount = reader.GetDecimal(reader.GetOrdinal("FormSalesAmount"));
+            result[rep] = new FormSalesByAgentRow(rep, count, amount);
+        }
+        _logger.LogInformation("vicidial_form_sales group-by-agent: {Count} distinct reps", result.Count);
+        return result;
+    }
+
     public async Task<SalesSummaryDto> GetSummaryAsync(string? from, string? to, int limit, CancellationToken ct = default)
     {
         var clampedLimit = Math.Clamp(limit, 1, 1000);

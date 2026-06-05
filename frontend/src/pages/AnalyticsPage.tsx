@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel, getStaffing } from '../services/api';
+import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel, getStaffing, getAgentPerformanceWithSales } from '../services/api';
 import { getVicidialSalesSummary } from '../services/vicidialFormApi';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto, SalesSummary } from '../types';
 import DispositionLegend, { type DispositionItem } from '../components/dashboard/DispositionLegend';
@@ -45,6 +45,12 @@ function DarkTooltip({ active, payload, label }: { active?: boolean; payload?: A
       ))}
     </div>
   );
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 function dayRange(date: Date): { start: string; end: string } {
@@ -153,7 +159,7 @@ function formatDuration(seconds: number): string {
   return `${m}m ${s}s`;
 }
 
-type SortKey = 'user' | 'calls' | 'sales' | 'contacts' | 'conv' | 'aht';
+type SortKey = 'user' | 'calls' | 'sales' | 'contacts' | 'conv' | 'aht' | 'formSales' | 'formRevenue';
 type SortDir = 'asc' | 'desc';
 
 export default function AnalyticsPage() {
@@ -206,7 +212,7 @@ export default function AnalyticsPage() {
         getDashboardSummary(filterResult),
         getDashboardSummary(previousPeriod(p)).catch(() => null),
         getReport('contact_vs_nocontact', filterResult).catch(() => null),
-        getReport('agent_performance', filterResult).catch(() => null),
+        getAgentPerformanceWithSales(filterResult).catch(() => null),
         getStaffing().catch(() => null),
         getVicidialSalesSummary(vicidialParams.from, vicidialParams.to, 500).catch(() => null),
       ]);
@@ -248,6 +254,7 @@ export default function AnalyticsPage() {
   const colMap: Record<SortKey, string> = {
     user: 'Name', calls: 'Calls_Handled', sales: 'Sales_Made',
     contacts: 'Contacts', conv: 'Conversion_Percentage', aht: 'AHT',
+    formSales: 'Form_Sales_Count', formRevenue: 'Form_Sales_Amount',
   };
 
   const sortedAgents = useMemo(() => {
@@ -642,7 +649,7 @@ export default function AnalyticsPage() {
           <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused overflow-hidden">
             <div className="p-6 border-b border-whisper-border flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-lg text-primary">Agent Performance</h3>
+                <h3 className="font-bold text-lg text-primary">Agent Performance <span className="text-sm font-normal text-secondary">(VICIdial + Form Sales)</span></h3>
                 <p className="text-[11px] text-secondary mt-0.5 font-metadata-mono uppercase tracking-wider">
                   Click column headers to sort
                 </p>
@@ -662,7 +669,9 @@ export default function AnalyticsPage() {
                     <tr className="bg-surface-container-low border-b border-whisper-border text-xs uppercase tracking-wider text-secondary font-metadata-mono">
                       {sortableTh('Agent', 'user')}
                       {sortableTh('Calls Handled', 'calls')}
-                      {sortableTh('Sales Made', 'sales')}
+                      {sortableTh('VICI Sales', 'sales')}
+                      {sortableTh('Form Sales', 'formSales')}
+                      {sortableTh('Form Revenue', 'formRevenue')}
                       {sortableTh('Contacts', 'contacts')}
                       {sortableTh('Conversion %', 'conv')}
                       {sortableTh('AHT', 'aht')}
@@ -674,6 +683,12 @@ export default function AnalyticsPage() {
                         <td className="p-3 font-medium text-primary">{String(agent.Name ?? agent.User ?? '')}</td>
                         <td className="p-3 font-metadata-mono">{String(agent.Calls_Handled ?? '0')}</td>
                         <td className="p-3 font-metadata-mono text-emerald-signal font-medium">{String(agent.Sales_Made ?? '0')}</td>
+                        <td className="p-3 font-metadata-mono text-emerald-signal font-semibold" title="Sales registered through the ALTRX Sales Form">
+                          {String(agent.Form_Sales_Count ?? '0')}
+                        </td>
+                        <td className="p-3 font-metadata-mono text-emerald-signal font-semibold" title="Total revenue from sales registered through the ALTRX Sales Form">
+                          {formatCurrency(Number(agent.Form_Sales_Amount ?? 0))}
+                        </td>
                         <td className="p-3 font-metadata-mono">{String(agent.Contacts ?? '0')}</td>
                         <td className="p-3 font-metadata-mono font-medium">
                           {agent.Conversion_Percentage != null ? `${Number(agent.Conversion_Percentage).toFixed(1)}%` : '--'}

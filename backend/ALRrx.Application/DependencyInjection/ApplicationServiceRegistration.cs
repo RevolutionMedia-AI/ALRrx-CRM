@@ -26,6 +26,7 @@ public static class ApplicationServiceRegistration
         services.AddScoped<DeleteVicidialSaleUseCase>();
         services.AddScoped<GetVicidialLeadByIdUseCase>();
         services.AddScoped<GetEnrichedSalesUseCase>();
+        services.AddScoped<GetAgentPerformanceWithSalesUseCase>();
 
         return services;
     }
