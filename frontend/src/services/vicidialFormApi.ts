@@ -34,6 +34,12 @@ export async function getActiveAltrxAgents(): Promise<ActiveAltrxAgentDto[]> {
   return data;
 }
 
+export async function getAgentByUser(user: string): Promise<ActiveAltrxAgentDto> {
+  const encoded = encodeURIComponent(user);
+  const { data } = await vicidialClient.get<ActiveAltrxAgentDto>(`/vicidial-form/agent/${encoded}`);
+  return data;
+}
+
 export async function getVicidialSalesSummary(from?: string, to?: string, limit = 500): Promise<SalesSummary> {
   const params: Record<string, string | number> = { limit };
   if (from) params.from = from;

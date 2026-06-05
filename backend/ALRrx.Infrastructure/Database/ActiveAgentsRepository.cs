@@ -44,4 +44,38 @@ public sealed class ActiveAgentsRepository : IActiveAgentsRepository
         _logger.LogInformation("Loaded {Count} active ALTRX agents", results.Count);
         return results;
     }
+
+    public async Task<ActiveAltrxAgentDto?> GetByUserAsync(string user, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(user)) return null;
+        const string sql = """
+            SELECT user, full_name
+            FROM vicidial_users
+            WHERE user = @User
+            LIMIT 1
+            """;
+
+        await using var connection = (MySqlConnection)await _dbConnection.GetConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.Add("@User", MySqlDbType.VarChar).Value = user.Trim();
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+        {
+            _logger.LogInformation("vicidial_users lookup: user={User} returned no rows", user);
+            return null;
+        }
+
+        var userValue = reader.GetString("user");
+        var fullNameOrdinal = reader.GetOrdinal("full_name");
+        var fullName = reader.IsDBNull(fullNameOrdinal)
+            ? string.Empty
+            : reader.GetString(fullNameOrdinal).Trim();
+
+        return new ActiveAltrxAgentDto
+        {
+            User = userValue,
+            FullName = string.IsNullOrEmpty(fullName) ? userValue : fullName,
+        };
+    }
 }

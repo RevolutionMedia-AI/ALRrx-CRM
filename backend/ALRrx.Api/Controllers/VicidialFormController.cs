@@ -1,4 +1,5 @@
 using ALRrx.Application.DTOs;
+using ALRrx.Application.Interfaces;
 using ALRrx.Application.UseCases;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,7 @@ public sealed class VicidialFormController : ControllerBase
     private readonly UpdateVicidialSaleUseCase _update;
     private readonly DeleteVicidialSaleUseCase _delete;
     private readonly GetActiveAltrxAgentsUseCase _activeAgents;
+    private readonly IActiveAgentsRepository _agentRepo;
     private readonly GetVicidialLeadByIdUseCase _leadLookup;
     private readonly GetEnrichedSalesUseCase _enrichedSales;
     private readonly ILogger<VicidialFormController> _logger;
@@ -26,6 +28,7 @@ public sealed class VicidialFormController : ControllerBase
         UpdateVicidialSaleUseCase update,
         DeleteVicidialSaleUseCase delete,
         GetActiveAltrxAgentsUseCase activeAgents,
+        IActiveAgentsRepository agentRepo,
         GetVicidialLeadByIdUseCase leadLookup,
         GetEnrichedSalesUseCase enrichedSales,
         ILogger<VicidialFormController> logger)
@@ -35,6 +38,7 @@ public sealed class VicidialFormController : ControllerBase
         _update = update;
         _delete = delete;
         _activeAgents = activeAgents;
+        _agentRepo = agentRepo;
         _leadLookup = leadLookup;
         _enrichedSales = enrichedSales;
         _logger = logger;
@@ -161,6 +165,22 @@ public sealed class VicidialFormController : ControllerBase
         {
             _logger.LogError(ex, "Failed to load active ALTRX agents");
             return StatusCode(500, new { error = "Could not load active agents" });
+        }
+    }
+
+    [HttpGet("agent/{user}")]
+    public async Task<ActionResult<ActiveAltrxAgentDto>> GetAgentByUser(string user, CancellationToken ct = default)
+    {
+        try
+        {
+            var agent = await _agentRepo.GetByUserAsync(user, ct);
+            if (agent == null) return NotFound(new { error = $"Agent '{user}' not found in VICIdial" });
+            return Ok(agent);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load agent {User} from VICIdial", user);
+            return StatusCode(503, new { error = "Cannot reach VICIdial database" });
         }
     }
 

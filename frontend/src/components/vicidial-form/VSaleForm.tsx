@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { submitVicidialSale, getVicidialLeadById } from '../../services/vicidialFormApi';
+import { submitVicidialSale, getVicidialLeadById, getAgentByUser } from '../../services/vicidialFormApi';
 import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest, type VicidialLeadDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 import VLeadBanner, { type LeadLookupState } from './VLeadBanner';
@@ -15,6 +15,8 @@ function combineName(first: string, last: string): string {
   return `${first ?? ''} ${last ?? ''}`.replace(/\s+/g, ' ').trim();
 }
 
+const VICIDIAL_PLACEHOLDER_PATTERN = /^--A--[\w_\-]+--B--$/;
+
 export default function VSaleForm() {
   const [searchParams] = useSearchParams();
   const rawLeadId = searchParams.get('lead_id');
@@ -22,21 +24,26 @@ export default function VSaleForm() {
   const hasLeadId = !!rawLeadId && rawLeadId.trim() !== '';
   const validLeadId = hasLeadId && Number.isFinite(parsedLeadId) && parsedLeadId > 0 ? parsedLeadId : null;
 
-  const urlSalesRep = (searchParams.get('salesRep') ?? searchParams.get('full_name') ?? '').trim();
-  const urlAgentUser = (searchParams.get('user') ?? '').trim();
-  const hasAgentFromVicidial = urlSalesRep.length > 0;
+  const rawSalesRep = (searchParams.get('salesRep') ?? searchParams.get('full_name') ?? searchParams.get('fullname') ?? '').trim();
+  const rawAgentUser = (searchParams.get('user') ?? '').trim();
+  const salesRepIsPlaceholder = VICIDIAL_PLACEHOLDER_PATTERN.test(rawSalesRep);
+  const agentUserIsPlaceholder = VICIDIAL_PLACEHOLDER_PATTERN.test(rawAgentUser);
+  const urlSalesRep = salesRepIsPlaceholder ? '' : rawSalesRep;
+  const urlAgentUser = agentUserIsPlaceholder ? '' : rawAgentUser;
+  const hasAgentContext = urlSalesRep.length > 0 || urlAgentUser.length > 0;
 
   const [leadState, setLeadState] = useState<LeadLookupState>(
     hasLeadId && validLeadId == null
       ? { kind: 'invalid', message: `lead_id inválido: "${rawLeadId}". Se esperaba un número entero positivo.` }
-      : hasLeadId && !hasAgentFromVicidial
+      : hasLeadId && !hasAgentContext
         ? { kind: 'invalid', message: 'Esta ventana debe abrirse desde VICIdial (faltan datos del agente en la URL).' }
         : { kind: 'idle' }
   );
   const resolvedLeadRef = useRef<VicidialLeadDto | null>(null);
 
   const [salesRep, setSalesRep] = useState<string>(urlSalesRep);
-  const [agentUser] = useState<string>(urlAgentUser);
+  const [agentUser, setAgentUser] = useState<string>(urlAgentUser);
+  const [resolvingAgent, setResolvingAgent] = useState<boolean>(!urlSalesRep && urlAgentUser.length > 0);
   const [saleDate, setSaleDate] = useState(getTodayLocalDateTime());
   const [clientPhone, setClientPhone] = useState('');
   const [clientName, setClientName] = useState('');
@@ -50,8 +57,33 @@ export default function VSaleForm() {
   const isReadOnly = leadState.kind === 'success';
 
   useEffect(() => {
+    if (urlSalesRep || !urlAgentUser) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const agent = await getAgentByUser(urlAgentUser);
+        if (cancelled) return;
+        const resolved = (agent.fullName ?? '').trim() || agent.user;
+        setSalesRep(resolved);
+        if (agent.user && agent.user !== urlAgentUser) {
+          setAgentUser(agent.user);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.warn('[VSaleForm] Failed to resolve agent from user, falling back to login', err);
+        setSalesRep(urlAgentUser);
+      } finally {
+        if (!cancelled) setResolvingAgent(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [urlSalesRep, urlAgentUser]);
+
+  useEffect(() => {
     if (validLeadId == null) return;
-    if (!hasAgentFromVicidial) return;
+    if (!hasAgentContext) return;
     let cancelled = false;
     setLeadState({ kind: 'loading', leadId: validLeadId });
     (async () => {
@@ -82,7 +114,7 @@ export default function VSaleForm() {
     return () => {
       cancelled = true;
     };
-  }, [validLeadId, hasAgentFromVicidial]);
+  }, [validLeadId, hasAgentContext]);
 
   const reset = () => {
     setBundle('GLP-1 1 Month');
@@ -163,9 +195,18 @@ export default function VSaleForm() {
             <Field label="Your user" required>
               <div className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-surface-container-low dark:bg-gray-800 text-primary dark:text-gray-100 flex items-center gap-2">
                 <span className="material-symbols-outlined text-[16px] text-emerald-signal">verified_user</span>
-                <span className="font-medium">{salesRep || '—'}</span>
-                {agentUser && (
-                  <span className="text-xs text-secondary dark:text-gray-400 font-metadata-mono">({agentUser})</span>
+                {resolvingAgent ? (
+                  <span className="flex items-center gap-1.5 text-secondary dark:text-gray-400">
+                    <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                    <span>Resolving agent…</span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-medium">{salesRep || agentUser || '—'}</span>
+                    {agentUser && (
+                      <span className="text-xs text-secondary dark:text-gray-400 font-metadata-mono">({agentUser})</span>
+                    )}
+                  </>
                 )}
                 <span className="ml-auto text-[10px] text-emerald-signal uppercase tracking-wider font-semibold flex items-center gap-1">
                   <span className="material-symbols-outlined text-[12px]">lock</span>
