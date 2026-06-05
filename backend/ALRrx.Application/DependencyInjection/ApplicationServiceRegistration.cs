@@ -24,6 +24,8 @@ public static class ApplicationServiceRegistration
         services.AddScoped<GetActiveAltrxAgentsUseCase>();
         services.AddScoped<UpdateVicidialSaleUseCase>();
         services.AddScoped<DeleteVicidialSaleUseCase>();
+        services.AddScoped<GetVicidialLeadByIdUseCase>();
+        services.AddScoped<GetEnrichedSalesUseCase>();
 
         return services;
     }

@@ -29,6 +29,9 @@ public sealed class UpdateVicidialSaleUseCase
         if (!AllowedEditors.Contains(request.EditorEmail.Trim()))
             throw new UnauthorizedAccessException($"User '{request.EditorEmail}' is not allowed to edit sales");
 
+        if (request.LeadId.HasValue && request.LeadId.Value <= 0)
+            throw new ArgumentException("LeadId must be greater than zero");
+
         if (request.Amount.HasValue && request.Amount.Value <= 0)
             throw new ArgumentException("Amount must be greater than zero");
 

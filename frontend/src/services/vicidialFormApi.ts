@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { VicidialSaleRequest, VicidialSaleDto, ActiveAltrxAgentDto, SalesSummary } from '../types';
+import type { VicidialSaleRequest, VicidialSaleDto, ActiveAltrxAgentDto, SalesSummary, VicidialLeadDto } from '../types';
 
 export const vicidialClient = axios.create({ baseURL: '/api', timeout: 30000 });
 
@@ -51,6 +51,7 @@ export async function deleteVicidialSale(id: number, editorEmail: string): Promi
 
 export interface VicidialSaleUpdatePayload {
   editorEmail?: string;
+  leadId?: number;
   saleDate?: string;
   clientPhone?: string;
   clientName?: string;
@@ -61,5 +62,10 @@ export interface VicidialSaleUpdatePayload {
 
 export async function updateVicidialSale(id: number, payload: VicidialSaleUpdatePayload): Promise<{ id: number; message: string }> {
   const { data } = await vicidialClient.patch<{ id: number; message: string }>(`/vicidial-form/sale/${id}`, payload);
+  return data;
+}
+
+export async function getVicidialLeadById(leadId: number): Promise<VicidialLeadDto> {
+  const { data } = await vicidialClient.get<VicidialLeadDto>(`/vicidial-form/lead/${leadId}`);
   return data;
 }

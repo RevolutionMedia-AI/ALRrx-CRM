@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
-import { submitVicidialSale, getActiveAltrxAgents } from '../../services/vicidialFormApi';
-import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest, type ActiveAltrxAgentDto } from '../../types';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { submitVicidialSale, getActiveAltrxAgents, getVicidialLeadById } from '../../services/vicidialFormApi';
+import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest, type ActiveAltrxAgentDto, type VicidialLeadDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
+import VLeadBanner, { type LeadLookupState } from './VLeadBanner';
 
 const SALES_REP_STORAGE_KEY = 'vicidial_form_sales_rep';
 
@@ -11,7 +13,24 @@ function getTodayLocalDateTime(): string {
   return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
 }
 
+function combineName(first: string, last: string): string {
+  return `${first ?? ''} ${last ?? ''}`.replace(/\s+/g, ' ').trim();
+}
+
 export default function VSaleForm() {
+  const [searchParams] = useSearchParams();
+  const rawLeadId = searchParams.get('lead_id');
+  const parsedLeadId = rawLeadId ? Number.parseInt(rawLeadId, 10) : NaN;
+  const hasLeadId = !!rawLeadId && rawLeadId.trim() !== '';
+  const validLeadId = hasLeadId && Number.isFinite(parsedLeadId) && parsedLeadId > 0 ? parsedLeadId : null;
+
+  const [leadState, setLeadState] = useState<LeadLookupState>(
+    hasLeadId && validLeadId == null
+      ? { kind: 'invalid', message: `lead_id inválido: "${rawLeadId}". Se esperaba un número entero positivo.` }
+      : { kind: 'idle' }
+  );
+  const resolvedLeadRef = useRef<VicidialLeadDto | null>(null);
+
   const [agents, setAgents] = useState<ActiveAltrxAgentDto[]>([]);
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [agentsError, setAgentsError] = useState<string | null>(null);
@@ -25,6 +44,42 @@ export default function VSaleForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const isReadOnly = leadState.kind === 'success';
+
+  useEffect(() => {
+    if (validLeadId == null) return;
+    let cancelled = false;
+    setLeadState({ kind: 'loading', leadId: validLeadId });
+    (async () => {
+      try {
+        const lead = await getVicidialLeadById(validLeadId);
+        if (cancelled) return;
+        resolvedLeadRef.current = lead;
+        setLeadState({ kind: 'success', lead });
+        setClientName(combineName(lead.firstName, lead.lastName));
+        setClientPhone(lead.phoneNumber ?? '');
+        setClientEmail(lead.email ?? '');
+        setSaleDate(getTodayLocalDateTime());
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        const message = extractErrorMessage(err, 'No se pudo consultar VICIdial');
+        if (status === 404) {
+          setLeadState({ kind: 'not-found', leadId: validLeadId });
+        } else if (status === 503) {
+          setLeadState({ kind: 'connection-error', message });
+        } else if (status === 400) {
+          setLeadState({ kind: 'invalid', message });
+        } else {
+          setLeadState({ kind: 'connection-error', message });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [validLeadId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,12 +110,19 @@ export default function VSaleForm() {
   }, [salesRep]);
 
   const reset = () => {
-    setClientPhone('');
-    setClientName('');
-    setClientEmail('');
     setBundle('GLP-1 1 Month');
     setAmount('');
     setSaleDate(getTodayLocalDateTime());
+    if (resolvedLeadRef.current) {
+      const lead = resolvedLeadRef.current;
+      setClientName(combineName(lead.firstName, lead.lastName));
+      setClientPhone(lead.phoneNumber ?? '');
+      setClientEmail(lead.email ?? '');
+    } else {
+      setClientPhone('');
+      setClientName('');
+      setClientEmail('');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,6 +130,9 @@ export default function VSaleForm() {
     setError(null);
     setSuccess(null);
 
+    if (validLeadId == null) {
+      return setError('This form requires a VICIdial lead. Please open it from VICIdial with a lead_id in the URL.');
+    }
     if (!salesRep.trim()) {
       console.warn('[VSaleForm] Blocked: no sales rep selected');
       return setError('Please select your user from the dropdown above');
@@ -80,6 +145,7 @@ export default function VSaleForm() {
     if (!amount || isNaN(amountNum) || amountNum <= 0) return setError('Amount must be greater than 0');
 
     const payload: VicidialSaleRequest = {
+      ...(validLeadId != null ? { leadId: validLeadId } : {}),
       salesRep: salesRep.trim(),
       saleDate: new Date(saleDate).toISOString(),
       clientPhone: clientPhone.trim(),
@@ -111,6 +177,8 @@ export default function VSaleForm() {
         <span className="material-symbols-outlined text-electric-blue">person_add</span>
         <h2 className="text-lg font-bold text-primary dark:text-gray-100">Register Sale</h2>
       </div>
+
+      <VLeadBanner state={leadState} />
 
       <div className="space-y-5">
         <fieldset className="border border-whisper-border dark:border-gray-700 rounded-xl p-4">
@@ -148,15 +216,26 @@ export default function VSaleForm() {
                 type="datetime-local"
                 value={saleDate}
                 onChange={(e) => setSaleDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
+                readOnly={isReadOnly}
+                className={`w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none ${
+                  isReadOnly
+                    ? 'bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-400 cursor-not-allowed'
+                    : 'bg-pure-surface dark:bg-gray-800'
+                }`}
               />
             </Field>
           </div>
         </fieldset>
 
         <fieldset className="border border-whisper-border dark:border-gray-700 rounded-xl p-4">
-          <legend className="text-[11px] font-semibold uppercase tracking-wider text-secondary dark:text-gray-400 px-2">
+          <legend className="text-[11px] font-semibold uppercase tracking-wider text-secondary dark:text-gray-400 px-2 flex items-center gap-2">
             Client Information
+            {isReadOnly && (
+              <span className="text-[10px] font-metadata-mono text-emerald-signal normal-case tracking-normal flex items-center gap-1">
+                <span className="material-symbols-outlined text-[12px]">lock</span>
+                from VICIdial
+              </span>
+            )}
           </legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Client Phone" required>
@@ -164,8 +243,13 @@ export default function VSaleForm() {
                 type="tel"
                 value={clientPhone}
                 onChange={(e) => setClientPhone(e.target.value)}
-                placeholder="+1 555 123 4567"
-                className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
+                readOnly={isReadOnly}
+                placeholder={isReadOnly ? '' : '+1 555 123 4567'}
+                className={`w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none ${
+                  isReadOnly
+                    ? 'bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-400 cursor-not-allowed'
+                    : 'bg-pure-surface dark:bg-gray-800'
+                }`}
               />
             </Field>
             <Field label="Client Name" required>
@@ -173,8 +257,13 @@ export default function VSaleForm() {
                 type="text"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                placeholder="Full name"
-                className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
+                readOnly={isReadOnly}
+                placeholder={isReadOnly ? '' : 'Full name'}
+                className={`w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none ${
+                  isReadOnly
+                    ? 'bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-400 cursor-not-allowed'
+                    : 'bg-pure-surface dark:bg-gray-800'
+                }`}
               />
             </Field>
             <Field label="Client Email" required>
@@ -182,8 +271,13 @@ export default function VSaleForm() {
                 type="email"
                 value={clientEmail}
                 onChange={(e) => setClientEmail(e.target.value)}
-                placeholder="client@email.com"
-                className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none"
+                readOnly={isReadOnly}
+                placeholder={isReadOnly ? '' : 'client@email.com'}
+                className={`w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none ${
+                  isReadOnly
+                    ? 'bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-400 cursor-not-allowed'
+                    : 'bg-pure-surface dark:bg-gray-800'
+                }`}
               />
             </Field>
             <Field label="Selected Bundle" required>
@@ -207,6 +301,7 @@ export default function VSaleForm() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="498.00"
+                  autoFocus={isReadOnly}
                   className="w-full pl-7 pr-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none font-metadata-mono"
                 />
               </div>

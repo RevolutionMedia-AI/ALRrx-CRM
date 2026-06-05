@@ -43,6 +43,9 @@ public sealed record VicidialAuthResponse
 
 public sealed class VicidialSaleRequest
 {
+    [Required, Range(1, int.MaxValue, ErrorMessage = "LeadId is required and must be greater than zero")]
+    public int? LeadId { get; init; }
+
     [Required]
     public string SalesRep { get; init; } = string.Empty;
 
@@ -68,6 +71,7 @@ public sealed class VicidialSaleRequest
 public sealed record VicidialSaleDto
 {
     public int Id { get; init; }
+    public int? LeadId { get; init; }
     public string SalesRep { get; init; } = string.Empty;
     public DateTime SaleDate { get; init; }
     public string ClientPhone { get; init; } = string.Empty;
@@ -83,6 +87,8 @@ public sealed class VicidialSaleUpdateRequest
     [Required]
     public string EditorEmail { get; init; } = string.Empty;
 
+    [Range(1, int.MaxValue, ErrorMessage = "LeadId must be greater than zero")]
+    public int? LeadId { get; init; }
     public DateTime? SaleDate { get; init; }
     public string? ClientPhone { get; init; }
     public string? ClientName { get; init; }
@@ -95,6 +101,22 @@ public sealed record ActiveAltrxAgentDto
 {
     public string User { get; init; } = string.Empty;
     public string FullName { get; init; } = string.Empty;
+}
+
+public sealed record VicidialSaleEnrichedDto
+{
+    public int Id { get; init; }
+    public int? LeadId { get; init; }
+    public string SalesRep { get; init; } = string.Empty;
+    public DateTime SaleDate { get; init; }
+    public string ClientPhone { get; init; } = string.Empty;
+    public string ClientName { get; init; } = string.Empty;
+    public string ClientEmail { get; init; } = string.Empty;
+    public string Bundle { get; init; } = string.Empty;
+    public decimal Amount { get; init; }
+    public DateTime CreatedAt { get; init; }
+    public VicidialLeadDto? Lead { get; init; }
+    public bool LeadFound { get; init; }
 }
 
 public static class BundleTypeExtensions

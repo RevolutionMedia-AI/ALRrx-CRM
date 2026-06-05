@@ -16,6 +16,8 @@ public sealed class VicidialFormController : ControllerBase
     private readonly UpdateVicidialSaleUseCase _update;
     private readonly DeleteVicidialSaleUseCase _delete;
     private readonly GetActiveAltrxAgentsUseCase _activeAgents;
+    private readonly GetVicidialLeadByIdUseCase _leadLookup;
+    private readonly GetEnrichedSalesUseCase _enrichedSales;
     private readonly ILogger<VicidialFormController> _logger;
 
     public VicidialFormController(
@@ -24,6 +26,8 @@ public sealed class VicidialFormController : ControllerBase
         UpdateVicidialSaleUseCase update,
         DeleteVicidialSaleUseCase delete,
         GetActiveAltrxAgentsUseCase activeAgents,
+        GetVicidialLeadByIdUseCase leadLookup,
+        GetEnrichedSalesUseCase enrichedSales,
         ILogger<VicidialFormController> logger)
     {
         _submit = submit;
@@ -31,6 +35,8 @@ public sealed class VicidialFormController : ControllerBase
         _update = update;
         _delete = delete;
         _activeAgents = activeAgents;
+        _leadLookup = leadLookup;
+        _enrichedSales = enrichedSales;
         _logger = logger;
     }
 
@@ -155,6 +161,64 @@ public sealed class VicidialFormController : ControllerBase
         {
             _logger.LogError(ex, "Failed to load active ALTRX agents");
             return StatusCode(500, new { error = "Could not load active agents" });
+        }
+    }
+
+    [HttpGet("lead/{leadId:int}")]
+    public async Task<ActionResult<VicidialLeadDto>> GetLeadById(int leadId, CancellationToken ct = default)
+    {
+        var result = await _leadLookup.ExecuteAsync(leadId, ct);
+        return result.Status switch
+        {
+            LeadLookupStatus.Found => Ok(result.Lead),
+            LeadLookupStatus.NotFound => NotFound(new { error = result.Message }),
+            LeadLookupStatus.InvalidInput => BadRequest(new { error = result.Message }),
+            LeadLookupStatus.ConnectionError => StatusCode(503, new { error = result.Message }),
+            _ => StatusCode(500, new { error = "Unexpected error" })
+        };
+    }
+
+    [HttpGet("sales/enriched")]
+    public async Task<ActionResult<List<VicidialSaleEnrichedDto>>> ListEnrichedSales(
+        [FromQuery] string? from = null,
+        [FromQuery] string? to = null,
+        [FromQuery] int limit = 500,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var rows = await _enrichedSales.ExecuteAsync(from, to, limit, ct);
+            return Ok(rows);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load enriched Vicidial sales");
+            return StatusCode(500, new { error = "Could not load enriched sales" });
+        }
+    }
+
+    [HttpGet("sales/by-lead/{leadId:int}")]
+    public async Task<ActionResult<List<VicidialSaleEnrichedDto>>> GetSalesByLeadId(
+        int leadId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var rows = await _enrichedSales.GetByLeadIdAsync(leadId, ct);
+            return Ok(rows);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load sales for lead #{LeadId}", leadId);
+            return StatusCode(500, new { error = "Could not load sales for lead" });
         }
     }
 }

@@ -1,14 +1,17 @@
 import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import VFormHeader from '../components/vicidial-form/VFormHeader';
 import VSaleForm from '../components/vicidial-form/VSaleForm';
 import { useAuth } from '../context/AuthContext';
 
 export default function VicidialFormPage() {
   const { token, user, loading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const leadId = searchParams.get('lead_id');
 
   useEffect(() => {
-    document.title = 'ALTRX Sales Form';
-  }, []);
+    document.title = leadId ? `ALTRX Sales Form — Lead #${leadId}` : 'ALTRX Sales Form';
+  }, [leadId]);
 
   const isAuthenticated = !loading && !!token && !!user;
 
