@@ -8,10 +8,14 @@ export default function VicidialFormPage() {
   const { token, user, loading } = useAuth();
   const [searchParams] = useSearchParams();
   const leadId = searchParams.get('lead_id');
+  const salesRep = searchParams.get('salesRep') ?? searchParams.get('full_name') ?? '';
 
   useEffect(() => {
-    document.title = leadId ? `ALTRX Sales Form — Lead #${leadId}` : 'ALTRX Sales Form';
-  }, [leadId]);
+    const parts: string[] = [];
+    if (salesRep) parts.push(salesRep);
+    if (leadId) parts.push(`Lead #${leadId}`);
+    document.title = parts.length > 0 ? `ALTRX Sales Form — ${parts.join(' • ')}` : 'ALTRX Sales Form';
+  }, [leadId, salesRep]);
 
   const isAuthenticated = !loading && !!token && !!user;
 

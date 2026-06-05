@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { submitVicidialSale, getActiveAltrxAgents, getVicidialLeadById } from '../../services/vicidialFormApi';
-import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest, type ActiveAltrxAgentDto, type VicidialLeadDto } from '../../types';
+import { submitVicidialSale, getVicidialLeadById } from '../../services/vicidialFormApi';
+import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleRequest, type VicidialLeadDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 import VLeadBanner, { type LeadLookupState } from './VLeadBanner';
-
-const SALES_REP_STORAGE_KEY = 'vicidial_form_sales_rep';
 
 function getTodayLocalDateTime(): string {
   const d = new Date();
@@ -24,17 +22,21 @@ export default function VSaleForm() {
   const hasLeadId = !!rawLeadId && rawLeadId.trim() !== '';
   const validLeadId = hasLeadId && Number.isFinite(parsedLeadId) && parsedLeadId > 0 ? parsedLeadId : null;
 
+  const urlSalesRep = (searchParams.get('salesRep') ?? searchParams.get('full_name') ?? '').trim();
+  const urlAgentUser = (searchParams.get('user') ?? '').trim();
+  const hasAgentFromVicidial = urlSalesRep.length > 0;
+
   const [leadState, setLeadState] = useState<LeadLookupState>(
     hasLeadId && validLeadId == null
       ? { kind: 'invalid', message: `lead_id inválido: "${rawLeadId}". Se esperaba un número entero positivo.` }
-      : { kind: 'idle' }
+      : hasLeadId && !hasAgentFromVicidial
+        ? { kind: 'invalid', message: 'Esta ventana debe abrirse desde VICIdial (faltan datos del agente en la URL).' }
+        : { kind: 'idle' }
   );
   const resolvedLeadRef = useRef<VicidialLeadDto | null>(null);
 
-  const [agents, setAgents] = useState<ActiveAltrxAgentDto[]>([]);
-  const [loadingAgents, setLoadingAgents] = useState(true);
-  const [agentsError, setAgentsError] = useState<string | null>(null);
-  const [salesRep, setSalesRep] = useState<string>(() => sessionStorage.getItem(SALES_REP_STORAGE_KEY) ?? '');
+  const [salesRep, setSalesRep] = useState<string>(urlSalesRep);
+  const [agentUser] = useState<string>(urlAgentUser);
   const [saleDate, setSaleDate] = useState(getTodayLocalDateTime());
   const [clientPhone, setClientPhone] = useState('');
   const [clientName, setClientName] = useState('');
@@ -49,6 +51,7 @@ export default function VSaleForm() {
 
   useEffect(() => {
     if (validLeadId == null) return;
+    if (!hasAgentFromVicidial) return;
     let cancelled = false;
     setLeadState({ kind: 'loading', leadId: validLeadId });
     (async () => {
@@ -79,35 +82,7 @@ export default function VSaleForm() {
     return () => {
       cancelled = true;
     };
-  }, [validLeadId]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const list = await getActiveAltrxAgents();
-        if (cancelled) return;
-        setAgents(list);
-        if (list.length === 0) {
-          setAgentsError('No active ALTRX agents found');
-        }
-      } catch (err: unknown) {
-        if (cancelled) return;
-        setAgentsError(extractErrorMessage(err, 'Could not load agents'));
-      } finally {
-        if (!cancelled) setLoadingAgents(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (salesRep) {
-      sessionStorage.setItem(SALES_REP_STORAGE_KEY, salesRep);
-    }
-  }, [salesRep]);
+  }, [validLeadId, hasAgentFromVicidial]);
 
   const reset = () => {
     setBundle('GLP-1 1 Month');
@@ -134,8 +109,7 @@ export default function VSaleForm() {
       return setError('This form requires a VICIdial lead. Please open it from VICIdial with a lead_id in the URL.');
     }
     if (!salesRep.trim()) {
-      console.warn('[VSaleForm] Blocked: no sales rep selected');
-      return setError('Please select your user from the dropdown above');
+      return setError('Agent (salesRep) not provided by VICIdial. Open this form from a VICIdial session.');
     }
     if (!clientName.trim()) return setError('Client name is required');
     if (!clientPhone.trim()) return setError('Client phone is required');
@@ -145,7 +119,7 @@ export default function VSaleForm() {
     if (!amount || isNaN(amountNum) || amountNum <= 0) return setError('Amount must be greater than 0');
 
     const payload: VicidialSaleRequest = {
-      ...(validLeadId != null ? { leadId: validLeadId } : {}),
+      leadId: validLeadId,
       salesRep: salesRep.trim(),
       saleDate: new Date(saleDate).toISOString(),
       clientPhone: clientPhone.trim(),
@@ -187,29 +161,17 @@ export default function VSaleForm() {
           </legend>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Your user" required>
-              {loadingAgents ? (
-                <div className="w-full h-[38px] px-3 border border-whisper-border dark:border-gray-700 rounded-lg bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-400 text-sm flex items-center">
-                  <span className="material-symbols-outlined text-[18px] mr-2 animate-spin">progress_activity</span>
-                  Loading agents…
-                </div>
-              ) : (
-                <select
-                  value={salesRep}
-                  onChange={(e) => setSalesRep(e.target.value)}
-                  disabled={!!agentsError}
-                  className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none disabled:opacity-50"
-                >
-                  <option value="">Select your user</option>
-                  {agents.map((a) => (
-                    <option key={a.user} value={a.fullName}>
-                      {a.fullName} ({a.user})
-                    </option>
-                  ))}
-                </select>
-              )}
-              {agentsError && (
-                <p className="mt-1 text-xs text-deep-rose">{agentsError}</p>
-              )}
+              <div className="w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-surface-container-low dark:bg-gray-800 text-primary dark:text-gray-100 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-emerald-signal">verified_user</span>
+                <span className="font-medium">{salesRep || '—'}</span>
+                {agentUser && (
+                  <span className="text-xs text-secondary dark:text-gray-400 font-metadata-mono">({agentUser})</span>
+                )}
+                <span className="ml-auto text-[10px] text-emerald-signal uppercase tracking-wider font-semibold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[12px]">lock</span>
+                  VICIdial
+                </span>
+              </div>
             </Field>
             <Field label="Sale Date" required>
               <input
@@ -340,11 +302,6 @@ export default function VSaleForm() {
               </>
             )}
           </button>
-          {!salesRep && !loadingAgents && !agentsError && (
-            <p className="text-xs text-secondary dark:text-gray-400 mt-2 text-right">
-              Select your user above to enable registration
-            </p>
-          )}
         </div>
       </div>
     </form>
