@@ -682,12 +682,12 @@ function KpiCard({
         <div className={`w-20 bg-surface-container rounded animate-pulse ${isHero ? 'h-10' : 'h-7'}`} />
       ) : (
         <div className="flex items-baseline gap-1.5">
-          <h2
-            className={`${isHero ? 'text-[2.6rem]' : 'text-[1.6rem]'} font-bold leading-none tracking-tight ${isEmpty ? 'text-muted-slate font-medium' : ''}`}
-            style={isEmpty ? undefined : { color: valueColor }}
-          >
-            {displayValue}
-          </h2>
+            <h2
+              className={`${isHero ? 'text-[4.8rem]' : 'text-[1.6rem]'} font-bold leading-none tracking-tight ${isEmpty ? 'text-muted-slate font-medium' : ''}`}
+              style={isEmpty ? undefined : { color: valueColor }}
+            >
+              {displayValue}
+            </h2>
         </div>
       )}
       {change && !loading && (
