@@ -55,6 +55,13 @@ export default function VSaleForm() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const isReadOnly = leadState.kind === 'success';
+  const isClientFieldLocked = (value: string) => isReadOnly && value.trim().length > 0;
+  const clientFieldClass = (locked: boolean) =>
+    `w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none ${
+      locked
+        ? 'bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-400 cursor-not-allowed'
+        : 'bg-pure-surface dark:bg-gray-800'
+    }`;
 
   useEffect(() => {
     if (urlSalesRep || !urlAgentUser) return;
@@ -246,13 +253,9 @@ export default function VSaleForm() {
                 type="tel"
                 value={clientPhone}
                 onChange={(e) => setClientPhone(e.target.value)}
-                readOnly={isReadOnly}
-                placeholder={isReadOnly ? '' : '+1 555 123 4567'}
-                className={`w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none ${
-                  isReadOnly
-                    ? 'bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-400 cursor-not-allowed'
-                    : 'bg-pure-surface dark:bg-gray-800'
-                }`}
+                readOnly={isClientFieldLocked(clientPhone)}
+                placeholder={isClientFieldLocked(clientPhone) ? '' : '+1 555 123 4567'}
+                className={clientFieldClass(isClientFieldLocked(clientPhone))}
               />
             </Field>
             <Field label="Client Name" required>
@@ -260,13 +263,9 @@ export default function VSaleForm() {
                 type="text"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                readOnly={isReadOnly}
-                placeholder={isReadOnly ? '' : 'Full name'}
-                className={`w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none ${
-                  isReadOnly
-                    ? 'bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-400 cursor-not-allowed'
-                    : 'bg-pure-surface dark:bg-gray-800'
-                }`}
+                readOnly={isClientFieldLocked(clientName)}
+                placeholder={isClientFieldLocked(clientName) ? '' : 'Full name'}
+                className={clientFieldClass(isClientFieldLocked(clientName))}
               />
             </Field>
             <Field label="Client Email" required>
@@ -274,13 +273,9 @@ export default function VSaleForm() {
                 type="email"
                 value={clientEmail}
                 onChange={(e) => setClientEmail(e.target.value)}
-                readOnly={isReadOnly}
-                placeholder={isReadOnly ? '' : 'client@email.com'}
-                className={`w-full px-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none ${
-                  isReadOnly
-                    ? 'bg-surface-container-low dark:bg-gray-800 text-secondary dark:text-gray-400 cursor-not-allowed'
-                    : 'bg-pure-surface dark:bg-gray-800'
-                }`}
+                readOnly={isClientFieldLocked(clientEmail)}
+                placeholder={isClientFieldLocked(clientEmail) ? '' : 'client@email.com'}
+                className={clientFieldClass(isClientFieldLocked(clientEmail))}
               />
             </Field>
             <Field label="Selected Bundle" required>
