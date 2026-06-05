@@ -120,7 +120,7 @@ public sealed class QueryExecutor : IQueryService
         {
             Id = "staffing",
             Name = "Staffing",
-            Description = "Active ALTRX agents with live status",
+            Description = "Active ALTRX agents with live status, current lead, campaign and pause reason",
             Category = "Agents",
             SqlTemplate = """
                 SELECT
@@ -129,14 +129,81 @@ public sealed class QueryExecutor : IQueryService
                     vu.full_name AS Name,
                     vu.user AS User,
                     COALESCE(vla.status, 'OFFLINE') AS Status,
+                    vla.lead_id AS Current_Lead_Id,
+                    vla.campaign_id AS Current_Campaign_Id,
+                    vc.campaign_name AS Current_Campaign_Name,
+                    vc.dial_method AS Dial_Method,
+                    vla.pause_code AS Pause_Code,
                     vla.last_call_time,
                     vla.last_update_time
                 FROM vicidial_users vu
                 LEFT JOIN vicidial_user_groups ug ON vu.user_group = ug.user_group
                 LEFT JOIN vicidial_live_agents vla ON vu.user = vla.user
+                LEFT JOIN vicidial_campaigns vc ON vla.campaign_id = vc.campaign_id
                 WHERE vu.user_group = 'ALTRX'
                 AND vu.active = 'Y'
                 ORDER BY ug.group_name, vu.full_name
+                """
+        },
+
+        ["agent_leaderboard"] = new QueryDefinition
+        {
+            Id = "agent_leaderboard",
+            Name = "Agent Leaderboard (Today)",
+            Description = "Top agents by total sales (VICIdial dispositions + form-registered)",
+            Category = "Agents",
+            SqlTemplate = """
+                SELECT
+                    user AS User,
+                    full_name AS Name,
+                    SUM(Sales_Made) AS ViciSales,
+                    SUM(Contacts) AS Contacts,
+                    ROUND(SUM(Sales_Made) * 100.0 / NULLIF(SUM(Contacts), 0), 2) AS Conversion_Percentage
+                FROM (
+                    SELECT
+                        vl.user,
+                        vu.full_name,
+                        SUM(CASE WHEN UPPER(vl.status) LIKE 'SALE%' OR UPPER(vl.status) = 'UPSELL' OR UPPER(vl.status) = 'XFER-SALE' THEN 1 ELSE 0 END) AS Sales_Made,
+                        SUM(CASE WHEN vl.status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY') THEN 1 ELSE 0 END) AS Contacts
+                    FROM vicidial_log vl
+                    JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE DATE(vl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+                    GROUP BY vl.user, vu.full_name
+
+                    UNION ALL
+
+                    SELECT
+                        cl.user,
+                        vu.full_name,
+                        SUM(CASE WHEN UPPER(cl.status) LIKE 'SALE%' OR UPPER(cl.status) = 'UPSELL' OR UPPER(cl.status) = 'XFER-SALE' THEN 1 ELSE 0 END) AS Sales_Made,
+                        SUM(CASE WHEN cl.status IN ('SALE','NSALE','NSLBO','NSLIC','NSLMC','NSLNI','NSLPO','NSLWC','CALLBK','ITST','NTQLFY') THEN 1 ELSE 0 END) AS Contacts
+                    FROM vicidial_closer_log cl
+                    JOIN vicidial_users vu ON cl.user = vu.user
+                    WHERE DATE(cl.call_date) BETWEEN @Start AND @End
+                    AND vu.user_group = 'ALTRX'
+                    GROUP BY cl.user, vu.full_name
+                ) combined
+                GROUP BY user, full_name
+                ORDER BY ViciSales DESC
+                LIMIT 5
+                """
+        },
+
+        ["queue_metrics"] = new QueryDefinition
+        {
+            Id = "queue_metrics",
+            Name = "Queue Metrics (Today)",
+            Description = "Service level, abandon rate, queue depth and longest wait for inbound",
+            Category = "Calls",
+            SqlTemplate = """
+                SELECT
+                    (SELECT COUNT(*) FROM vicidial_live_agents WHERE status = 'QUEUE') AS Queue_Depth,
+                    (SELECT COUNT(*) FROM vicidial_closer_log WHERE call_date >= @Start AND call_date < @End) AS Total_Inbound_Calls,
+                    (SELECT COUNT(*) FROM vicidial_closer_log WHERE call_date >= @Start AND call_date < @End AND length_in_sec <= 20) AS Calls_Under_20s,
+                    (SELECT COUNT(*) FROM vicidial_closer_log WHERE call_date >= @Start AND call_date < @End AND (status LIKE 'ABANDON%' OR status = 'DROP' OR status = 'NA')) AS Abandoned,
+                    (SELECT COUNT(*) FROM vicidial_closer_log WHERE call_date >= @Start AND call_date < @End AND (status = 'QUEUE')) AS Calls_Queued
+                FROM DUAL
                 """
         },
         ["aht_daily"] = new QueryDefinition
@@ -294,6 +361,11 @@ public sealed class QueryExecutor : IQueryService
 
     public async Task<ReportResult> ExecuteQueryAsync(string queryId, TimeRange timeRange, CancellationToken ct = default)
     {
+        if (queryId.StartsWith("agent_history:", StringComparison.Ordinal))
+        {
+            return await ExecuteAgentHistoryAsync(queryId["agent_history:".Length..], timeRange, ct);
+        }
+
         if (!_queries.TryGetValue(queryId, out var query))
             throw new KeyNotFoundException($"Query '{queryId}' not found");
 
@@ -333,6 +405,69 @@ public sealed class QueryExecutor : IQueryService
                 Start = timeRange.Start,
                 End = timeRange.End
             }
+        };
+    }
+
+    private async Task<ReportResult> ExecuteAgentHistoryAsync(string user, TimeRange timeRange, CancellationToken ct)
+    {
+        const string sql = """
+            SELECT
+                vl.call_date,
+                vl.length_in_sec AS Length_Sec,
+                vl.status,
+                vl.lead_id,
+                COALESCE(vl.phone_number, '') AS Phone,
+                vl.comments
+            FROM vicidial_log vl
+            WHERE vl.user = @User
+              AND vl.call_date >= @Start AND vl.call_date < @End
+
+            UNION ALL
+
+            SELECT
+                cl.call_date,
+                cl.length_in_sec AS Length_Sec,
+                cl.status,
+                cl.lead_id,
+                COALESCE(cl.phone_number, '') AS Phone,
+                cl.comments
+            FROM vicidial_closer_log cl
+            WHERE cl.user = @User
+              AND cl.call_date >= @Start AND cl.call_date < @End
+
+            ORDER BY call_date DESC
+            LIMIT 200
+            """;
+
+        _logger.LogInformation("Executing agent history: {User} | {Start:yyyy-MM-dd HH:mm:ss} -> {End:yyyy-MM-dd HH:mm:ss}", user, timeRange.Start, timeRange.End);
+
+        await using var connection = (MySqlConnection)await _dbConnection.GetConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.AddWithValue("@User", user);
+        cmd.Parameters.AddWithValue("@Start", timeRange.Start);
+        cmd.Parameters.AddWithValue("@End", timeRange.End);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var columns = new List<string>();
+        for (var i = 0; i < reader.FieldCount; i++)
+            columns.Add(reader.GetName(i));
+
+        var rows = new List<Dictionary<string, object?>>();
+        while (await reader.ReadAsync(ct))
+        {
+            var row = new Dictionary<string, object?>();
+            for (var i = 0; i < reader.FieldCount; i++)
+                row[columns[i]] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+            rows.Add(row);
+        }
+
+        return new ReportResult
+        {
+            ReportName = $"Call History — {user}",
+            Columns = [.. columns],
+            Rows = [.. rows],
+            GeneratedAt = DateTime.UtcNow,
+            TimeRange = new TimeRangeExecuted { Start = timeRange.Start, End = timeRange.End }
         };
     }
 }

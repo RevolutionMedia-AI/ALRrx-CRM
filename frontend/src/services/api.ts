@@ -41,6 +41,30 @@ export async function getStaffing(): Promise<ReportDto> {
   return data;
 }
 
+export async function getLeaderboard(filter: TimeFilterDto): Promise<ReportDto> {
+  const params: Record<string, string> = { period: filter.period };
+  if (filter.customStart) params.customStart = filter.customStart;
+  if (filter.customEnd) params.customEnd = filter.customEnd;
+  const { data } = await client.get<ReportDto>('/staffing/leaderboard', { params });
+  return data;
+}
+
+export async function getQueueMetrics(filter: TimeFilterDto): Promise<ReportDto> {
+  const params: Record<string, string> = { period: filter.period };
+  if (filter.customStart) params.customStart = filter.customStart;
+  if (filter.customEnd) params.customEnd = filter.customEnd;
+  const { data } = await client.get<ReportDto>('/staffing/queue-metrics', { params });
+  return data;
+}
+
+export async function getAgentHistory(user: string, filter: TimeFilterDto): Promise<ReportDto> {
+  const params: Record<string, string> = { period: filter.period };
+  if (filter.customStart) params.customStart = filter.customStart;
+  if (filter.customEnd) params.customEnd = filter.customEnd;
+  const { data } = await client.get<ReportDto>(`/staffing/agent/${encodeURIComponent(user)}/history`, { params });
+  return data;
+}
+
 export async function exportReport(request: ExportRequestDto): Promise<Blob> {
   const { data } = await client.post('/export', request, {
     responseType: 'blob',
