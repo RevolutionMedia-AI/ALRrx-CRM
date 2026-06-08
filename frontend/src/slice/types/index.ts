@@ -32,6 +32,24 @@ export interface SliceShopDailyRow {
   conversionRate: number;
 }
 
+export interface SliceShopCallMetricsRow {
+  weekStart: string;
+  shopId: string;
+  shopName: string;
+  podId: string;
+  totalCalls: number;
+  overflowCalls: number;
+  queueCalls: number;
+  handledCalls: number;
+  missedCalls: number;
+  transferredCalls: number;
+  pctOverflow: number;
+  pctQueued: number;
+  pctHandled: number;
+  pctMissedOfQueued: number;
+  pctTransferred: number;
+}
+
 export interface SliceDailyAgentRow {
   pod: string;
   supervisorName: string;
@@ -84,6 +102,7 @@ export interface SliceReport {
   shopDaily: SliceShopDailyRow[];
   dailyGlobal: SliceDailyGlobalRow[];
   dailyAgents: SliceDailyAgentRow[];
+  shopCallMetrics: SliceShopCallMetricsRow[];
   mergedCsvPath?: string | null;
   mergedXlsxPath?: string | null;
 }

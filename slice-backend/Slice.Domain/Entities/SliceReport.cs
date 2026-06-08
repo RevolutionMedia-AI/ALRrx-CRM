@@ -30,6 +30,9 @@ public sealed class SliceReport
     /// <summary>Per-shop e-commerce metrics.</summary>
     public List<ShopDailyRow> ShopDaily { get; set; } = [];
 
+    /// <summary>Per-shop, per-week call-center metrics (pivoted layout from shop_level_-_call_metrics.csv).</summary>
+    public List<ShopCallMetricsRow> ShopCallMetrics { get; set; } = [];
+
     /// <summary>Absolute path to the exported CSV file, if available.</summary>
     public string? MergedCsvPath { get; set; }
 
@@ -89,4 +92,27 @@ public sealed class ShopDailyRow
     public int    RefundedOrders { get; set; }
     public double ErrorRate      { get; set; }
     public double ConversionRate { get; set; }
+}
+
+/// <summary>
+/// One week's worth of call-center metrics for a single shop/pod,
+/// extracted from the pivoted <c>shop_level_-_call_metrics.csv</c>.
+/// </summary>
+public sealed class ShopCallMetricsRow
+{
+    public DateTime WeekStart { get; set; }
+    public string   ShopId    { get; set; } = string.Empty;
+    public string   ShopName  { get; set; } = string.Empty;
+    public string   PodId     { get; set; } = string.Empty;
+    public int      TotalCalls         { get; set; }
+    public int      OverflowCalls      { get; set; }
+    public int      QueueCalls         { get; set; }
+    public int      HandledCalls       { get; set; }
+    public int      MissedCalls        { get; set; }
+    public int      TransferredCalls   { get; set; }
+    public double   PctOverflow        { get; set; }
+    public double   PctQueued          { get; set; }
+    public double   PctHandled         { get; set; }
+    public double   PctMissedOfQueued  { get; set; }
+    public double   PctTransferred     { get; set; }
 }

@@ -102,6 +102,34 @@ public sealed class ReportMergeService : IReportMergeService
                     };
                 }));
 
+        // ── Shop Call Metrics: keep all (Shop, Pod, WeekStart) rows; sum calls per week, average pcts ──
+        merged.ShopCallMetrics.AddRange(
+            list.SelectMany(r => r.ShopCallMetrics)
+                .GroupBy(s => (s.ShopId, s.PodId, s.WeekStart))
+                .Select(grp =>
+                {
+                    var e = grp.ToList();
+                    var first = e[0];
+                    return new ShopCallMetricsRow
+                    {
+                        WeekStart        = grp.Key.WeekStart,
+                        ShopId           = grp.Key.ShopId,
+                        ShopName         = first.ShopName,
+                        PodId            = grp.Key.PodId,
+                        TotalCalls       = e.Sum(x => x.TotalCalls),
+                        OverflowCalls    = e.Sum(x => x.OverflowCalls),
+                        QueueCalls       = e.Sum(x => x.QueueCalls),
+                        HandledCalls     = e.Sum(x => x.HandledCalls),
+                        MissedCalls      = e.Sum(x => x.MissedCalls),
+                        TransferredCalls = e.Sum(x => x.TransferredCalls),
+                        PctOverflow      = SafeAvg(e, x => x.PctOverflow),
+                        PctQueued        = SafeAvg(e, x => x.PctQueued),
+                        PctHandled       = SafeAvg(e, x => x.PctHandled),
+                        PctMissedOfQueued= SafeAvg(e, x => x.PctMissedOfQueued),
+                        PctTransferred   = SafeAvg(e, x => x.PctTransferred),
+                    };
+                }));
+
         return merged;
     }
 
@@ -116,6 +144,7 @@ public sealed class ReportMergeService : IReportMergeService
         BuildGlobalSheet(package, report);
         BuildAgentSheet(package, report);
         BuildShopSheet(package, report);
+        BuildShopCallMetricsSheet(package, report);
 
         await package.SaveAsAsync(new FileInfo(filePath), ct);
         _logger.LogInformation("XLSX exported to {Path}", filePath);
@@ -151,6 +180,17 @@ public sealed class ReportMergeService : IReportMergeService
         sb.AppendLine("Shop,Total Orders,Refunded Orders,Error Rate,Conversion Rate");
         foreach (var s in report.ShopDaily)
             sb.AppendLine($"{s.ShopName},{s.TotalOrders},{s.RefundedOrders},{s.ErrorRate:F2},{s.ConversionRate:F2}");
+
+        if (report.ShopCallMetrics.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("=== Shop Call Metrics ===");
+            sb.AppendLine("Week Start,Shop ID,Shop Name,Pod ID,Total Calls,Overflow,Queued,Handled,Missed,Transferred,%Overflow,%Queued,%Handled,%Missed of Queued,%Transferred");
+            foreach (var c in report.ShopCallMetrics)
+                sb.AppendLine($"{c.WeekStart:yyyy-MM-dd},{c.ShopId},{c.ShopName},{c.PodId}," +
+                              $"{c.TotalCalls},{c.OverflowCalls},{c.QueueCalls},{c.HandledCalls},{c.MissedCalls},{c.TransferredCalls}," +
+                              $"{c.PctOverflow:F2},{c.PctQueued:F2},{c.PctHandled:F2},{c.PctMissedOfQueued:F2},{c.PctTransferred:F2}");
+        }
 
         await File.WriteAllTextAsync(filePath, sb.ToString(), Encoding.UTF8, ct);
         _logger.LogInformation("CSV exported to {Path}", filePath);
@@ -243,6 +283,42 @@ public sealed class ReportMergeService : IReportMergeService
             ws.Cells[row, 3].Value = s.RefundedOrders;
             ws.Cells[row, 4].Value = s.ErrorRate;
             ws.Cells[row, 5].Value = s.ConversionRate;
+            row++;
+        }
+
+        ws.Cells[ws.Dimension.Address].AutoFitColumns();
+    }
+
+    /// <summary>Adds the "Shop Call Metrics" worksheet. Skipped if empty.</summary>
+    private static void BuildShopCallMetricsSheet(ExcelPackage package, SliceReport report)
+    {
+        if (report.ShopCallMetrics.Count == 0) return;
+
+        var ws = package.Workbook.Worksheets.Add("Shop Call Metrics");
+        WriteHeader(ws, 1, [
+            "Week Start", "Shop ID", "Shop Name", "Pod ID",
+            "Total Calls", "Overflow", "Queued", "Handled", "Missed", "Transferred",
+            "%Overflow", "%Queued", "%Handled", "%Missed of Queued", "%Transferred",
+        ]);
+
+        int row = 2;
+        foreach (var c in report.ShopCallMetrics)
+        {
+            ws.Cells[row, 1].Value  = c.WeekStart;
+            ws.Cells[row, 2].Value  = c.ShopId;
+            ws.Cells[row, 3].Value  = c.ShopName;
+            ws.Cells[row, 4].Value  = c.PodId;
+            ws.Cells[row, 5].Value  = c.TotalCalls;
+            ws.Cells[row, 6].Value  = c.OverflowCalls;
+            ws.Cells[row, 7].Value  = c.QueueCalls;
+            ws.Cells[row, 8].Value  = c.HandledCalls;
+            ws.Cells[row, 9].Value  = c.MissedCalls;
+            ws.Cells[row, 10].Value = c.TransferredCalls;
+            ws.Cells[row, 11].Value = c.PctOverflow;
+            ws.Cells[row, 12].Value = c.PctQueued;
+            ws.Cells[row, 13].Value = c.PctHandled;
+            ws.Cells[row, 14].Value = c.PctMissedOfQueued;
+            ws.Cells[row, 15].Value = c.PctTransferred;
             row++;
         }
 

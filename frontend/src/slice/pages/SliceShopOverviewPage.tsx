@@ -7,9 +7,15 @@ import {
   patchSliceShopRow,
   sliceExportUrl,
 } from '../../services/sliceReportsApi';
-import type { SliceReport, SliceReportSummary, SliceShopDailyRow } from '../types';
+import type {
+  SliceReport,
+  SliceReportSummary,
+  SliceShopDailyRow,
+  SliceShopCallMetricsRow,
+} from '../types';
 
 type Period = 'Diaria' | 'Semanal' | 'Mensual';
+type Tab = 'orders' | 'calls';
 
 function formatPct(v: number): string {
   return `${v.toFixed(1)}%`;
@@ -99,6 +105,7 @@ export default function SliceShopOverviewPage() {
   const navigate = useNavigate();
 
   const [period, setPeriod] = useState<Period>('Diaria');
+  const [tab, setTab] = useState<Tab>('orders');
   const [reports, setReports] = useState<SliceReportSummary[]>([]);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [report, setReport] = useState<SliceReport | null>(null);
@@ -153,9 +160,22 @@ export default function SliceShopOverviewPage() {
 
   const filteredRows = useMemo(() => {
     if (!report) return [];
+    const source: SliceShopDailyRow[] = report.shopDaily ?? [];
     const q = search.trim().toLowerCase();
-    if (!q) return report.shopDaily;
-    return report.shopDaily.filter((r) => r.shopName.toLowerCase().includes(q));
+    if (!q) return source;
+    return source.filter((r) => r.shopName.toLowerCase().includes(q));
+  }, [report, search]);
+
+  const filteredCalls = useMemo(() => {
+    if (!report) return [];
+    const source: SliceShopCallMetricsRow[] = report.shopCallMetrics ?? [];
+    const q = search.trim().toLowerCase();
+    if (!q) return source;
+    return source.filter((r) =>
+      r.shopName.toLowerCase().includes(q)
+      || r.shopId.toLowerCase().includes(q)
+      || r.podId.toLowerCase().includes(q)
+    );
   }, [report, search]);
 
   const downloadBlob = (url: string, filename: string) => {
@@ -274,7 +294,8 @@ export default function SliceShopOverviewPage() {
           <div className="px-4 py-2 border-b border-whisper-border bg-surface-container/40 flex items-center justify-between text-xs text-steel-secondary">
             <span>
               Report <span className="font-metadata-mono text-primary">{report.id.slice(0, 8)}</span> •{' '}
-              {new Date(report.reportDate).toLocaleDateString()} • {report.shopDaily.length} shops • Owner{' '}
+              {new Date(report.reportDate).toLocaleDateString()} • {(report.shopDaily ?? []).length} shops •{' '}
+              {(report.shopCallMetrics ?? []).length} call rows • Owner{' '}
               <span className="text-primary">{report.generatedByEmail}</span>
             </span>
             {!isAdmin && (
@@ -284,102 +305,198 @@ export default function SliceShopOverviewPage() {
               </span>
             )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse whitespace-nowrap">
-              <thead>
-                <tr className="border-b border-whisper-border bg-surface-container/50 text-steel-secondary text-xs uppercase tracking-wider font-semibold">
-                  <th className="py-3 px-4 sticky left-0 bg-surface-container/50 z-10">Shop ID</th>
-                  <th className="py-3 px-4 text-right">Total Orders</th>
-                  <th className="py-3 px-4 text-right">Refunded</th>
-                  <th className="py-3 px-4 text-right">Error Rate</th>
-                  <th className="py-3 px-4 text-right">Conversion</th>
-                  <th className="py-3 px-4 text-right">Revenue Est.</th>
-                </tr>
-              </thead>
-              <tbody className="font-metadata-mono text-[13px] divide-y divide-whisper-border">
-                {loadingReport ? (
-                  <tr>
-                    <td colSpan={6} className="py-10 text-center text-secondary text-sm">
-                      Loading report data...
-                    </td>
-                  </tr>
-                ) : filteredRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-10 text-center text-secondary text-sm">
-                      No shops match "{search}".
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((row) => {
-                    const critical = isCriticalRow(row);
-                    return (
-                      <tr
-                        key={row.shopName}
-                        className={`transition-colors ${
-                          critical
-                            ? 'bg-rose-50/50 hover:bg-rose-50 border-l-2 border-l-deep-rose'
-                            : 'hover:bg-surface-container/30'
-                        }`}
-                      >
-                        <td
-                          className={`py-3 px-4 font-semibold sticky left-0 ${
-                            critical ? 'text-deep-rose bg-rose-50/50' : 'text-primary bg-surface'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5">
-                            {critical && <span className="w-1.5 h-1.5 rounded-full bg-deep-rose inline-block" />}
-                            {row.shopName}
-                          </div>
-                        </td>
-                        <EditableCell
-                          value={row.totalOrders}
-                          type="int"
-                          disabled={!isAdmin}
-                          onCommit={(v) => handlePatch(row.shopName, { totalOrders: v })}
-                        />
-                        <EditableCell
-                          value={row.refundedOrders}
-                          type="int"
-                          disabled={!isAdmin}
-                          onCommit={(v) => handlePatch(row.shopName, { refundedOrders: v })}
-                        />
-                        <EditableCell
-                          value={row.errorRate}
-                          type="pct"
-                          disabled={!isAdmin}
-                          onCommit={(v) => handlePatch(row.shopName, { errorRate: v })}
-                        />
-                        <td
-                          className={`py-3 px-4 text-right font-semibold ${
-                            row.conversionRate < 40
-                              ? 'text-deep-rose'
-                              : row.conversionRate >= 60
-                              ? 'text-emerald-signal'
-                              : 'text-on-surface'
-                          }`}
-                        >
-                          {formatPct(row.conversionRate)}
-                        </td>
-                        <td className="py-3 px-4 text-right text-on-surface">
-                          {(() => {
-                            const net = Math.max(0, row.totalOrders - row.refundedOrders);
-                            return formatInt(net);
-                          })()}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+
+          <div className="flex border-b border-whisper-border bg-surface">
+            <button
+              onClick={() => setTab('orders')}
+              className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
+                tab === 'orders'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-secondary hover:text-primary'
+              }`}
+            >
+              Shop Orders
+            </button>
+            <button
+              onClick={() => setTab('calls')}
+              className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
+                tab === 'calls'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-secondary hover:text-primary'
+              }`}
+            >
+              Call Metrics
+            </button>
           </div>
+
+          {tab === 'orders' && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-whisper-border bg-surface-container/50 text-steel-secondary text-xs uppercase tracking-wider font-semibold">
+                    <th className="py-3 px-4 sticky left-0 bg-surface-container/50 z-10">Shop</th>
+                    <th className="py-3 px-4 text-right">Total Orders</th>
+                    <th className="py-3 px-4 text-right">Refunded</th>
+                    <th className="py-3 px-4 text-right">Error Rate</th>
+                    <th className="py-3 px-4 text-right">Conversion</th>
+                    <th className="py-3 px-4 text-right">Revenue Est.</th>
+                  </tr>
+                </thead>
+                <tbody className="font-metadata-mono text-[13px] divide-y divide-whisper-border">
+                  {loadingReport ? (
+                    <tr>
+                      <td colSpan={6} className="py-10 text-center text-secondary text-sm">
+                        Loading report data...
+                      </td>
+                    </tr>
+                  ) : filteredRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-10 text-center text-secondary text-sm">
+                        No shops match "{search}".
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRows.map((row) => {
+                      const critical = isCriticalRow(row);
+                      return (
+                        <tr
+                          key={row.shopName}
+                          className={`transition-colors ${
+                            critical
+                              ? 'bg-rose-50/50 hover:bg-rose-50 border-l-2 border-l-deep-rose'
+                              : 'hover:bg-surface-container/30'
+                          }`}
+                        >
+                          <td
+                            className={`py-3 px-4 font-semibold sticky left-0 ${
+                              critical ? 'text-deep-rose bg-rose-50/50' : 'text-primary bg-surface'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              {critical && <span className="w-1.5 h-1.5 rounded-full bg-deep-rose inline-block" />}
+                              {row.shopName}
+                            </div>
+                          </td>
+                          <EditableCell
+                            value={row.totalOrders}
+                            type="int"
+                            disabled={!isAdmin}
+                            onCommit={(v) => handlePatch(row.shopName, { totalOrders: v })}
+                          />
+                          <EditableCell
+                            value={row.refundedOrders}
+                            type="int"
+                            disabled={!isAdmin}
+                            onCommit={(v) => handlePatch(row.shopName, { refundedOrders: v })}
+                          />
+                          <EditableCell
+                            value={row.errorRate}
+                            type="pct"
+                            disabled={!isAdmin}
+                            onCommit={(v) => handlePatch(row.shopName, { errorRate: v })}
+                          />
+                          <td
+                            className={`py-3 px-4 text-right font-semibold ${
+                              row.conversionRate < 40
+                                ? 'text-deep-rose'
+                                : row.conversionRate >= 60
+                                ? 'text-emerald-signal'
+                                : 'text-on-surface'
+                            }`}
+                          >
+                            {formatPct(row.conversionRate)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-on-surface">
+                            {(() => {
+                              const net = Math.max(0, row.totalOrders - row.refundedOrders);
+                              return formatInt(net);
+                            })()}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {tab === 'calls' && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-whisper-border bg-surface-container/50 text-steel-secondary text-xs uppercase tracking-wider font-semibold">
+                    <th className="py-3 px-4 sticky left-0 bg-surface-container/50 z-10">Shop</th>
+                    <th className="py-3 px-4">Pod</th>
+                    <th className="py-3 px-4">Week</th>
+                    <th className="py-3 px-4 text-right">Total</th>
+                    <th className="py-3 px-4 text-right">Queued</th>
+                    <th className="py-3 px-4 text-right">Handled</th>
+                    <th className="py-3 px-4 text-right">Missed</th>
+                    <th className="py-3 px-4 text-right">Transferred</th>
+                    <th className="py-3 px-4 text-right">%Handled</th>
+                    <th className="py-3 px-4 text-right">%Missed</th>
+                    <th className="py-3 px-4 text-right">%Transferred</th>
+                  </tr>
+                </thead>
+                <tbody className="font-metadata-mono text-[13px] divide-y divide-whisper-border">
+                  {loadingReport ? (
+                    <tr>
+                      <td colSpan={11} className="py-10 text-center text-secondary text-sm">
+                        Loading report data...
+                      </td>
+                    </tr>
+                  ) : filteredCalls.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className="py-10 text-center text-secondary text-sm">
+                        No call metrics match "{search}".
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredCalls.map((row, idx) => (
+                      <tr key={`${row.shopId}-${row.podId}-${row.weekStart}-${idx}`} className="hover:bg-surface-container/30">
+                        <td className="py-3 px-4 sticky left-0 bg-surface">
+                          <div className="font-semibold text-primary">{row.shopName}</div>
+                          <div className="text-[10px] text-muted-slate">{row.shopId}</div>
+                        </td>
+                        <td className="py-3 px-4 text-secondary">{row.podId}</td>
+                        <td className="py-3 px-4 text-secondary">{row.weekStart.slice(0, 10)}</td>
+                        <td className="py-3 px-4 text-right">{formatInt(row.totalCalls)}</td>
+                        <td className="py-3 px-4 text-right">{formatInt(row.queueCalls)}</td>
+                        <td className="py-3 px-4 text-right">{formatInt(row.handledCalls)}</td>
+                        <td className={`py-3 px-4 text-right ${row.missedCalls > 5 ? 'text-deep-rose' : ''}`}>
+                          {formatInt(row.missedCalls)}
+                        </td>
+                        <td className="py-3 px-4 text-right">{formatInt(row.transferredCalls)}</td>
+                        <td className="py-3 px-4 text-right">{formatPct(row.pctHandled)}</td>
+                        <td className={`py-3 px-4 text-right ${row.pctMissedOfQueued > 30 ? 'text-deep-rose' : ''}`}>
+                          {formatPct(row.pctMissedOfQueued)}
+                        </td>
+                        <td className="py-3 px-4 text-right">{formatPct(row.pctTransferred)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           <div className="mt-auto py-3 px-4 border-t border-whisper-border flex items-center justify-between bg-surface">
             <span className="text-sm text-steel-secondary">
-              Showing <span className="font-medium text-primary">{filteredRows.length}</span> of{' '}
-              <span className="font-medium text-primary">{report.shopDaily.length}</span> shops
+              {tab === 'orders' ? (
+                <>
+                  Showing <span className="font-medium text-primary">{filteredRows.length}</span> of{' '}
+                  <span className="font-medium text-primary">{(report.shopDaily ?? []).length}</span> shops
+                </>
+              ) : (
+                <>
+                  Showing <span className="font-medium text-primary">{filteredCalls.length}</span> of{' '}
+                  <span className="font-medium text-primary">{(report.shopCallMetrics ?? []).length}</span> call rows
+                </>
+              )}
             </span>
             <span className="text-xs text-muted-slate">
-              {isAdmin
+              {isAdmin && tab === 'orders'
                 ? 'Doble clic en una celda para editar. Enter para guardar, Esc para cancelar.'
                 : 'Tu rol no permite edición.'}
             </span>
