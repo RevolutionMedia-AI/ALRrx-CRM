@@ -5,17 +5,20 @@ import { sliceGetMe } from '../services/sliceAuthApi';
 import { setAuthToken } from '../services/httpClient';
 import { setSliceAuthToken } from '../services/sliceHttpClient';
 
+type Status = 'checking' | 'alrrx-only' | 'slice-only' | 'both' | 'none';
+
 export default function AppSelectorPage() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState<'checking' | 'choose' | 'alrrx-only' | 'slice-only' | 'none'>('checking');
+  const [status, setStatus] = useState<Status>('checking');
 
   useEffect(() => {
+    let cancelled = false;
     const check = async () => {
       const alrrxToken = localStorage.getItem('alrrx_token');
       const sliceToken = localStorage.getItem('slice_token');
 
       if (!alrrxToken && !sliceToken) {
-        setStatus('none');
+        if (!cancelled) setStatus('none');
         return;
       }
 
@@ -41,21 +44,21 @@ export default function AppSelectorPage() {
         }
       }
 
-      if (alrrxOk && sliceOk) setStatus('choose');
+      if (cancelled) return;
+      if (alrrxOk && sliceOk) setStatus('both');
       else if (alrrxOk) setStatus('alrrx-only');
       else if (sliceOk) setStatus('slice-only');
       else setStatus('none');
     };
     check();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (status === 'alrrx-only') navigate('/', { replace: true });
-    if (status === 'slice-only') navigate('/slice', { replace: true });
     if (status === 'none') navigate('/login', { replace: true });
   }, [status, navigate]);
 
-  if (status !== 'choose') {
+  if (status === 'checking') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-canvas-white">
         <div className="flex flex-col items-center gap-3">
@@ -75,8 +78,9 @@ export default function AppSelectorPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
-            onClick={() => navigate('/altrx')}
-            className="bg-surface border border-whisper-border rounded-xl p-8 text-left hover:border-electric-blue hover:shadow-md transition-all group"
+            onClick={() => navigate('/dashboard')}
+            disabled={status === 'slice-only'}
+            className="bg-surface border border-whisper-border rounded-xl p-8 text-left hover:border-electric-blue hover:shadow-md transition-all group disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <div className="flex items-center gap-3 mb-3">
               <span className="material-symbols-outlined text-3xl text-electric-blue" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -93,7 +97,8 @@ export default function AppSelectorPage() {
           </button>
           <button
             onClick={() => navigate('/slice')}
-            className="bg-surface border border-whisper-border rounded-xl p-8 text-left hover:border-electric-blue hover:shadow-md transition-all group"
+            disabled={status === 'alrrx-only'}
+            className="bg-surface border border-whisper-border rounded-xl p-8 text-left hover:border-electric-blue hover:shadow-md transition-all group disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <div className="flex items-center gap-3 mb-3">
               <span className="material-symbols-outlined text-3xl text-electric-blue" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -109,6 +114,12 @@ export default function AppSelectorPage() {
             </div>
           </button>
         </div>
+        {status !== 'both' && (
+          <p className="text-center text-xs text-muted-slate mt-6">
+            {status === 'alrrx-only' && 'Sign in to SLICE to enable the second option.'}
+            {status === 'slice-only' && 'Sign in to ALRrx to enable the second option.'}
+          </p>
+        )}
       </div>
     </div>
   );

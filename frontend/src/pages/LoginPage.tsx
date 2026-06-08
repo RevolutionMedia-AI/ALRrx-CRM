@@ -17,8 +17,7 @@ function GoogleIcon() {
 }
 
 function GoogleButton() {
-  const { loginWithGoogle, user } = useAuth();
-  const navigate = useNavigate();
+  const { loginWithGoogle } = useAuth();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -44,13 +43,6 @@ function GoogleButton() {
     },
     onError: () => setError('Google sign-in was cancelled or failed'),
   });
-
-  useEffect(() => {
-    if (success && user) {
-      const target = shouldShowAppChooser(user.email) ? '/choose' : '/';
-      navigate(target, { replace: true });
-    }
-  }, [success, user, navigate]);
 
   if (success) {
     return (
@@ -102,7 +94,11 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (user) { navigate('/', { replace: true }); return; }
+    if (user) {
+      const target = shouldShowAppChooser(user.email) ? '/choose' : '/';
+      navigate(target, { replace: true });
+      return;
+    }
     fetch('/api/config/google-client-id')
       .then((r) => r.json())
       .then((d) => setClientId(d.clientId || null))
