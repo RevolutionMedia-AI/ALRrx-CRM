@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import logoSrc from '../images/RevolutionLogo.png';
-import { shouldShowAppChooser } from '../utils/appChooser';
 
 function GoogleIcon() {
   return (
@@ -95,8 +94,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      const target = shouldShowAppChooser(user.email) ? '/choose' : '/';
-      navigate(target, { replace: true });
+      navigate('/', { replace: true });
       return;
     }
     fetch('/api/config/google-client-id')

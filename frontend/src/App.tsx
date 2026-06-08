@@ -15,8 +15,6 @@ import SliceAgentOverviewPage from './slice/pages/SliceAgentOverviewPage';
 import SliceFileUploadPage from './slice/pages/SliceFileUploadPage';
 import SlicePlaceholderPage from './slice/pages/SlicePlaceholderPage';
 import SliceLayout from './slice/components/SliceLayout';
-import AppChooserPage from './pages/AppChooserPage';
-import { shouldShowAppChooser } from './utils/appChooser';
 import type { ReactNode } from 'react';
 
 function LoadingScreen() {
@@ -40,7 +38,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 function AdminRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  if (!user || user.role !== 'Admin') return <Navigate to="/" replace />;
+  if (!user || user.role !== 'Admin') return <Navigate to="/login" replace />;
   return <AppLayout>{children}</AppLayout>;
 }
 
@@ -54,45 +52,10 @@ function SliceProtectedRoute({ children }: { children: ReactNode }) {
   return <SliceLayout>{children}</SliceLayout>;
 }
 
-function ChooseRoute() {
-  const alrrx = useAuth();
-  const slice = useSliceAuth();
-  if (alrrx.loading || slice.loading) return <LoadingScreen />;
-  const email = alrrx.user?.email ?? slice.user?.email;
-  if (!email) {
-    return <Navigate to="/login" replace />;
-  }
-  if (!shouldShowAppChooser(email)) {
-    return <Navigate to={slice.user ? '/slice' : '/dashboard'} replace />;
-  }
-  return <AppChooserPage />;
-}
-
-function RootRoute() {
-  const alrrx = useAuth();
-  const slice = useSliceAuth();
-  if (alrrx.loading || slice.loading) return <LoadingScreen />;
-  const email = alrrx.user?.email ?? slice.user?.email;
-  if (!email) {
-    return <Navigate to="/login" replace />;
-  }
-  if (shouldShowAppChooser(email)) {
-    return <Navigate to="/choose" replace />;
-  }
-  if (slice.user && !alrrx.user) {
-    return <Navigate to="/slice" replace />;
-  }
-  if (alrrx.user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  return <Navigate to="/login" replace />;
-}
-
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/choose" element={<ChooseRoute />} />
 
       <Route path="/slice/login" element={<SliceLoginPage />} />
 
@@ -146,7 +109,14 @@ function AppRoutes() {
       />
 
       <Route path="/form_sale" element={<VicidialFormPage />} />
-      <Route path="/" element={<RootRoute />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/dashboard"
         element={
@@ -179,7 +149,7 @@ function AppRoutes() {
           </AdminRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }

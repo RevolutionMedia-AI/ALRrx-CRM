@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSliceAuth } from '../context/SliceAuthContext';
-import { shouldShowAppChooser } from '../../utils/appChooser';
 
 declare global {
   interface Window {
@@ -46,8 +45,7 @@ export default function SliceLoginPage() {
   useEffect(() => {
     if (user) {
       const paramRedirect = searchParams.get('redirect');
-      const target = paramRedirect ?? (shouldShowAppChooser(user.email) ? '/choose' : '/slice');
-      navigate(target, { replace: true });
+      navigate(paramRedirect ?? '/slice', { replace: true });
       return;
     }
     fetch('/api/config/google-client-id')
