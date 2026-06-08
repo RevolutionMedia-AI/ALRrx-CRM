@@ -56,7 +56,6 @@ export async function uploadSliceZip(file: File, onProgress?: (pct: number) => v
   const form = new FormData();
   form.append('file', file);
   const { data } = await sliceClient.post<SliceUploadJobResponse>('/fileupload/zip', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: (e) => {
       if (e.total && onProgress) onProgress(Math.round((e.loaded * 100) / e.total));
     },
@@ -71,7 +70,6 @@ export async function uploadSliceExcel(
   const form = new FormData();
   files.forEach((f) => form.append('files', f));
   const { data } = await sliceClient.post<SliceUploadJobResponse>('/fileupload/excel', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: (e) => {
       if (e.total && onProgress) onProgress(Math.round((e.loaded * 100) / e.total));
     },
