@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { SliceAuthProvider, useSliceAuth } from './slice/context/SliceAuthContext';
@@ -9,6 +9,8 @@ import RealTimePage from './pages/RealTimePage';
 import UsersPage from './pages/UsersPage';
 import VicidialFormPage from './pages/VicidialFormPage';
 import AppLayout from './components/Layout/AppLayout';
+import PlatformPickerModal from './components/PlatformPickerModal';
+import { resolveAccess, ROUTES } from './utils/accessControl';
 import SliceLoginPage from './slice/pages/SliceLoginPage';
 import SliceShopOverviewPage from './slice/pages/SliceShopOverviewPage';
 import SliceAgentOverviewPage from './slice/pages/SliceAgentOverviewPage';
@@ -52,10 +54,40 @@ function SliceProtectedRoute({ children }: { children: ReactNode }) {
   return <SliceLayout>{children}</SliceLayout>;
 }
 
+function PlatformPickerPage() {
+  const { user, loading, logout } = useAuth();
+  const navigate = useNavigate();
+
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+
+  const { group, redirectTo } = resolveAccess(user.email);
+  if (group !== 'both' && redirectTo) {
+    return <Navigate to={redirectTo} replace />;
+  }
+
+  const handleSelect = (platform: 'slice' | 'altrx') => {
+    navigate(platform === 'slice' ? ROUTES.slice : ROUTES.altrx, { replace: true });
+  };
+
+  return (
+    <PlatformPickerModal
+      userEmail={user.email}
+      onSelect={handleSelect}
+      onCancel={() => {
+        logout();
+        navigate('/login', { replace: true });
+      }}
+    />
+  );
+}
+
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+
+      <Route path="/select-platform" element={<PlatformPickerPage />} />
 
       <Route path="/slice/login" element={<SliceLoginPage />} />
 

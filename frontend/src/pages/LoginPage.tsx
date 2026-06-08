@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import logoSrc from '../images/RevolutionLogo.png';
+import { resolveAccess } from '../utils/accessControl';
 
 function GoogleIcon() {
   return (
@@ -94,7 +95,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      navigate('/', { replace: true });
+      const { redirectTo, group } = resolveAccess(user.email);
+      if (group === 'both') {
+        navigate('/select-platform', { replace: true });
+      } else if (redirectTo) {
+        navigate(redirectTo, { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
       return;
     }
     fetch('/api/config/google-client-id')
