@@ -10,6 +10,14 @@ using Slice.Infrastructure.DependencyInjection;
 // Must be called once before any ExcelPackage is created.
 ExcelPackage.License.SetNonCommercialPersonal("Slice");
 
+// Log the build identifier once at startup so we can confirm which commit
+// the deployed image is running (useful when the runtime log buffer is lossy).
+var buildSha =
+    Environment.GetEnvironmentVariable("GIT_SHA")
+    ?? typeof(Program).Assembly.GetName().Version?.ToString()
+    ?? "unknown";
+Console.WriteLine($"[slice-api] build_sha={buildSha} startup={DateTime.UtcNow:O}");
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ─── Controllers & Swagger ────────────────────────────────────────────────────
@@ -98,7 +106,25 @@ app.UseAuthorization();
 app.UseMiddleware<SliceEmailGuardMiddleware>();
 
 // Health check endpoint — useful for container liveness probes.
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Slice API" }));
+app.MapGet("/health", () => Results.Ok(new
+{
+    status   = "healthy",
+    service  = "Slice API",
+    buildSha = buildSha,
+    startedAt = DateTime.UtcNow,
+}));
+
+// DEBUG: log every request to fileupload endpoints so we can confirm the
+// deploy is exercising the new code path.
+app.Use(async (ctx, next) =>
+{
+    if (ctx.Request.Path.StartsWithSegments("/api/fileupload"))
+    {
+        Console.WriteLine($"[slice-api] hit {ctx.Request.Method} {ctx.Request.Path} at {DateTime.UtcNow:O} buildSha={buildSha}");
+    }
+    await next();
+});
+
 app.MapControllers();
 
 app.Run();
