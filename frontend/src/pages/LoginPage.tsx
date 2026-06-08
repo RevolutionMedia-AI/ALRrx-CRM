@@ -130,7 +130,7 @@ export default function LoginPage() {
         <div className="fixed inset-0 z-10 overflow-hidden pointer-events-none">
           <div className="absolute top-0 left-0 w-full h-14 border-b border-whisper-border dark:border-gray-800 bg-pure-surface/60 dark:bg-gray-900/60 backdrop-blur-md flex items-center px-6 gap-4 font-metadata-mono text-sm">
             <span className="text-electric-blue italic font-bold text-lg">fx</span>
-            <div className="h-6 w-px bg-whisper-border dark:bg-gray-800"></div>
+            <div className="h-6 w-px bg-whisper-border dark:border-gray-800"></div>
             <span className="text-secondary dark:text-gray-400 opacity-60 flex-1 truncate">
               =QUERY(DataMatrix, "SELECT * WHERE status = 'active' AND user = 'current'", 1)
             </span>
@@ -197,7 +197,7 @@ export default function LoginPage() {
         <div className="fixed inset-0 z-10 overflow-hidden pointer-events-none">
           <div className="absolute top-0 left-0 w-full h-14 border-b border-whisper-border dark:border-gray-800 bg-pure-surface/60 dark:bg-gray-900/60 backdrop-blur-md flex items-center px-6 gap-4 font-metadata-mono text-sm">
             <span className="text-electric-blue italic font-bold text-lg">fx</span>
-            <div className="h-6 w-px bg-whisper-border dark:bg-gray-800"></div>
+            <div className="h-6 w-px bg-whisper-border dark:border-gray-800"></div>
             <span className="text-secondary dark:text-gray-400 opacity-60 flex-1 truncate">
               =QUERY(Users, "SELECT * WHERE domain = '@revolutionmedia.ai'", 1)
             </span>
