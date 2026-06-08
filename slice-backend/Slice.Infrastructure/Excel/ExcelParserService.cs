@@ -457,9 +457,11 @@ public sealed class ExcelParserService : IExcelParserService
     // specificity so the more distinctive layouts win first.
 
     /// <summary>
-    /// <c>pod_level_-_call_metrics.csv</c>: one row per (Pod, Day). Daily-block
-    /// layout: [date, Total, Overflow, Queue, Handled, Missed, Transferred, %×4].
-    /// One file == one daily snapshot (the latest day). Adds to <c>DailyGlobal</c>.
+    /// <c>pod_level_-_call_metrics.csv</c>: one row per (Pod, Day). Two variants:
+    ///   - DAILY  (8 cols per day): [date, Total, Overflow, Queue, Handled, Missed, Transferred, %×4]
+    ///   - WEEKLY (12 cols per day): [date, Total, Overflow, Queue, Handled, Missed, Transferred, Avg Speed to Answer, %×4]
+    /// We detect the block width dynamically by counting columns between two
+    /// adjacent date columns. Adds to <c>DailyGlobal</c>.
     /// </summary>
     private static bool TryParsePodLevelPivoted(IList<IList<string>> grid, SliceReport report)
     {
@@ -468,38 +470,38 @@ public sealed class ExcelParserService : IExcelParserService
         int podIdCol = FindColumn(headerRow, "Pod ID");
         if (podIdCol < 0) return false;
 
-        // Find the first date column to know where the metric block starts.
+        // Find every date column to know where blocks start and how wide they are.
         var dateRow = grid[0];
-        int firstDateCol = -1;
+        var dayStarts = new List<int>();
         for (int c = 0; c < dateRow.Count; c++)
         {
             if (DateTime.TryParse(dateRow[c]?.Trim() ?? string.Empty,
                 CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out _))
             {
-                firstDateCol = c;
-                break;
+                dayStarts.Add(c);
             }
         }
-        if (firstDateCol < 0) return false;
+        if (dayStarts.Count < 2) return false;
 
-        int blockWidth = 11; // Total, Overflow, Queue, Handled, Missed, Transferred, %×4 + Total (col 0)
-        int endCol = firstDateCol + blockWidth;
+        // Block width = distance between two consecutive date columns.
+        int blockWidth = dayStarts[1] - dayStarts[0];
+        if (blockWidth < 7) return false;
 
         for (int r = 2; r < grid.Count; r++)
         {
             var pod = GetCell(grid, r, podIdCol);
             if (string.IsNullOrWhiteSpace(pod) || !pod.StartsWith("ES-", StringComparison.OrdinalIgnoreCase)) continue;
 
-            // Roll up every weekly block on this row.
             int total = 0, overflow = 0, queue = 0, handled = 0, missed = 0, transferred = 0;
-            for (int c = firstDateCol; c < endCol && c < headerRow.Count; c += 11)
+            for (int c = 0; c < dayStarts.Count; c++)
             {
-                total       += GetInt(grid, r, c + 1);
-                overflow    += GetInt(grid, r, c + 2);
-                queue       += GetInt(grid, r, c + 3);
-                handled     += GetInt(grid, r, c + 4);
-                missed      += GetInt(grid, r, c + 5);
-                transferred += GetInt(grid, r, c + 6);
+                int m0 = dayStarts[c];
+                total       += GetInt(grid, r, m0 + 1);
+                overflow    += GetInt(grid, r, m0 + 2);
+                queue       += GetInt(grid, r, m0 + 3);
+                handled     += GetInt(grid, r, m0 + 4);
+                missed      += GetInt(grid, r, m0 + 5);
+                transferred += GetInt(grid, r, m0 + 6);
             }
             if (total == 0 && handled == 0) continue;
 
@@ -510,8 +512,6 @@ public sealed class ExcelParserService : IExcelParserService
                 Handled          = handled,
                 MissedCalls      = missed,
                 TransferredCalls = transferred,
-                // We don't compute % here — the merge step averages them from
-                // each report, and the user can patch them through the editor.
             });
         }
         return report.DailyGlobal.Count > 0;
@@ -661,23 +661,26 @@ public sealed class ExcelParserService : IExcelParserService
     }
 
     /// <summary>
-    /// <c>shop_level_-_call_metrics.csv</c> pivoted layout with 15 columns per
-    /// weekly block (Shop ID, Shop Name, Pod ID, Live on Phone Date, Total, Overflow,
-    /// Queue, Handled, Missed, Transferred, %×4). Adds to <c>ShopCallMetrics</c>.
+    /// <c>shop_level_-_call_metrics.csv</c> pivoted layout. Two variants:
+    ///   - DAILY  (11 cols per day after the date): Total, Overflow, Queue, Handled,
+    ///     Missed, Transferred, %×4
+    ///   - WEEKLY (same 11 cols, just repeated more times; no "Live on Phone Date")
+    /// In both variants the header row contains "Shop ID" + "Shop Name" + "Pod ID"
+    /// + "Total Calls" and the date row sits at the same column index as
+    /// "Total Calls" minus one.
     /// </summary>
     private static bool TryParseShopLevelPivoted(IList<IList<string>> grid, SliceReport report)
     {
         if (grid.Count < 3) return false;
         var headerRow = grid[1];
-        int shopIdCol   = FindColumn(headerRow, "Shop ID");
-        int shopNameCol = FindColumn(headerRow, "Shop Name");
-        int podIdCol    = FindColumn(headerRow, "Pod ID");
-        int liveOnCol   = FindColumn(headerRow, "Live on Phone Date");
+        int shopIdCol    = FindColumn(headerRow, "Shop ID");
+        int shopNameCol  = FindColumn(headerRow, "Shop Name");
+        int podIdCol     = FindColumn(headerRow, "Pod ID");
+        int liveOnCol    = FindColumn(headerRow, "Live on Phone Date");
         int totalCallsCol = FindColumn(headerRow, "Total Calls");
         if (shopIdCol < 0 || shopNameCol < 0 || podIdCol < 0 || totalCallsCol < 0) return false;
 
-        // Each weekly block = 11 columns: Total, Overflow, Queue, Handled, Missed,
-        // Transferred, %Overflow, %Queued, %Handled, %Missed, %Transferred.
+        // Block = 11 metric cols: Total..Transferred..%×4.
         const int blockWidth = 11;
 
         for (int r = 2; r < grid.Count; r++)
@@ -1087,19 +1090,69 @@ public sealed class ExcelParserService : IExcelParserService
 
     /// <summary>
     /// <c>pods_helping_with_overflow_(spanish|english_speaking).csv</c>:
-    /// header-only file (the source simply had no rows). Detect it so the user
-    /// sees a friendly "file recognized but empty" log line.
+    /// the spanish variant has data pivoted by week (Queue Name, Pod, #handled,
+    /// %handled); the english variant is header-only. Layout:
+    ///   row 0: <c>,,week,2026-05-11,...</c> (dates)
+    ///   row 1: <c>,Queue Name,POD helping with the overflow,#handled overflow
+    ///          calls,% handled overflow,...</c> (column labels)
     /// </summary>
     private static bool TryParsePodsHelpingOverflow(IList<IList<string>> grid, SliceReport report)
     {
         if (grid.Count < 2) return false;
-        var headerRow = grid[0];
-        bool hasQueue = headerRow.Any(c => c?.Trim().Equals("Queue Name", StringComparison.OrdinalIgnoreCase) == true);
-        bool hasPod   = headerRow.Any(c => c?.Trim().Equals("POD helping with the overflow", StringComparison.OrdinalIgnoreCase) == true);
-        if (!hasQueue && !hasPod) return false;
-        // Nothing to extract; the file is empty by design.
-        _logger.LogInformation("pods_helping_with_overflow CSV detected (empty payload).");
-        return false;
+        var headerRow = grid.Count > 1 ? grid[1] : grid[0];
+        bool hasHandled = headerRow.Any(c =>
+            c?.Trim().Replace(" ", string.Empty)
+                 .Equals("%handledoverflow", StringComparison.OrdinalIgnoreCase) == true
+            || c?.Trim().Equals("#handled overflow calls", StringComparison.OrdinalIgnoreCase) == true);
+        bool hasPodHelping = headerRow.Any(c => c?.Trim().StartsWith("POD helping", StringComparison.OrdinalIgnoreCase) == true);
+        if (!hasHandled && !hasPodHelping) return false;
+
+        if (grid.Count < 3)
+        {
+            _logger.LogInformation("pods_helping_with_overflow (english) CSV detected (empty payload).");
+            return false;
+        }
+
+        int queueCol = FindColumn(headerRow, "Queue Name");
+        int podCol   = FindColumn(headerRow, "POD helping with the overflow");
+        if (queueCol < 0 && podCol < 0) return false;
+
+        var dateRow = grid[0];
+        var dayStarts = new List<int>();
+        for (int c = 0; c < dateRow.Count; c++)
+        {
+            if (DateTime.TryParse(dateRow[c]?.Trim() ?? string.Empty,
+                CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out _))
+            {
+                dayStarts.Add(c);
+            }
+        }
+        if (dayStarts.Count == 0) return false;
+
+        // Each weekly block = 2 columns: #handled, %handled.
+        const int blockWidth = 2;
+
+        for (int r = 2; r < grid.Count; r++)
+        {
+            var pod = podCol >= 0 ? GetCell(grid, r, podCol) : string.Empty;
+            if (string.IsNullOrWhiteSpace(pod)) continue;
+            int total = 0;
+            for (int c = 0; c < dayStarts.Count; c++)
+            {
+                int m0 = dayStarts[c] + 1;
+                total += GetInt(grid, r, m0);
+            }
+            if (total == 0) continue;
+            report.DailyGlobal.Add(new DailyGlobalRow
+            {
+                Pod              = pod,
+                Queued           = 0,
+                Handled          = total,
+                MissedCalls      = 0,
+                TransferredCalls = 0,
+            });
+        }
+        return report.DailyGlobal.Count > 0;
     }
 
     /// <summary>
@@ -1159,57 +1212,72 @@ public sealed class ExcelParserService : IExcelParserService
 
     /// <summary>
     /// <c>shop_level_-_items_remove_by_order_shipping_type_.csv</c>:
-    /// pivoted by week × shipping type. Each (Shop, Week, ShippingType) cell
-    /// holds a <c>Removed Items Count</c>. We collapse it into one
-    /// <c>ShopDaily</c> row per (Shop, ShippingType) pair, prefixed
-    /// <c>REMOVED:&lt;id&gt;:&lt;shipping&gt;</c>.
+    /// pivoted by week × shipping type. Layout is three-header-rows deep:
+    ///   row 0: <c>,,Created At Week,2026-04-20,...</c> (dates)
+    ///   row 1: <c>,,Shipping Type,delivery,for_here,pickup,to_go,...</c> (sub-headers)
+    ///   row 2: <c>,Shop ID,Name,Removed Items Count,Removed Items Count,...</c> (column labels)
+    /// We collapse it into one <c>ShopDaily</c> row per (Shop, ShippingType) pair,
+    /// prefixed <c>REMOVED:&lt;id&gt;:&lt;shipping&gt;</c>.
     /// </summary>
     private static bool TryParseItemsRemovedByShippingType(IList<IList<string>> grid, SliceReport report)
     {
-        if (grid.Count < 3) return false;
-        var headerRow = grid[0];
-        int weekCol   = FindColumn(headerRow, "Created At Week");
-        int shopIdCol = FindColumn(headerRow, "Shop ID");
-        int nameCol   = FindColumn(headerRow, "Name");
-        int shippingCol = FindColumn(headerRow, "Shipping Type");
-        int removedCol = FindColumn(headerRow, "Removed Items Count");
-        if (weekCol < 0 || shopIdCol < 0 || removedCol < 0) return false;
+        if (grid.Count < 4) return false;
 
-        // Daily block = 1 (Removed Items Count) per shipping type.
-        // Determine shipping types by looking at row 1 (the row below the dates).
-        var subHeaderRow = grid[1];
-        var shippingTypes = new List<string>();
+        // row 0 = dates
+        // row 1 = shipping types
+        // row 2 = column labels
+        var datesRow   = grid[0];
+        var shippingRow = grid[1];
+        var headerRow   = grid[2];
+
+        int shopIdCol = FindColumn(headerRow, "Shop ID");
+        if (shopIdCol < 0) return false;
+
+        // Walk every column; pick up dates from row 0, shipping type from row 1,
+        // and identify which "Removed Items Count" columns belong to which week.
         var weekStarts = new List<int>();
-        for (int c = 0; c < headerRow.Count; c++)
+        var shippingTypes = new List<string>();
+        var removedCols = new List<int>();
+        for (int c = 0; c < datesRow.Count && c < headerRow.Count; c++)
         {
-            if (DateTime.TryParse(headerRow[c]?.Trim() ?? string.Empty,
+            if (DateTime.TryParse(datesRow[c]?.Trim() ?? string.Empty,
                 CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out _))
             {
                 weekStarts.Add(c);
-                if (c < subHeaderRow.Count)
+                if (c < shippingRow.Count)
                 {
-                    var st = subHeaderRow[c]?.Trim();
-                    if (!string.IsNullOrEmpty(st)) shippingTypes.Add(st);
-                    else shippingTypes.Add("unknown");
+                    var st = shippingRow[c]?.Trim();
+                    shippingTypes.Add(string.IsNullOrEmpty(st) ? "unknown" : st);
                 }
                 else
                 {
                     shippingTypes.Add("unknown");
                 }
+                if (headerRow[c]?.Trim().Equals("Removed Items Count", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    removedCols.Add(c);
+                }
             }
         }
         if (weekStarts.Count == 0) return false;
 
-        for (int r = 2; r < grid.Count; r++)
+        for (int r = 3; r < grid.Count; r++)
         {
             var shopId = GetCell(grid, r, shopIdCol);
             if (string.IsNullOrWhiteSpace(shopId)) continue;
-            var shopName = nameCol >= 0 ? GetCell(grid, r, nameCol) : shopId;
 
             for (int w = 0; w < weekStarts.Count; w++)
             {
-                int m0 = weekStarts[w];
-                int removed = GetInt(grid, r, m0);
+                int dateCol = weekStarts[w];
+                // Find the Removed Items Count column for this week: it's the
+                // first "Removed Items Count" header at or after dateCol.
+                int removedCol = -1;
+                foreach (var rc in removedCols)
+                {
+                    if (rc >= dateCol) { removedCol = rc; break; }
+                }
+                if (removedCol < 0) continue;
+                int removed = GetInt(grid, r, removedCol);
                 if (removed == 0) continue;
                 var shipping = w < shippingTypes.Count ? shippingTypes[w] : "unknown";
                 report.ShopDaily.Add(new ShopDailyRow
@@ -1220,26 +1288,28 @@ public sealed class ExcelParserService : IExcelParserService
                     ErrorRate      = 0,
                     ConversionRate = 0,
                 });
-                _ = shopName; // shopName is kept for future "REMOVED:<name>:<shipping>" if useful.
             }
         }
         return report.ShopDaily.Count > 0;
     }
 
     /// <summary>
-    /// <c>shop_level_-_orders_metrics.csv</c> (WEEKLY, 7 columns per week):
+    /// <c>shop_level_-_orders_metrics.csv</c> (WEEKLY, 6 columns per week):
     /// Orders, Open food items, Refunded, Orders with items removed, Removed
-    /// Items Count, %orders with errors. One row per shop. We map every week
-    /// into a single aggregated <c>ShopDaily</c> row with prefixed
-    /// <c>WEEKLY_ORDERS:&lt;shopId&gt;</c> so the data is preserved without
-    /// overwriting the daily shop-order rows from the other CSV.
+    /// Items Count, %orders with errors. The CSV has three header rows: dates
+    /// in row 0, blank row 1, column labels in row 2. One row per shop.
+    /// We map every week into a single aggregated <c>ShopDaily</c> row with
+    /// prefixed <c>WEEKLY_ORDERS:&lt;shopId&gt;</c>.
     /// </summary>
     private static bool TryParseShopLevelOrdersWeekly(IList<IList<string>> grid, SliceReport report)
     {
-        if (grid.Count < 2) return false;
-        var headerRow = grid[0];
+        if (grid.Count < 3) return false;
+
+        // row 0 = dates, row 1 = sub-header (often blank), row 2 = column labels
+        var datesRow = grid[0];
+        var headerRow = grid.Count > 2 ? grid[2] : grid[1];
+
         int shopIdCol = FindColumn(headerRow, "Shop ID");
-        int nameCol   = FindColumn(headerRow, "Name");
         int ordersCol = FindColumn(headerRow, "Orders Count");
         int refundCol = FindColumn(headerRow, "Refunded Orders");
         int errorsCol = FindColumn(headerRow, "%orders with errors");
@@ -1247,18 +1317,32 @@ public sealed class ExcelParserService : IExcelParserService
 
         const int blockWidth = 6; // Orders, OpenFoodItems, Refunded, ItemsRemoved, RemovedCount, %errors
 
-        for (int r = 1; r < grid.Count; r++)
+        for (int r = 3; r < grid.Count; r++)
         {
             var shopId = GetCell(grid, r, shopIdCol);
             if (string.IsNullOrWhiteSpace(shopId)) continue;
-            _ = nameCol; // Reserved for future naming.
 
             int total = 0, refunded = 0;
             double pctErrors = 0;
             int blocks = 0;
-            for (int offset = 0; offset < headerRow.Count - ordersCol; offset += blockWidth)
+            // Find the first date column in row 0; metrics start at the same col
+            // and the block repeats every blockWidth cols.
+            int firstDateCol = -1;
+            for (int c = 0; c < datesRow.Count; c++)
             {
-                int o  = GetInt(grid, r, ordersCol + offset);
+                if (DateTime.TryParse(datesRow[c]?.Trim() ?? string.Empty,
+                    CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out _))
+                {
+                    firstDateCol = c;
+                    break;
+                }
+            }
+            if (firstDateCol < 0) continue;
+
+            for (int offset = 0; offset + firstDateCol + blockWidth <= headerRow.Count; offset += blockWidth)
+            {
+                int baseCol = firstDateCol + offset;
+                int o  = GetInt(grid, r, baseCol);
                 int r2 = refundCol >= 0 ? GetInt(grid, r, refundCol + offset) : 0;
                 double e = errorsCol >= 0 ? GetDouble(grid, r, errorsCol + offset) : 0;
                 if (o == 0 && r2 == 0) continue;
