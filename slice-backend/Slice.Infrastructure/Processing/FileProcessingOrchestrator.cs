@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Slice.Application.Interfaces;
 using Slice.Domain.Entities;
@@ -16,6 +17,12 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
 {
     /// <summary>Maximum Excel files processed in parallel per batch.</summary>
     private const int MaxConcurrentFiles = 12;
+
+    /// <summary>Per-file hard timeout. If a single CSV hangs, we abort it and continue.</summary>
+    private static readonly TimeSpan PerFileTimeout = TimeSpan.FromSeconds(60);
+
+    /// <summary>Interval at which we log the current processing progress.</summary>
+    private static readonly TimeSpan ProgressLogInterval = TimeSpan.FromSeconds(5);
 
     private readonly IZipExtractionService _zipExtractor;
     private readonly IExcelParserService _excelParser;
@@ -150,21 +157,71 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         // processedCount is incremented atomically so the job status bar stays accurate
         // even when multiple files finish near-simultaneously.
         var processedCount = 0;
+        var totalFiles     = filePaths.Count;
+        var pipelineSw     = Stopwatch.StartNew();
+        var lastProgressSw = Stopwatch.StartNew();
+
+        // Background heartbeat: log progress every ProgressLogInterval so a
+        // hang is visible in the logs without waiting for the job to finish.
+        using var progressCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var progressLoop = Task.Run(async () =>
+        {
+            try
+            {
+                while (!progressCts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(ProgressLogInterval, progressCts.Token);
+                    _logger.LogInformation(
+                        "Job {JobId} processing: {Done}/{Total} files in {Elapsed}",
+                        job.Id, job.ProcessedFiles, totalFiles, pipelineSw.Elapsed);
+                }
+            }
+            catch (OperationCanceledException) { /* expected on job end */ }
+        }, progressCts.Token);
 
         await Parallel.ForEachAsync(
             filePaths,
             new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentFiles, CancellationToken = ct },
             async (path, token) =>
             {
+                var fileSw = Stopwatch.StartNew();
+                var fileName = Path.GetFileName(path);
+
+                // Per-file timeout: if a CSV hangs in the parser, abort it and
+                // continue with the rest instead of blocking the whole job.
+                using var fileCts = new CancellationTokenSource(PerFileTimeout);
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(token, fileCts.Token);
+
                 try
                 {
-                    var report = await _excelParser.ParseAsync(path, token);
-                    if (report != null) parsedReports.Add(report);
-                    else _logger.LogWarning("No recognized layout in {File} (file skipped).", path);
+                    var report = await _excelParser.ParseAsync(path, linkedCts.Token);
+                    fileSw.Stop();
+
+                    if (report != null)
+                    {
+                        parsedReports.Add(report);
+                        _logger.LogInformation(
+                            "Parsed {File} in {Ms}ms → DailyGlobal={G} DailyAgents={A} ShopDaily={S} ShopCallMetrics={C}",
+                            fileName, fileSw.ElapsedMilliseconds,
+                            report.DailyGlobal.Count, report.DailyAgents.Count,
+                            report.ShopDaily.Count, report.ShopCallMetrics.Count);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "No recognized layout in {File} after {Ms}ms (file skipped).",
+                            fileName, fileSw.ElapsedMilliseconds);
+                    }
+                }
+                catch (OperationCanceledException) when (fileCts.IsCancellationRequested)
+                {
+                    _logger.LogError(
+                        "TIMEOUT: parsing {File} exceeded {Sec}s and was aborted.",
+                        fileName, (int)PerFileTimeout.TotalSeconds);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse {File}", path);
+                    _logger.LogWarning(ex, "Failed to parse {File} after {Ms}ms", fileName, fileSw.ElapsedMilliseconds);
                 }
                 finally
                 {
@@ -173,6 +230,9 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
                     TryDeleteFile(path);
                 }
             });
+
+        progressCts.Cancel();
+        try { await progressLoop; } catch (OperationCanceledException) { }
 
         if (parsedReports.IsEmpty)
         {
@@ -199,7 +259,12 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         job.ReportId    = merged.Id;
         await _jobRepo.UpdateAsync(job);
 
-        _logger.LogInformation("Job {JobId} completed. Report {ReportId} created.", job.Id, merged.Id);
+        pipelineSw.Stop();
+        _logger.LogInformation(
+            "Job {JobId} completed in {Ms}ms. Report {ReportId} ({Rows} rows across {Files} files).",
+            job.Id, pipelineSw.ElapsedMilliseconds, merged.Id,
+            merged.DailyGlobal.Count + merged.DailyAgents.Count + merged.ShopDaily.Count + merged.ShopCallMetrics.Count,
+            filePaths.Count);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

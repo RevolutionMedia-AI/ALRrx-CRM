@@ -694,7 +694,7 @@ public sealed class ExcelParserService : IExcelParserService
             // minus one (the "Live on Phone Date" column right before the first metric).
             int firstBlockStart = totalCallsCol - 1;
 
-            for (int offset = 0; offset < headerRow.Count - firstBlockStart; offset += blockWidth)
+            for (int offset = 0; offset < headerRow.Count - firstBlockStart && offset < 1000 * blockWidth; offset += blockWidth)
             {
                 int dateCol = firstBlockStart + offset;
                 int total = GetInt(grid, r, dateCol + 1);
@@ -759,9 +759,11 @@ public sealed class ExcelParserService : IExcelParserService
             int total = 0, refunded = 0;
             double pctErrors = 0;
             int blocks = 0;
-            for (int offset = 0; offset < headerRow.Count - firstBlockStart; offset += blockWidth)
+            for (int offset = 0;
+                 offset < headerRow.Count - firstBlockStart && offset < 1000 * blockWidth;
+                 offset += blockWidth)
             {
-                int o = GetInt(grid, r, firstBlockStart + offset);
+                int o  = GetInt(grid, r, firstBlockStart + offset);
                 int r2 = refundCol >= 0 ? GetInt(grid, r, refundCol + offset) : 0;
                 double e = errorsCol >= 0 ? GetDouble(grid, r, errorsCol + offset) : 0;
                 if (o == 0 && r2 == 0) continue;
@@ -819,7 +821,7 @@ public sealed class ExcelParserService : IExcelParserService
         {
             var label = GetCell(grid, r, typeCol);
             if (!label.Equals("total", StringComparison.OrdinalIgnoreCase)) continue;
-            for (int offset = 0; offset + totalCol < headerRow.Count; offset += blockWidth)
+            for (int offset = 0; offset + totalCol < headerRow.Count && offset < 1000 * blockWidth; offset += blockWidth)
             {
                 int total = GetInt(grid, r, totalCol + offset);
                 if (total == 0 && GetString(grid, r, totalCol + offset) == string.Empty) continue;
@@ -1339,7 +1341,9 @@ public sealed class ExcelParserService : IExcelParserService
             }
             if (firstDateCol < 0) continue;
 
-            for (int offset = 0; offset + firstDateCol + blockWidth <= headerRow.Count; offset += blockWidth)
+            for (int offset = 0;
+                 offset + firstDateCol + blockWidth <= headerRow.Count && offset < 1000 * blockWidth;
+                 offset += blockWidth)
             {
                 int baseCol = firstDateCol + offset;
                 int o  = GetInt(grid, r, baseCol);
