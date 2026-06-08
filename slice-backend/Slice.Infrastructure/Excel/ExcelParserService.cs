@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
 using Slice.Application.Interfaces;
@@ -6,9 +7,10 @@ using Slice.Domain.Entities;
 namespace Slice.Infrastructure.Excel;
 
 /// <summary>
-/// Parses Slice-formatted Excel workbooks into <see cref="SliceReport"/> domain objects.
-/// Scans every worksheet looking for three section headers (case-insensitive):
-/// "Daily Global", "Daily Agent" y "Shop Daily".
+/// Parses Slice-formatted workbooks into <see cref="SliceReport"/> domain objects.
+/// Accepts both Excel (.xlsx/.xls/.xlsm) and CSV files.
+/// Scans every worksheet / the single CSV stream looking for three section
+/// headers (case-insensitive): "Daily Global", "Daily Agent" and "Shop Daily".
 /// Returns <c>null</c> if the file contains none of those sections.
 /// </summary>
 public sealed class ExcelParserService : IExcelParserService
@@ -19,6 +21,16 @@ public sealed class ExcelParserService : IExcelParserService
 
     /// <inheritdoc/>
     public async Task<SliceReport?> ParseAsync(string filePath, CancellationToken ct = default)
+    {
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        if (ext == ".csv")
+        {
+            return await ParseCsvAsync(filePath, ct);
+        }
+        return await ParseXlsxAsync(filePath, ct);
+    }
+
+    private async Task<SliceReport?> ParseXlsxAsync(string filePath, CancellationToken ct)
     {
         await using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read,
             FileShare.Read, bufferSize: 81920, useAsync: true);
@@ -41,14 +53,44 @@ public sealed class ExcelParserService : IExcelParserService
             }
         }
 
-        if (report.DailyGlobal.Count == 0 && report.DailyAgents.Count == 0)
+        return FinalizeReport(report, filePath);
+    }
+
+    private async Task<SliceReport?> ParseCsvAsync(string filePath, CancellationToken ct)
+    {
+        var rows = await ReadCsvAsync(filePath, ct);
+        if (rows.Count == 0)
+        {
+            _logger.LogWarning("CSV file is empty: {File}", filePath);
+            return null;
+        }
+
+        var report = new SliceReport
+        {
+            ReportDate  = DateTime.UtcNow.Date,
+            GeneratedAt = DateTime.UtcNow,
+        };
+
+        try { ParseRowGrid(rows, report); }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not parse CSV {File}", filePath);
+        }
+
+        return FinalizeReport(report, filePath);
+    }
+
+    private SliceReport? FinalizeReport(SliceReport report, string filePath)
+    {
+        if (report.DailyGlobal.Count == 0 && report.DailyAgents.Count == 0 && report.ShopDaily.Count == 0)
         {
             _logger.LogWarning("No recognizable Slice data found in {File}", filePath);
             return null;
         }
-
         return report;
     }
+
+    // ─── Excel path ───────────────────────────────────────────────────────────
 
     /// <summary>
     /// Scans a single worksheet row-by-row looking for section header keywords,
@@ -60,89 +102,172 @@ public sealed class ExcelParserService : IExcelParserService
         int cols = ws.Dimension?.Columns ?? 0;
         if (rows == 0 || cols == 0) return;
 
-        for (int row = 1; row <= rows; row++)
+        var grid = new List<IList<string>>(rows);
+        for (int r = 1; r <= rows; r++)
         {
-            var cellValue = GetString(ws, row, 1);
+            var line = new List<string>(cols);
+            for (int c = 1; c <= cols; c++)
+            {
+                line.Add(ws.Cells[r, c].GetValue<string>()?.Trim() ?? string.Empty);
+            }
+            grid.Add(line);
+        }
+        ParseRowGrid(grid, report);
+    }
+
+    // ─── CSV path ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Reads a CSV file with auto-detected delimiter (comma, semicolon or tab).
+    /// Honors double-quoted fields with embedded delimiters and "" escapes.
+    /// </summary>
+    private static async Task<List<IList<string>>> ReadCsvAsync(string filePath, CancellationToken ct)
+    {
+        var lines = await File.ReadAllLinesAsync(filePath, ct);
+        var delim = DetectDelimiter(lines);
+        var rows  = new List<IList<string>>(lines.Length);
+        foreach (var line in lines)
+        {
+            ct.ThrowIfCancellationRequested();
+            rows.Add(ParseCsvLine(line, delim));
+        }
+        return rows;
+    }
+
+    private static char DetectDelimiter(string[] lines)
+    {
+        int commas = 0, semis = 0, tabs = 0;
+        foreach (var line in lines)
+        {
+            commas += line.Count(c => c == ',');
+            semis  += line.Count(c => c == ';');
+            tabs   += line.Count(c => c == '\t');
+        }
+        if (tabs   >= commas && tabs   >= semis  && tabs   > 0) return '\t';
+        if (semis  >= commas && semis  > 0) return ';';
+        return ',';
+    }
+
+    private static IList<string> ParseCsvLine(string line, char delim)
+    {
+        var result = new List<string>();
+        var sb = new System.Text.StringBuilder();
+        bool inQuotes = false;
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+            if (inQuotes)
+            {
+                if (c == '"')
+                {
+                    if (i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        sb.Append('"');
+                        i++;
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                    }
+                }
+                else
+                {
+                    sb.Append(c);
+                }
+            }
+            else
+            {
+                if (c == '"') inQuotes = true;
+                else if (c == delim) { result.Add(sb.ToString().Trim()); sb.Clear(); }
+                else sb.Append(c);
+            }
+        }
+        result.Add(sb.ToString().Trim());
+        return result;
+    }
+
+    // ─── Common section parsers (work on a row grid) ──────────────────────────
+
+    private static void ParseRowGrid(IList<IList<string>> grid, SliceReport report)
+    {
+        for (int row = 0; row < grid.Count; row++)
+        {
+            var cellValue = GetCell(grid, row, 0);
 
             if (cellValue.Contains("Daily Global", StringComparison.OrdinalIgnoreCase))
             {
-                ParseDailyGlobalSection(ws, row + 2, rows, report);
+                ParseDailyGlobalSection(grid, row + 2, report);
                 continue;
             }
-
             if (cellValue.Contains("Daily Agent", StringComparison.OrdinalIgnoreCase))
             {
-                ParseDailyAgentSection(ws, row + 2, rows, report);
+                ParseDailyAgentSection(grid, row + 2, report);
                 continue;
             }
-
             if (cellValue.Contains("Shop Daily", StringComparison.OrdinalIgnoreCase))
             {
-                ParseShopDailySection(ws, row + 2, rows, report);
+                ParseShopDailySection(grid, row + 2, report);
                 continue;
             }
         }
     }
 
     /// <summary>
-    /// Reads the Daily Global table starting at <paramref name="startRow"/>.
+    /// Reads the Daily Global table starting at <paramref name="startRow"/> (0-indexed).
     /// Stops at the first row whose Pod column doesn't start with "ES-".
     /// </summary>
-    private static void ParseDailyGlobalSection(ExcelWorksheet ws, int startRow, int maxRow, SliceReport report)
+    private static void ParseDailyGlobalSection(IList<IList<string>> grid, int startRow, SliceReport report)
     {
-        // startRow is the column-header row; data begins one row below.
-        for (int r = startRow + 1; r <= maxRow; r++)
+        for (int r = startRow + 1; r < grid.Count; r++)
         {
-            var pod = GetString(ws, r, 1);
+            var pod = GetCell(grid, r, 0);
             if (string.IsNullOrWhiteSpace(pod) || !pod.StartsWith("ES-", StringComparison.OrdinalIgnoreCase))
                 break;
 
             report.DailyGlobal.Add(new DailyGlobalRow
             {
-                Pod                = pod,
-                Queued             = GetInt(ws, r, 2),
-                Handled            = GetInt(ws, r, 3),
-                MissedCalls        = GetInt(ws, r, 4),
-                TransferredCalls   = GetInt(ws, r, 5),
-                PctQueued          = GetDouble(ws, r, 6),
-                PctHandled         = GetDouble(ws, r, 7),
-                PctMissed          = GetDouble(ws, r, 8),
-                PctTransferred     = GetDouble(ws, r, 9),
-                ConvPct            = GetDouble(ws, r, 10),
-                OrderCount         = GetInt(ws, r, 11),
-                RefundedOrders     = GetInt(ws, r, 12),
-                PctOrdersWithErrors = GetDouble(ws, r, 13),
+                Pod                 = pod,
+                Queued              = GetInt(grid, r, 1),
+                Handled             = GetInt(grid, r, 2),
+                MissedCalls         = GetInt(grid, r, 3),
+                TransferredCalls    = GetInt(grid, r, 4),
+                PctQueued           = GetDouble(grid, r, 5),
+                PctHandled          = GetDouble(grid, r, 6),
+                PctMissed           = GetDouble(grid, r, 7),
+                PctTransferred      = GetDouble(grid, r, 8),
+                ConvPct             = GetDouble(grid, r, 9),
+                OrderCount          = GetInt(grid, r, 10),
+                RefundedOrders      = GetInt(grid, r, 11),
+                PctOrdersWithErrors = GetDouble(grid, r, 12),
             });
         }
     }
 
     /// <summary>
-    /// Reads the Daily Agent table starting at <paramref name="startRow"/>.
+    /// Reads the Daily Agent table starting at <paramref name="startRow"/> (0-indexed).
     /// Tracks the current pod and supervisor from "POD" header rows
     /// and attaches them to every agent row that follows.
     /// </summary>
-    private static void ParseDailyAgentSection(ExcelWorksheet ws, int startRow, int maxRow, SliceReport report)
+    private static void ParseDailyAgentSection(IList<IList<string>> grid, int startRow, SliceReport report)
     {
         string currentPod        = string.Empty;
         string currentSupervisor = string.Empty;
 
-        for (int r = startRow; r <= maxRow; r++)
+        for (int r = startRow; r < grid.Count; r++)
         {
-            var col1 = GetString(ws, r, 1);
-            var col2 = GetString(ws, r, 2);
+            var col1 = GetCell(grid, r, 0);
+            var col2 = GetCell(grid, r, 1);
 
-            // Pod header row: "POD" in col A, pod name in col C, supervisor in col L.
             if (col1.Equals("POD", StringComparison.OrdinalIgnoreCase))
             {
-                currentPod        = GetString(ws, r, 3);
-                currentSupervisor = GetString(ws, r, 12);
+                currentPod        = GetCell(grid, r, 2);
+                currentSupervisor = GetCell(grid, r, 11);
                 continue;
             }
 
-            if (col1.Equals("Agent", StringComparison.OrdinalIgnoreCase)) continue;   // column-header row
-            if (string.IsNullOrWhiteSpace(col1) && string.IsNullOrWhiteSpace(col2)) continue; // separator
+            if (col1.Equals("Agent", StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.IsNullOrWhiteSpace(col1) && string.IsNullOrWhiteSpace(col2)) continue;
 
-            // Agent data row: col A contains the agent's email address.
             if (col1.Contains('@'))
             {
                 report.DailyAgents.Add(new DailyAgentRow
@@ -150,79 +275,69 @@ public sealed class ExcelParserService : IExcelParserService
                     Pod                = currentPod,
                     SupervisorName     = currentSupervisor,
                     AgentEmail         = col1,
-                    HC                 = GetInt(ws, r, 2),
-                    TC                 = GetInt(ws, r, 3),
-                    NumberOfHolds      = GetInt(ws, r, 4),
-                    AvgHoldTime        = GetDouble(ws, r, 5),
-                    ASA                = GetDouble(ws, r, 6),
-                    AHT                = GetDouble(ws, r, 7),
-                    ACW                = GetDouble(ws, r, 8),
-                    PctContactsOnHold  = GetDouble(ws, r, 9),
-                    PctSLUnder15Sec    = GetDouble(ws, r, 10),
-                    PctTransfers       = GetDouble(ws, r, 11),
-                    Shift              = GetString(ws, r, 12),
+                    HC                 = GetInt(grid, r, 1),
+                    TC                 = GetInt(grid, r, 2),
+                    NumberOfHolds      = GetInt(grid, r, 3),
+                    AvgHoldTime        = GetDouble(grid, r, 4),
+                    ASA                = GetDouble(grid, r, 5),
+                    AHT                = GetDouble(grid, r, 6),
+                    ACW                = GetDouble(grid, r, 7),
+                    PctContactsOnHold  = GetDouble(grid, r, 8),
+                    PctSLUnder15Sec    = GetDouble(grid, r, 9),
+                    PctTransfers       = GetDouble(grid, r, 10),
+                    Shift              = GetString(grid, r, 11),
                 });
             }
         }
     }
 
     /// <summary>
-    /// Reads the Shop Daily table starting at <paramref name="startRow"/>.
+    /// Reads the Shop Daily table starting at <paramref name="startRow"/> (0-indexed).
     /// Stops at the first blank shop-name row.
     /// </summary>
-    private static void ParseShopDailySection(ExcelWorksheet ws, int startRow, int maxRow, SliceReport report)
+    private static void ParseShopDailySection(IList<IList<string>> grid, int startRow, SliceReport report)
     {
-        for (int r = startRow + 1; r <= maxRow; r++)
+        for (int r = startRow + 1; r < grid.Count; r++)
         {
-            var shop = GetString(ws, r, 1);
+            var shop = GetCell(grid, r, 0);
             if (string.IsNullOrWhiteSpace(shop)) break;
 
             report.ShopDaily.Add(new ShopDailyRow
             {
                 ShopName       = shop,
-                TotalOrders    = GetInt(ws, r, 2),
-                RefundedOrders = GetInt(ws, r, 3),
-                ErrorRate      = GetDouble(ws, r, 4),
-                ConversionRate = GetDouble(ws, r, 5),
+                TotalOrders    = GetInt(grid, r, 1),
+                RefundedOrders = GetInt(grid, r, 2),
+                ErrorRate      = GetDouble(grid, r, 3),
+                ConversionRate = GetDouble(grid, r, 4),
             });
         }
     }
 
-    // ─── Cell-value helpers ───────────────────────────────────────────────────
+    // ─── Cell-value helpers ──────────────────────────────────────────────────
 
-    /// <summary>Returns the trimmed string value of a cell, or an empty string if null.</summary>
-    private static string GetString(ExcelWorksheet ws, int row, int col)
-        => ws.Cells[row, col].GetValue<string>()?.Trim() ?? string.Empty;
-
-    /// <summary>
-    /// Reads a cell value and converts it to <see cref="int"/>.
-    /// Handles numeric (double/int) and string representations. Returns 0 on failure.
-    /// </summary>
-    private static int GetInt(ExcelWorksheet ws, int row, int col)
+    private static string GetCell(IList<IList<string>> grid, int row, int col)
     {
-        var val = ws.Cells[row, col].Value;
-        return val switch
-        {
-            double d                              => (int)d,
-            int    i                              => i,
-            string s when int.TryParse(s, out var n) => n,
-            _                                    => 0,
-        };
+        if (row < 0 || row >= grid.Count) return string.Empty;
+        var line = grid[row];
+        if (col < 0 || col >= line.Count) return string.Empty;
+        return line[col]?.Trim() ?? string.Empty;
     }
 
-    /// <summary>
-    /// Reads a cell value and converts it to <see cref="double"/>.
-    /// Handles numeric and string representations. Returns 0.0 on failure.
-    /// </summary>
-    private static double GetDouble(ExcelWorksheet ws, int row, int col)
+    private static string GetString(IList<IList<string>> grid, int row, int col) => GetCell(grid, row, col);
+
+    private static int GetInt(IList<IList<string>> grid, int row, int col)
     {
-        var val = ws.Cells[row, col].Value;
-        return val switch
-        {
-            double d                                 => d,
-            int    i                                 => i,
-            string s when double.TryParse(s, out var n) => n,
-            _                                       => 0.0,
-        };
+        var s = GetCell(grid, row, col);
+        if (string.IsNullOrEmpty(s)) return 0;
+        s = s.Replace(",", "").Replace("%", "").Trim();
+        return int.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var n) ? n : 0;
+    }
+
+    private static double GetDouble(IList<IList<string>> grid, int row, int col)
+    {
+        var s = GetCell(grid, row, col);
+        if (string.IsNullOrEmpty(s)) return 0.0;
+        s = s.Replace(",", "").Replace("%", "").Trim();
+        return double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var n) ? n : 0.0;
     }
 }

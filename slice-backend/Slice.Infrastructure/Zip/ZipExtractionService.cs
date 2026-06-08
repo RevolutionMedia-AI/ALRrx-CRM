@@ -12,7 +12,7 @@ namespace Slice.Infrastructure.Zip;
 /// </summary>
 public sealed class ZipExtractionService : IZipExtractionService
 {
-    private static readonly HashSet<string> ExcelExtensions = [".xlsx", ".xls", ".xlsm"];
+    private static readonly HashSet<string> ExcelExtensions = [".xlsx", ".xls", ".xlsm", ".csv"];
 
     /// <summary>Maximum parallel extractions to avoid disk I/O contention.</summary>
     private const int MaxConcurrentExtractions = 4;

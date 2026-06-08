@@ -46,7 +46,7 @@ public sealed class FileUploadController : ControllerBase
         if (files.Count > MaxFiles)
             return BadRequest(new { error = $"Maximum {MaxFiles} files allowed per upload." });
 
-        var validationError = ValidateFiles(files, [".xlsx", ".xls", ".xlsm"]);
+        var validationError = ValidateFiles(files, [".xlsx", ".xls", ".xlsm", ".csv"]);
         if (validationError != null) return BadRequest(new { error = validationError });
 
         var ownerEmail = GetCurrentEmail();
