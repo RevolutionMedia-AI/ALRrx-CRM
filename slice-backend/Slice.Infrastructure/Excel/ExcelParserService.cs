@@ -641,10 +641,10 @@ public sealed class ExcelParserService : IExcelParserService
         for (int r = 1; r < grid.Count; r++)
         {
             int orderCount = GetInt(grid, r, orderCountCol);
-            int totalCalls  = GetInt(grid, r, totalCallsCol);
-            if (orderCount == 0 && totalCalls == 0) continue;
+            int rowTotal   = GetInt(grid, r, totalCallsCol);
+            if (orderCount == 0 && rowTotal == 0) continue;
             totalOrders += orderCount;
-            totalCalls  += totalCalls;
+            totalCalls  += rowTotal;
             rows++;
         }
         if (rows == 0) return false;
@@ -1109,7 +1109,7 @@ public sealed class ExcelParserService : IExcelParserService
 
         if (grid.Count < 3)
         {
-            _logger.LogInformation("pods_helping_with_overflow (english) CSV detected (empty payload).");
+            // The english variant is header-only; nothing to extract.
             return false;
         }
 
@@ -1383,10 +1383,10 @@ public sealed class ExcelParserService : IExcelParserService
         for (int r = 1; r < grid.Count; r++)
         {
             int orderCount = GetInt(grid, r, orderCountCol);
-            int totalCalls  = GetInt(grid, r, totalCallsCol);
-            if (orderCount == 0 && totalCalls == 0) continue;
+            int rowTotal   = GetInt(grid, r, totalCallsCol);
+            if (orderCount == 0 && rowTotal == 0) continue;
             totalOrders += orderCount;
-            totalCalls  += totalCalls;
+            totalCalls  += rowTotal;
             rows++;
         }
         if (rows == 0) return false;
