@@ -98,7 +98,26 @@ public sealed class FileUploadController : ControllerBase
 
         return Ok(new JobStatusResponse(
             job.Id, job.Status, job.TotalFiles, job.ProcessedFiles,
-            job.ErrorMessage, job.ReportId, job.CreatedAt, job.CompletedAt));
+            job.ErrorMessage, job.ReportId, job.CreatedAt, job.CompletedAt, job.CreatedByEmail));
+    }
+
+    /// <summary>
+    /// Lista el historial de jobs del usuario actual (Admin ve todos).
+    /// Ordenado por fecha de creación descendente.
+    /// </summary>
+    [HttpGet("jobs")]
+    public async Task<IActionResult> GetJobs()
+    {
+        var email = GetCurrentEmail();
+        var jobs = User.IsInRole("Admin")
+            ? await _jobRepo.GetAllAsync()
+            : await _jobRepo.GetByEmailAsync(email);
+
+        return Ok(jobs
+            .OrderByDescending(j => j.CreatedAt)
+            .Select(j => new JobStatusResponse(
+                j.Id, j.Status, j.TotalFiles, j.ProcessedFiles,
+                j.ErrorMessage, j.ReportId, j.CreatedAt, j.CompletedAt, j.CreatedByEmail)));
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

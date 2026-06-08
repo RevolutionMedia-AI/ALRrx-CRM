@@ -44,4 +44,13 @@ public sealed class InMemoryJobRepository : IJobRepository
 
         return Task.FromResult(result);
     }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<ProcessingJob>> GetAllAsync()
+    {
+        IReadOnlyList<ProcessingJob> result = _store.Values
+            .OrderByDescending(j => j.CreatedAt)
+            .ToList();
+        return Task.FromResult(result);
+    }
 }

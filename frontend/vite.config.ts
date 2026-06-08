@@ -10,6 +10,11 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true
       },
+      '/api/slice': {
+        target: 'http://localhost:5100',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/api\/slice/, '')
+      },
       '/hubs': {
         target: 'http://localhost:5000',
         changeOrigin: true,

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import logoSrc from '../images/RevolutionLogo.png';
+import { shouldShowAppChooser } from '../utils/appChooser';
 
 function GoogleIcon() {
   return (
@@ -16,7 +17,8 @@ function GoogleIcon() {
 }
 
 function GoogleButton() {
-  const { loginWithGoogle } = useAuth();
+  const { loginWithGoogle, user } = useAuth();
+  const navigate = useNavigate();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -42,6 +44,13 @@ function GoogleButton() {
     },
     onError: () => setError('Google sign-in was cancelled or failed'),
   });
+
+  useEffect(() => {
+    if (success && user) {
+      const target = shouldShowAppChooser(user.email) ? '/choose' : '/';
+      navigate(target, { replace: true });
+    }
+  }, [success, user, navigate]);
 
   if (success) {
     return (

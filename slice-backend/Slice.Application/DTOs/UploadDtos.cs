@@ -30,4 +30,5 @@ public record JobStatusResponse(
     string?    ErrorMessage,
     string?    ReportId,
     DateTime   CreatedAt,
-    DateTime?  CompletedAt);
+    DateTime?  CompletedAt,
+    string?    CreatedByEmail = null);

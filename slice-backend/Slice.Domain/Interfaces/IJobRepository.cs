@@ -19,4 +19,7 @@ public interface IJobRepository
 
     /// <summary>Returns all jobs created by <paramref name="email"/>, newest first.</summary>
     Task<IReadOnlyList<ProcessingJob>> GetByEmailAsync(string email);
+
+    /// <summary>Returns every job in the store (Admin use only).</summary>
+    Task<IReadOnlyList<ProcessingJob>> GetAllAsync();
 }
