@@ -1,0 +1,503 @@
+,Created At Week,2026-05-11,2026-05-11,2026-05-04,2026-05-04,2026-04-27,2026-04-27,2026-04-20,2026-04-20
+,Product Name,Orders with open_food_items,Open food items count,Orders with open_food_items,Open food items count,Orders with open_food_items,Open food items count,Orders with open_food_items,Open food items count
+1,,169,200,163,182,160,195,176,196
+2,Ranch,18,18,17,17,15,15,28,29
+3,ranch dressing,10,10,14,14,10,10,9,9
+4,blue cheese,8,8,6,6,16,16,10,10
+5,marinara sauce,8,8,10,10,13,13,12,12
+6,ranch,8,8,21,21,20,20,16,16
+7,side of ranch,8,8,3,3,9,9,8,8
+8,Extra Cheese,7,7,3,3,4,4,4,4
+9,extra cheese,7,7,8,8,11,11,4,4
+10,Delivery Fee,6,6,3,3,4,4,3,3
+11,Ranch dressing,6,6,7,7,10,10,5,5
+12,Bacon,5,5,5,5,8,9,8,8
+13,Blue Cheese Dressing,5,5,4,4,7,7,5,5
+14,Extra cheese,5,5,7,7,4,4,2,2
+15,Mushrooms,5,5,4,4,2,2,2,2
+16,RANCH,5,5,10,10,2,2,4,4
+17,Vodka Sauce,5,5,1,1,1,1,3,3
+18,blue cheese dressing,5,5,4,4,1,1,2,2
+19,extra sauce,5,6,4,4,2,2,2,2
+20,.,4,4,3,3,,,2,2
+21,Chicken,4,4,5,5,8,8,5,5
+22,Honey Mustard,4,4,4,4,4,4,4,4
+23,MARINARA SAUCE,4,4,5,5,1,1,,
+24,Marinara,4,4,4,4,3,3,6,6
+25,Side of Marinara,4,4,3,3,1,1,2,2
+26,cheese sauce,4,4,1,1,2,2,1,1
+27,honey mustard,4,4,4,4,6,6,2,2
+28,pepperoni,4,4,4,4,8,8,5,5
+29,side of marinara sauce,4,4,1,1,1,1,3,3
+30,BACON,3,3,1,1,3,3,2,2
+31,BLUE CHEESE,3,3,,,5,5,,
+32,Blue Cheese,3,3,2,2,4,4,5,5
+33,Blue cheese,3,3,3,3,7,7,2,2
+34,Broccoli,3,3,2,2,4,4,5,5
+35,Cheese,3,3,3,3,5,5,3,3
+36,Extra Sauce,3,3,2,2,2,2,3,3
+37,Garlic Sauce,3,3,1,1,,,,
+38,Marinara Sauce,3,3,7,7,5,5,4,4
+39,Pepperoni,3,3,6,6,7,7,5,5
+40,Ranch Dressing,3,3,9,9,19,19,9,9
+41,SIDE OF MARINARA,3,3,1,1,,,1,1
+42,Side of Blue Cheese,3,3,1,1,2,2,1,1
+43,Side of Buffalo Sauce,3,3,1,1,1,1,1,1
+44,Side of Ranch,3,3,1,1,5,5,7,7
+45,bacon,3,3,8,8,2,2,4,4
+46,banana peppers,3,3,3,3,3,3,4,4
+47,grilled chicken,3,3,2,2,2,2,4,4
+48,jalapenos,3,3,4,4,3,3,3,3
+49,marinara,3,3,6,6,3,3,,
+50,meatballs,3,3,,,1,1,,
+51,side of blue cheese,3,3,1,1,2,2,1,1
+52,vodka sauce,3,3,5,5,6,6,,
+53,2 Ltr,2,2,,,,,,
+54,Anchovies,2,2,1,1,1,1,3,3
+55,BBQ,2,2,,,2,2,1,1
+56,BBQ sauce,2,2,1,1,2,2,2,2
+57,Blue cheese dressing,2,2,1,1,4,4,1,1
+58,Caesar Dressing,2,2,1,1,3,3,3,3
+59,Caesar dressing,2,2,,,5,5,,
+60,Cheese Slice,2,2,,,1,1,1,1
+61,Cheesecake Brownie,2,2,,,,,,
+62,Double meat,2,2,,,,,,
+63,Dressing,2,2,4,4,1,1,2,2
+64,Drink,2,2,1,1,,,,
+65,Fried onions,2,2,,,,,,
+66,Garlic Butter Sauce,2,2,3,3,,,,
+67,Grilled Chicken,2,2,3,3,1,1,2,2
+68,Ham,2,2,3,3,2,2,2,2
+69,Honey Mustard Sauce,2,2,,,,,2,2
+70,Jalapenos,2,2,7,7,4,4,,
+71,Marinara on the side,2,2,,,,,1,1
+72,Meatball,2,2,,,1,1,1,1
+73,Mozzarella cheese,2,2,1,1,2,2,,
+74,Onion rings,2,2,1,1,,,1,1
+75,Pepperoni pizza,2,2,,,,,,
+76,Pepperoni topping,2,2,,,,,1,1
+77,Plain Penne,2,2,,,,,1,1
+78,Plates,2,2,,,,,,
+79,RANCH DRESSING,2,2,1,2,1,1,2,2
+80,Ranch Sauce,2,2,1,1,1,1,2,2
+81,SAUSAGE,2,2,2,2,,,,
+82,SHRIMP,2,2,,,1,1,,
+83,SIDE OF MARINARA SAUCE,2,2,,,1,1,,
+84,Shrimp,2,2,2,2,3,3,3,3
+85,Side of BBQ,2,2,1,1,1,1,,
+86,Side of Cheese Sauce,2,2,,,2,2,1,1
+87,Side of Ranch Dressing,2,2,1,1,,,,
+88,Side of marinara sauce,2,2,1,1,,,,
+89,Slice,2,2,1,1,,,,
+90,Spinach,2,2,1,1,,,,
+91,Tuna,2,2,,,,,,
+92,Vodka Sauce Charge,2,2,,,,,,
+93,a side of blue cheese,2,2,,,,,,
+94,broccoli,2,2,1,1,1,1,4,4
+95,charge for anchovies,2,2,,,,,,
+96,charge for the extra sauce,2,2,,,,,,
+97,cheese,2,2,2,2,1,1,1,1
+98,cucumber sauce,2,2,1,1,,,,
+99,eggplant,2,2,,,1,1,,
+100,extra caesar dressing,2,2,1,1,,,,
+101,extra charge,2,2,9,9,7,7,10,10
+102,extra chicken,2,2,1,1,1,1,3,3
+103,extra meat,2,2,5,5,,,1,1
+104,extra onions,2,2,,,2,2,1,1
+105,extra shrimp,2,2,,,1,1,1,1
+106,extra vodka sauce,2,2,,,,,1,1
+107,garlic sauce,2,2,2,2,3,3,3,3
+108,ham,2,2,1,1,1,1,1,1
+109,marinara sauce on the side,2,2,,,1,1,1,1
+110,marinera sauce,2,2,1,1,2,2,,
+111,mushrooms,2,2,3,3,3,3,5,5
+112,parmesan cheese,2,2,,,,,1,1
+113,pineapple,2,2,,,1,1,,
+114,pizza sauce,2,2,1,1,2,2,,
+115,sausage,2,2,,,1,1,3,3
+116,side of marinara,2,2,5,5,5,5,2,2
+117,side of meatballs,2,2,,,,,2,2
+118,side order of mayo,2,2,,,,,,
+119,side sauce,2,2,1,1,,,,
+120,tomatoes,2,2,1,1,,,,
+121,$18 PIE SPECIAL,1,1,,,,,,
+122,0.05 charge for the order to go through,1,1,,,,,,
+123,1 more Guacamole,1,1,,,,,,
+124,10 Shrimp,1,1,,,,,,
+125,1000 island,1,1,,,,,,
+126,12 cut cheese and a 12 cut one topping,1,1,,,,,,
+127,2 EXTRA SAUCES,1,1,,,,,,
+128,2 Liter,1,1,,,,,,
+129,2 Plain Slices and a soda,1,1,,,,,,
+130,2 chicken cutlets,1,1,,,1,1,,
+131,2 cups of banana peppers on the side,1,1,,,,,,
+132,2 cups of marinara,1,1,,,,,,
+133,2 cups of ranch,1,1,,,,,,
+134,2 half,1,1,,,,,,
+135,2 litter bottle ice tea,1,1,,,,,,
+136,2 mayos on side,1,1,,,,,,
+137,2 ranch dressings,1,1,,,,,,
+138,2 sides of ranch,1,1,,,1,1,,
+139,2000island dressing,1,1,,,,,,
+140,2419 Sauce,1,1,,,,,,
+141,4 Sides of Nacho Cheese,1,1,,,,,,
+142,4 oz. buffalo sauce on the side,1,1,,,,,,
+143,4 oz. ranch sauce on the side,1,1,,,,,,
+144,5 ketchup packets,1,1,,,,,,
+145,6 Sides of Pizza Sauce,1,1,,,,,,
+146,6 meatballs in marinara with cheese,1,1,,,,,,
+147,ADD BACON TO THE PHILLY CHEESESTEAK,1,1,,,,,,
+148,ADD BLUE CHEESE,1,1,,,,,,
+149,ADD BOOM BOOM SAUCE ON TOP OF THE PIZZA,1,1,,,,,,
+150,ADD ONIONS,1,1,,,,,,
+151,ADD RICOTTA AND TOMATO TO THE WHITE PIZZA,1,1,,,,,,
+152,ADD TURKEY TO THE HAM GRINDER,1,1,,,,,,
+153,ALL FLATS WINGS,1,1,,,,,,
+154,Add Black Olives,1,1,,,,,,
+155,Add Grilled Chicken,1,1,,,,,,
+156,Add Pepperoni to the Beef Patty,1,1,,,,,,
+157,Add Roasted Peppers.,1,1,,,,,,
+158,Add Shrimp to the vodka sauce pasta,1,1,,,,,,
+159,Add Tomatoes and Cucumbers,1,1,,,,,,
+160,Add extra eggs,1,1,,,,,,
+161,Additional charge for onion rings,1,1,,,,,,
+162,Alfredo Sauce,1,1,2,2,1,1,2,2
+163,Alfredo Sauce Base,1,1,,,,,,
+164,Alfredo sauce,1,1,,,2,2,,
+165,All Flats,1,1,1,1,1,1,,
+166,American Cheese,1,1,1,1,2,2,1,1
+167,Ancholives,1,1,,,,,,
+168,Anchovies on the side,1,1,,,,,,
+169,Arizone,1,1,,,,,,
+170,BACON FOR THE STEAKS,1,1,,,,,,
+171,BACON FOR THE SUB,1,1,,,,,,
+172,BACON TOPPING,1,1,,,,,,
+173,BBQ CHICKEN ROLL,1,1,,,,,,
+174,BBQ DRESSING,1,1,,,,,,
+175,BBQ sauce on the second platter,1,1,,,,,,
+176,BLACK OLIVES,1,1,1,1,,,,
+177,BLK smooth pack,1,1,,,,,,
+178,BROCCOLI RABE FOR THE PIZZA,1,1,,,,,,
+179,BUFFALO DRESSING,1,1,,,,,,
+180,Bacon added to the burger,1,1,,,,,,
+181,Bacon on the cheesesteak,1,1,,,,,,
+182,Balsamic Dressing,1,1,,,,,,
+183,Balsamic Vinaigrette,1,1,,,,,,
+184,Banana peppers and extra sauce,1,1,,,,,,
+185,Bbq Sauce,1,1,,,,,,
+186,Bc,1,1,,,,,2,2
+187,Beacon,1,1,,,,,,
+188,Beef & Mushrooms Pizza Slice,1,1,,,,,,
+189,Birria Sauce,1,1,,,,,,
+190,Black Olives,1,1,1,1,,,,
+191,Black olives,1,1,1,1,,,1,1
+192,Bleu Cheese,1,1,,,,,,
+193,Bleu Cheese Dressing,1,1,3,3,2,2,,
+194,Bleu Cheese dressing,1,1,,,,,,
+195,Blue Cheese /ranch,1,1,,,,,,
+196,Blue Cheese Dipping Sauce,1,1,,,,,,
+197,Blue Cheese dressing,1,1,,,,,,
+198,Blue Cheese on the side,1,1,,,,,,
+199,Blue cheese on the side,1,1,,,,,,
+200,Blueberry,1,1,,,,,1,1
+201,Boiled eggs,1,1,,,,,,
+202,Bottle of House Creamy Italian Dressing,1,1,,,,,,
+203,Bread,1,1,1,1,,,1,1
+204,Breaded Chickem,1,1,,,,,,
+205,Broccoli topping,1,1,,,,,,
+206,Buffalo,1,1,1,1,,,1,1
+207,Buffalo Sauce,1,1,2,2,2,2,2,2
+208,Buffalo chicken,1,1,,,,,,
+209,Buffalo sauce,1,1,7,7,3,3,1,1
+210,Butter garlic sauce,1,1,,,,,,
+211,CEASAR DRESSING,1,1,,,1,1,,
+212,CHARGE FOR BROCCOLI,1,1,,,,,,
+213,CHARGE FOR HALF AND HALF FOR THE WINGS,1,1,,,,,,
+214,CHARGE FOR HALF CHICKEN HALF LAMB STROMBOLI,1,1,,,,,,
+215,CHARGE FOR MARINARA ON THE SIDE OF THE CHICKEN ROLL,1,1,,,,,,
+216,CHARGE FOR MOZZARELLA AND PARMIGIANA CHEESE ON STUFFED SHELLS,1,1,,,,,,
+217,CHARGE FOR SAUSAGE ON THE GLUTEN FREE PIZZA,1,1,,,,,,
+218,CHARGE FOR THE EXTRA BACON,1,1,,,,,,
+219,CHARGE FOR THE EXTRAS,1,1,,,,,,
+220,CHARGE FOR THE JALAPENOS,1,1,,,,,,
+221,CHARGE FOR VODKA,1,1,,,,,,
+222,CHCKEN CHEESESTEAK ON A SHELL,1,1,,,,,,
+223,CHEESE SLICES,1,1,1,1,,,,
+224,CHICKEN FINGER PLATTER WITH CAN OF SODA SPECIAL,1,1,,,,,,
+225,CREAMY ITALIAN DRESSING,1,1,,,,,,
+226,CUP OF HOT BUFFALO SAUCE,1,1,,,,,,
+227,CUP OF ORANGE CHEESE,1,1,,,,,,
+228,Can,1,1,,,,,,
+229,Cannoli,1,1,,,,,,
+230,Capicola,1,1,,,,,,
+231,Captains Platter,1,1,,,,,,
+232,Cavatelli & Broccoli,1,1,,,,,,
+233,Charge,1,1,,,,,,
+234,Charge For Bacon,1,1,,,,,,
+235,Charge for Half Mushrooms,1,1,,,,,,
+236,Charge for extra egg n extra cheese,1,1,,,,,,
+237,"Charge for lettuce, tomato's, onions on the sub",1,1,,,,,,
+238,Charge for the cheese fries,1,1,,,,,,
+239,Charge for the flats,1,1,,,,,,
+240,Charge for the toppings on the 2nd pizza,1,1,,,,,,
+241,Cheese And Crutons,1,1,,,,,,
+242,Cheese On Tacos,1,1,,,,,,
+243,Cheese pizza,1,1,,,,,,
+244,Cheese pizza medium,1,1,,,,,,
+245,Cheese slice,1,1,,,,,,
+246,Cheese slices,1,1,,,,,,
+247,Cheese whiz,1,1,,,1,1,,
+248,Chicken Bacon Ranch Flatbread,1,1,,,,,,
+249,Chicken Burrito,1,1,,,,,,
+250,Chicken Parm Garlic Knot Sandwich,1,1,,,,,,
+251,Chicken add to the shrimp over rice,1,1,,,,,,
+252,Chicken on the pasta,1,1,,,,,,
+253,Chicken on the penne alla vodka,1,1,,,,,,
+254,Chicken on the pizza,1,1,,,,,,
+255,Chicken strips 4 ps,1,1,,,,,,
+256,Chicken strips with fires,1,1,,,,,,
+257,Chipotle sauce on the side,1,1,,,,,,
+258,Chocolate Cake,1,1,,,,,,
+259,Chx Bacon Ranch,1,1,,,,,,
+260,Ciabatta,1,1,,,,,,
+261,Cooked Onions,1,1,1,1,,,,
+262,Cookies,1,1,1,1,,,,
+263,Creamy Italian Dressing,1,1,3,3,1,1,1,1
+264,Crust,1,1,,,,,,
+265,Crystal Geiser Water,1,1,,,,,,
+266,Cucumber,1,1,,,,,,
+267,Cup of Bbq sauce,1,1,,,,,,
+268,Cup of Ice,1,1,,,,,,
+269,Cup of Tomato Sauce,1,1,,,,,,
+270,Cup of ranch,1,1,,,,,,
+271,Curly fries,1,1,1,1,,,,
+272,DELIVERY,1,1,,,,,1,1
+273,DIABLO SAUCE,1,1,,,,,,
+274,DINNER ROLLS,1,1,,,,,,
+275,Delivery Charge,1,1,,,,,,
+276,Delivery fee,1,1,3,3,3,3,,
+277,Disco French Fries on  sampler charge,1,1,,,,,,
+278,Double sausage,1,1,,,,,,
+279,Dr Brown Gingerale,1,1,,,,,,
+280,EXRA SAUCE OF TERIYAKI ON THE SIDE,1,1,,,,,,
+281,EXTRA BREADCRUMS ON THE BOTTOM,1,1,,,,,,
+282,EXTRA CHEESE FOR THE MOZZARELLA FRIES,1,1,,,,,,
+283,EXTRA CHICKEN ON THE ENTREE,1,1,,,,,,
+284,EXTRA HOUSE DRESSING ON THE SIDE,1,1,,,,,,
+285,EXTRA MEAT,1,1,1,1,1,1,,
+286,EXTRA MEATBALLS,1,1,,,,,,
+287,EXTRA MOZZARELLA CHEESE ON TOP AND EXTRA BREAD,1,1,,,,,,
+288,EXTRA SAUCE,1,1,,,1,1,,
+289,EXTRA SAUCE ON ONE HALF OF THE PIZZA,1,1,,,,,,
+290,EXTRA SIDE OF BANANA PEPPERS,1,1,,,,,,
+291,EXTRA SIDES OF CEASER DRWSSINGS,1,1,,,,,,
+292,EXTRA SUACE,1,1,,,,,,
+293,EXTRA SWISS,1,1,,,,,,
+294,Extra,1,1,1,1,,,,
+295,Extra Bread,1,1,,,,,,
+296,Extra Broccoli,1,1,,,,,,
+297,Extra Charge,1,1,2,2,1,1,,
+298,Extra Cheese & Extra Mushrooms,1,1,,,,,,
+299,Extra Chicken,1,1,1,1,,,2,2
+300,Extra Chicken on the Salad,1,1,,,,,,
+301,Extra Crispy Chicken,1,1,,,,,,
+302,Extra Egg,1,1,1,1,,,,
+303,Extra Eggplant,1,1,,,1,1,,
+304,Extra Extra cheese on the cheesesteak,1,1,,,,,,
+305,Extra Green Olives,1,1,,,,,,
+306,Extra Green Sauce,1,1,,,,,,
+307,Extra Mushrooms,1,1,2,2,,,1,1
+308,Extra Shrimp,1,1,,,,,,
+309,Extra Turkey,1,1,,,,,,
+310,Extra Vodka Sauce,1,1,,,,,1,1
+311,Extra charge,1,1,2,2,4,4,5,5
+312,Extra cheese wiz,1,1,,,,,,
+313,Extra chicken on the sub,1,1,,,,,,
+314,Extra fish,1,1,,,,,,
+315,Extra ham and capicola,1,1,,,,,,
+316,Extra italian dressing on the side,1,1,,,,,,
+317,Extra marinara,1,1,,,,,,
+318,Extra meat on the meat lovers pizza,1,1,,,,,,
+319,Extra sauce for Manicotti,1,1,,,,,,
+320,Extra to make the fries into sweet potato fries,1,1,,,,,,
+321,FETA CHEESE,1,1,1,1,,,,
+322,FLAT WINGS,1,1,,,,,,
+323,FOR THE MEATBALL SUB,1,1,,,,,,
+324,FOR THE SIDE VEGGIES,1,1,,,,,,
+325,FRIED ONIONS ON THEE CHICKEN CHEESESTEAK SHELL,1,1,,,,,,
+326,Feta cheese,1,1,1,1,1,1,,
+327,Fettuccine Alfredo,1,1,,,,,,
+328,Flag Cake,1,1,,,,,,
+329,For Curly Fries,1,1,,,,,,
+330,For stake tips,1,1,,,,,,
+331,For the Cesar salad,1,1,,,,,,
+332,For the extra peppers,1,1,,,,,,
+333,For the stuff he added,1,1,,,,,,
+334,French dressing,1,1,1,1,1,1,,
+335,French dressing on the side,1,1,,,,,,
+336,Fresh Mozz,1,1,1,1,,,,
+337,Fresh garlic,1,1,,,,,,
+338,Friday Special,1,1,,,,,,
+339,Fried Onions,1,1,2,2,,,2,2
+340,GARDEN STATE / CHICKEN CUTLET,1,1,,,,,,
+341,GARLIC PARM ON THE PIZZA,1,1,,,,,,
+342,GARLIC POWDER //ONION POWDER //OREGANO//CRUSHED RED PEPPERS,1,1,,,,,,
+343,GRILLED  CHICKEN ON GREEK SALAD,1,1,,,,,,
+344,GYRO SAUCE,1,1,,,,,,
+345,Garlic,1,1,,,1,1,3,3
+346,Garlic Bread for the veal parm sandwitch,1,1,,,,,,
+347,Garlic Butter,1,1,,,,,,
+348,Garlic Charge,1,2,,,,,,
+349,Garlic Parm Sauce,1,1,,,1,1,,
+350,Garlic parm - for the 10 wings,1,1,,,,,,
+351,Garlic parm sauce,1,1,,,,,,
+352,Garlic sauce on the side,1,1,,,,,,
+353,Gatorade,1,1,1,1,,,,
+354,Gluten Free Supreme Pizza,1,1,,,,,,
+355,Gluten free,1,1,,,,,1,1
+356,Grape Crush,1,1,,,,,,
+357,Gratuity Fee,1,1,,,,,,
+358,Greek Dressing,1,1,,,,,,
+359,Greek dressing,1,1,,,,,,
+360,Greek fries,1,1,,,,,,
+361,HH,1,1,,,,,,
+362,HONEY MUSTARD N BBQ SAUCE,1,1,,,,,,
+363,HOT SAUCE,1,1,,,,,2,2
+364,HOT SAUCE ON THE SIDE,1,1,,,,,1,1
+365,Halal Pepperoni,1,1,,,,,,
+366,Halal all meat,1,1,,,,,,
+367,Half pepperoni upcharge for special,1,1,,,,,,
+368,Hard - Boiled Egg,1,1,,,,,,
+369,Hard Boiled Eggs,1,1,,,1,1,,
+370,Honey mustard,1,1,2,2,,,1,1
+371,Honey mustard dipping sauce,1,1,,,,,,
+372,Hot Honey,1,1,,,,,,
+373,Hot Sauce for the 5 other wings,1,1,,,,,,
+374,Hot cherry peppers,1,1,,,,,,
+375,Hot peppers on the veal parm entree,1,1,,,,,,
+376,Hot sauce,1,1,3,3,2,2,2,2
+377,House dressing,1,1,,,,,,
+378,Italian Dressing,1,1,5,5,1,1,,
+379,Italian dressing,1,1,,,,,,
+380,Italian sausage,1,1,,,,,,
+381,JALAPENOS ON THE SIDE,1,1,,,1,1,,
+382,Jaans,1,1,,,1,1,1,1
+383,Jalapeno,1,1,,,1,1,,
+384,Jalapeno peppers on the side,1,1,,,,,,
+385,Jalapenos and banana peppers,1,1,,,,,,
+386,Ketchup,1,1,,,,,1,1
+387,Large Cheese Pizza Tuesday Special,1,1,,,,,,
+388,Large Side of Ranch,1,1,,,,,,
+389,Large cheese pizza,1,1,,,,,,
+390,Large pepperoni stromboli,1,1,,,,,,
+391,Lays,1,1,,,,,,
+392,Lemon pepper and mild mixed sauce,1,1,,,,,,
+393,"Lettuce, Tomato and Mayo",1,1,,,,,,
+394,MMM,1,1,,,,,,
+395,MUSHROOMS,1,1,4,4,1,1,,
+396,MUSHROOMS AND SPINACH ON THE CHICKEN FRANCESE DINNE PUT THEM IN THE PASTA,1,1,,,,,,
+397,Macaroni And Cheese,1,1,,,,,,
+398,Make it combo,1,1,,,,,,
+399,Make the gluten free pizza into the Gluten free hawaiian,1,1,,,,,,
+400,Marinara Sauce for the pasta's on the side,1,1,,,,,,
+401,Meat,1,1,,,,,1,1
+402,Meat Sauce,1,1,1,1,,,,
+403,Meatball parm sub 12in,1,1,,,,,,
+404,Meatball side order,1,1,,,,,,
+405,Medium Cheeseburger Pizza,1,1,,,,,,
+406,Minestrone soup,1,1,,,,,,
+407,Mixed vegetables regular portion not tray.,1,1,,,,,,
+408,Monday Tuesday special one large pizza with mushroooms,1,1,,,,,,
+409,Mozz,1,1,,,,,,
+410,Mozz Ch On Knots,1,1,,,,,,
+411,Mozzarella,1,1,1,1,,,1,1
+412,Mozzarella Cheese,1,1,,,,,,
+413,Mozzarella Sticks,1,1,,,1,1,,
+414,Mozzarella for the meatballs,1,1,,,,,,
+415,Multi-Topping Slice //Add pepperoni and mushrooms,1,1,,,,,,
+416,Mushroom,1,1,,,,,1,1
+417,Mushroom on one of the white slice,1,1,,,,,,
+418,Mushrooms on the pasta,1,1,,,,,,
+419,Nacho cheese on the side,1,1,,,,,,
+420,Olives on the third pizza,1,1,,,,,,
+421,Onion Rings,1,1,,,,,,
+422,Onions,1,1,1,1,2,2,,
+423,Order Extra Topping,1,1,,,,,,
+424,Order of Cucumbers,1,1,,,,,,
+425,PEPPERONI SLICES,1,1,,,,,,
+426,PEPPERONI TOPPING,1,1,,,,,,
+427,PICKELS,1,1,,,,,,
+428,PINAPPLE CHARGE,1,1,,,,,,
+429,PINEAPPLE TOPPING,1,1,,,1,1,,
+430,Paneer cubes,1,1,,,,,,
+431,Parmesan Cheese on the side,1,1,,,,,,
+432,Peperoni Slice,1,1,,,,,,
+433,Pepperoni Topping,1,1,,,,,,
+434,Pepperoni for calzone,1,1,,,,,,
+435,Petulica,1,1,,,,,,
+436,Phily Meat,1,1,,,,,,
+437,Pineapple,1,1,1,1,2,2,4,4
+438,Pita,1,1,2,2,2,2,,
+439,Pita bread,1,1,,,,,,
+440,Pizza Dough,1,1,,,1,1,1,1
+441,Pizza Sub,1,1,,,,,,
+442,Plain cheese slices,1,1,,,,,,
+443,Prosciutto extra for penne vodka,1,1,,,,,,
+444,Provolone,1,1,1,1,,,,
+445,RANCH SAUCE,1,1,,,,,1,1
+446,RANCH SIDE,1,1,,,,,,
+447,ROLL,1,1,,,,,,
+448,ROOT BEER,1,1,,,,,,
+449,Rainbow Cookies,1,1,,,,,,
+450,Ranch Dressing Side,1,1,,,,,,
+451,Ranch Dressing for the wings,1,1,,,,,,
+452,Ranch dipping sauce,1,1,1,1,1,1,,
+453,Ranch on buffalo chicken pizza,1,1,,,,,,
+454,Ranch on the side,1,1,2,2,1,1,2,2
+455,Ranch sauce,1,1,1,1,1,1,1,1
+456,"Ranch, Pineapple",1,1,,,,,,
+457,Raw Pizza Dough,1,1,,,,,,
+458,Red Sauce,1,1,,,,,,
+459,Regular bread,1,1,,,,,,
+460,Ricotta,1,1,2,2,,,,
+461,Roasted Peppers,1,1,,,,,,
+462,Roll,1,1,,,,,,
+463,SIDE OF ANCHOVIES,1,1,,,,,,
+464,SIDE OF BLUE CHEESE,1,1,,,1,1,1,1
+465,SIDE OF ITALIAN DRESSING,1,1,,,,,,
+466,SIDE OF RANCH,1,1,,,2,2,1,1
+467,SIDE OF RANCH SAUCE,1,1,,,,,,
+468,SMALL BOTTLE OF PEPSI,1,1,,,,,,
+469,SMALL GLUTEN FREE PIZZA WITH SAUSAGE,1,1,,,,,,
+470,SWEET PEPPER,1,1,,,,,,
+471,Salami,1,1,1,1,,,,
+472,Salda,1,1,,,,,,
+473,Sausage,1,1,3,3,,,3,3
+474,Sausage on the pasta,1,1,,,,,,
+475,Shredded Parmesan,1,1,,,,,,
+476,Shrimps,1,1,,,,,,
+477,Sicilian,1,1,2,2,,,,
+478,Sicilian  slice  corner  part,1,1,,,,,,
+479,Sicilian Pizza Slices,1,1,,,,,,
+480,Sicilian Slice,1,1,2,2,,,,
+481,Side Cheddar Ch,1,1,,,,,,
+482,Side Sauce,1,1,,,,,,
+483,Side of Bacon for the Cheesesteak,1,1,,,,,,
+484,Side of Buffalo,1,1,,,,,,
+485,Side of Buffalo Dressing,1,1,,,,,,
+486,Side of Buffalo Mild sauce,1,1,,,,,,
+487,Side of Buffalo sauce,1,1,,,,,,
+488,Side of Cheese Whiz,1,1,,,,,,
+489,Side of French Dressing,1,1,,,,,1,1
+490,Side of Grilled Chicken,1,1,1,1,,,1,1
+491,Side of Hot Sauce,1,1,,,1,1,2,2
+492,Side of Hot sauce,1,1,,,,,,
+493,Side of Italian Dressing,1,1,,,,,,
+494,Side of Jalapeno,1,1,,,,,,
+495,Side of Marinara Sauce,1,1,5,5,3,3,1,1
+496,Side of Marinara sauce,1,1,,,,,1,1
+497,Side of Vodka Sauce,1,1,,,,,,
+498,Side of marinara,1,1,2,2,1,1,1,1
+499,Side of meatballs,1,1,1,1,,,,
+500,Side of ranch,1,1,,,,,,
+,,"1,113","1,233","1,272","1,413","1,348","1,487","1,160","1,287"
