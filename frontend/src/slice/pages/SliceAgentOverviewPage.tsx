@@ -177,7 +177,7 @@ export default function SliceAgentOverviewPage() {
   const filteredRows = useMemo(() => {
     if (!report) return [];
     const q = search.trim().toLowerCase();
-    let rows = report.dailyAgents;
+    let rows = report.dailyAgents ?? [];
     if (q) {
       rows = rows.filter(
         (r) =>
@@ -290,11 +290,11 @@ export default function SliceAgentOverviewPage() {
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-whisper-border text-xs text-secondary">
             <span>
               <span className="font-metadata-mono text-primary">{filteredRows.length}</span> of{' '}
-              <span className="font-metadata-mono text-primary">{report.dailyAgents.length}</span> agents
-              {report.dailyAgents.length > 0 && (
+              <span className="font-metadata-mono text-primary">{(report.dailyAgents ?? []).length}</span> agents
+              {(report.dailyAgents ?? []).length > 0 && (
                 <>
                   {' '}• <span className="text-primary">
-                    {new Set(report.dailyAgents.map((a) => a.pod)).size}
+                    {new Set((report.dailyAgents ?? []).map((a) => a.pod)).size}
                   </span> pods
                 </>
               )}

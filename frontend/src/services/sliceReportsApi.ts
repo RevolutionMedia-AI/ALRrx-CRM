@@ -16,7 +16,16 @@ export async function getSliceReports(): Promise<SliceReportSummary[]> {
 
 export async function getSliceReport(reportId: string): Promise<SliceReport> {
   const { data } = await sliceClient.get<SliceReport>(`/reports/${reportId}`);
-  return data;
+  // Normalize: backend may omit empty sections, but every consumer assumes
+  // arrays. Defensive defaulting prevents "Cannot read properties of undefined"
+  // crashes in the UI when a section is null.
+  return {
+    ...data,
+    shopDaily:        data.shopDaily        ?? [],
+    dailyGlobal:      data.dailyGlobal      ?? [],
+    dailyAgents:      data.dailyAgents      ?? [],
+    shopCallMetrics:  data.shopCallMetrics  ?? [],
+  };
 }
 
 export async function getSliceGlobalChart(reportId: string): Promise<SliceChartData> {
