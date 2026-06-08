@@ -668,7 +668,7 @@ function KpiCard({
   }
 
   return (
-    <div className={`bg-pure-surface dark:bg-gray-900 border ${isHero ? 'border-emerald-signal/40' : 'border-card-border dark:border-gray-700'} rounded-lg ${isHero ? 'p-6' : 'p-5'} shadow-card transition-transform hover:scale-[1.01] relative`}>
+    <div className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-lg p-5 shadow-card transition-transform hover:scale-[1.01] relative">
       <div className={`flex justify-between items-start ${isHero ? 'mb-3' : 'mb-4'}`}>
         <div>
           <p className="text-card-label text-[12px] font-medium">{title}</p>
@@ -679,11 +679,11 @@ function KpiCard({
         </div>
       </div>
       {loading ? (
-        <div className={`w-20 bg-surface-container rounded animate-pulse ${isHero ? 'h-10' : 'h-7'}`} />
+        <div className="w-20 bg-surface-container rounded animate-pulse h-7" />
       ) : (
         <div className="flex items-baseline gap-1.5">
             <h2
-              className={`${isHero ? 'text-[4.8rem]' : 'text-[1.6rem]'} font-bold leading-none tracking-tight ${isEmpty ? 'text-muted-slate font-medium' : ''}`}
+              className={`${isHero ? 'text-[1.6rem]' : 'text-[1.6rem]'} font-bold leading-none tracking-tight ${isEmpty ? 'text-muted-slate font-medium' : ''}`}
               style={isEmpty ? undefined : { color: valueColor }}
             >
               {displayValue}
