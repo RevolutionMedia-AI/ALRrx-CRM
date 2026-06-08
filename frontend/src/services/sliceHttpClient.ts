@@ -19,7 +19,7 @@ sliceClient.interceptors.response.use(
       if (!url.startsWith('/auth/')) {
         localStorage.removeItem('slice_token');
         delete sliceClient.defaults.headers.common['Authorization'];
-        window.location.href = '/slice/login';
+        window.location.href = '/login';
       }
     }
     return Promise.reject(err);

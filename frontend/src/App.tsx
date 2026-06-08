@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { SliceAuthProvider, useSliceAuth } from './slice/context/SliceAuthContext';
@@ -11,7 +11,6 @@ import VicidialFormPage from './pages/VicidialFormPage';
 import AppLayout from './components/Layout/AppLayout';
 import PlatformPickerModal from './components/PlatformPickerModal';
 import { resolveAccess, ROUTES } from './utils/accessControl';
-import SliceLoginPage from './slice/pages/SliceLoginPage';
 import SliceShopOverviewPage from './slice/pages/SliceShopOverviewPage';
 import SliceAgentOverviewPage from './slice/pages/SliceAgentOverviewPage';
 import SliceFileUploadPage from './slice/pages/SliceFileUploadPage';
@@ -46,17 +45,25 @@ function AdminRoute({ children }: { children: ReactNode }) {
 
 function SliceProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useSliceAuth();
-  if (loading) return <LoadingScreen />;
-  if (!user) {
-    const location = useLocation();
-    return <Navigate to={`/slice/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+  const { user: altrxUser, loading: altrxLoading } = useAuth();
+  const location = useLocation();
+
+  if (loading || altrxLoading) return <LoadingScreen />;
+
+  if (user) return <SliceLayout>{children}</SliceLayout>;
+
+  if (!altrxUser) {
+    return <Navigate to="/login" replace />;
   }
-  return <SliceLayout>{children}</SliceLayout>;
+
+  return <Navigate to={`/select-platform?redirect=${encodeURIComponent(location.pathname)}`} replace />;
 }
 
 function PlatformPickerPage() {
   const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = searchParams.get('redirect');
 
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
@@ -67,7 +74,8 @@ function PlatformPickerPage() {
   }
 
   const handleSelect = (platform: 'slice' | 'altrx') => {
-    navigate(platform === 'slice' ? ROUTES.slice : ROUTES.altrx, { replace: true });
+    const dest = platform === 'slice' ? ROUTES.slice : ROUTES.altrx;
+    navigate(redirect ?? dest, { replace: true });
   };
 
   return (
@@ -88,8 +96,6 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
 
       <Route path="/select-platform" element={<PlatformPickerPage />} />
-
-      <Route path="/slice/login" element={<SliceLoginPage />} />
 
       <Route
         path="/slice"
