@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import {
   sliceGetMe,
   sliceGoogleLogin,
@@ -14,6 +14,7 @@ interface SliceAuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (accessToken: string) => Promise<void>;
+  rehydrateWithGoogle: () => Promise<boolean>;
   logout: () => void;
   isAdmin: boolean;
 }
@@ -111,6 +112,28 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const rehydrateWithGoogle = useCallback(async (): Promise<boolean> => {
+    const googleToken = getGoogleAccessToken();
+    if (!googleToken) return false;
+    try {
+      const res = await sliceGoogleLogin(googleToken);
+      localStorage.setItem(SLICE_TOKEN_KEY, res.token);
+      setSliceAuthToken(res.token);
+      setToken(res.token);
+      setUser({
+        id: '',
+        email: res.email,
+        fullName: res.fullName,
+        role: res.role,
+        createdAt: new Date().toISOString(),
+      });
+      return true;
+    } catch (err) {
+      console.warn('[SliceAuth] rehydrateWithGoogle failed:', err);
+      return false;
+    }
+  }, []);
+
   const logout = () => {
     localStorage.removeItem(SLICE_TOKEN_KEY);
     setSliceAuthToken(null);
@@ -121,7 +144,7 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === 'Admin';
 
   return (
-    <SliceAuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, logout, isAdmin }}>
+    <SliceAuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, rehydrateWithGoogle, logout, isAdmin }}>
       {children}
     </SliceAuthContext.Provider>
   );

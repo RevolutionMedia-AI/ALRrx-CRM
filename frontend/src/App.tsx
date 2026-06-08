@@ -16,7 +16,7 @@ import SliceAgentOverviewPage from './slice/pages/SliceAgentOverviewPage';
 import SliceFileUploadPage from './slice/pages/SliceFileUploadPage';
 import SlicePlaceholderPage from './slice/pages/SlicePlaceholderPage';
 import SliceLayout from './slice/components/SliceLayout';
-import type { ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 
 function LoadingScreen() {
   return (
@@ -44,15 +44,37 @@ function AdminRoute({ children }: { children: ReactNode }) {
 }
 
 function SliceProtectedRoute({ children }: { children: ReactNode }) {
-  const { user, loading } = useSliceAuth();
+  const { user, loading, rehydrateWithGoogle } = useSliceAuth();
   const { user: altrxUser, loading: altrxLoading } = useAuth();
   const location = useLocation();
+  const [rehydrating, setRehydrating] = useState(false);
+  const [rehydrateFailed, setRehydrateFailed] = useState(false);
+
+  useEffect(() => {
+    if (loading || altrxLoading) return;
+    if (user) return;
+    if (!altrxUser) return;
+    if (rehydrating || rehydrateFailed) return;
+    console.log('[SliceProtectedRoute] triggering rehydrateWithGoogle for', altrxUser.email);
+    setRehydrating(true);
+    rehydrateWithGoogle()
+      .then((ok) => {
+        if (!ok) setRehydrateFailed(true);
+      })
+      .finally(() => setRehydrating(false));
+  }, [loading, altrxLoading, user, altrxUser, rehydrating, rehydrateFailed, rehydrateWithGoogle]);
 
   if (loading || altrxLoading) return <LoadingScreen />;
 
   if (user) return <SliceLayout>{children}</SliceLayout>;
 
   if (!altrxUser) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (rehydrating) return <LoadingScreen />;
+
+  if (rehydrateFailed) {
     return <Navigate to="/login" replace />;
   }
 
@@ -75,7 +97,9 @@ function PlatformPickerPage() {
 
   const handleSelect = (platform: 'slice' | 'altrx') => {
     const dest = platform === 'slice' ? ROUTES.slice : ROUTES.altrx;
-    navigate(redirect ?? dest, { replace: true });
+    const final = redirect ?? dest;
+    console.log('[PlatformPicker] navigating to', final);
+    navigate(final, { replace: true });
   };
 
   return (
