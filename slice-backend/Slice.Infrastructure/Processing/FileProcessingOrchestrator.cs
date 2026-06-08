@@ -160,6 +160,7 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
                 {
                     var report = await _excelParser.ParseAsync(path, token);
                     if (report != null) parsedReports.Add(report);
+                    else _logger.LogWarning("No recognized layout in {File} (file skipped).", path);
                 }
                 catch (Exception ex)
                 {
@@ -175,7 +176,10 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
 
         if (parsedReports.IsEmpty)
         {
-            await FailJobAsync(job, "No valid Slice report data found in any uploaded file.");
+            var recognized = string.Join(", ", filePaths
+                .Select(Path.GetFileName)
+                .Where(n => n != null));
+            await FailJobAsync(job, $"No valid Slice report data found in any uploaded file. Files seen: {recognized}.");
             return;
         }
 
