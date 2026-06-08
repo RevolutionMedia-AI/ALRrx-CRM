@@ -228,20 +228,21 @@ public sealed class ExcelParserService : IExcelParserService
         var firstCell = GetCell(grid, 0, 0);
         if (!firstCell.Contains("week", StringComparison.OrdinalIgnoreCase)) return false;
 
-        // Row 1 = column-name row. Find the offsets of the canonical Shop/Pod blocks.
+        // Row 1 = column-name row. Find the offsets of the canonical Shop/Pod/identifier columns.
         var headerRow = grid[1];
-        int shopIdCol = -1, shopNameCol = -1, podIdCol = -1, totalCallsCol = -1;
+        int shopIdCol = -1, shopNameCol = -1, podIdCol = -1;
         for (int c = 0; c < headerRow.Count; c++)
         {
             var h = headerRow[c]?.Trim() ?? string.Empty;
             if (h.Equals("Shop ID", StringComparison.OrdinalIgnoreCase) && shopIdCol == -1) shopIdCol = c;
             else if (h.Equals("Shop Name", StringComparison.OrdinalIgnoreCase) && shopNameCol == -1) shopNameCol = c;
             else if (h.Equals("Pod ID", StringComparison.OrdinalIgnoreCase) && podIdCol == -1) podIdCol = c;
-            else if (h.Equals("Total Calls", StringComparison.OrdinalIgnoreCase) && totalCallsCol == -1) totalCallsCol = c;
         }
-        if (shopIdCol < 0 || shopNameCol < 0 || podIdCol < 0 || totalCallsCol < 0) return false;
+        if (shopIdCol < 0 || shopNameCol < 0 || podIdCol < 0) return false;
 
-        // Row 0 contains week-start dates. Find each date column to determine week blocks.
+        // Row 0 contains week-start dates. Each date column marks the start of a metric block.
+        // Block layout: [date, Total, Overflow, Queue, Handled, Missed, Transferred,
+        //                %Overflow, %Queued, %Handled, %Missed of queued, %Transferred] = 12 cols.
         var dateRow = grid[0];
         var weekStarts = new List<(int col, DateTime week)>();
         for (int c = 0; c < dateRow.Count; c++)
@@ -254,11 +255,6 @@ public sealed class ExcelParserService : IExcelParserService
         }
         if (weekStarts.Count == 0) return false;
 
-        // Identify the metric columns in the first week block (between shopNameCol and the next week).
-        var firstBlockEnd = weekStarts.Count > 1 ? weekStarts[1].col : headerRow.Count;
-        int weekBlockWidth = firstBlockEnd - totalCallsCol;
-        if (weekBlockWidth < 10) return false;
-
         // Walk each data row (skip header rows 0 and 1).
         for (int r = 2; r < grid.Count; r++)
         {
@@ -267,32 +263,33 @@ public sealed class ExcelParserService : IExcelParserService
             var podId    = GetCell(grid, r, podIdCol);
             if (string.IsNullOrWhiteSpace(shopId) || string.IsNullOrWhiteSpace(shopName)) continue;
 
-            foreach (var (startCol, week) in weekStarts)
+            for (int w = 0; w < weekStarts.Count; w++)
             {
-                int endCol = (weekStarts.IndexOf((startCol, week)) < weekStarts.Count - 1)
-                    ? weekStarts[weekStarts.IndexOf((startCol, week)) + 1].col
-                    : headerRow.Count;
+                var (dateCol, week) = weekStarts[w];
+                // Metrics start one column to the right of the date.
+                int m0 = dateCol + 1;
 
-                int totalCalls = GetInt(grid, r, startCol);
-                if (totalCalls == 0 && GetString(grid, r, startCol) == string.Empty) continue;
+                int totalCalls = GetInt(grid, r, m0);
+                // Skip empty weeks (no calls at all for this shop).
+                if (totalCalls == 0 && GetString(grid, r, m0) == string.Empty) continue;
 
                 report.ShopCallMetrics.Add(new ShopCallMetricsRow
                 {
-                    WeekStart         = week,
-                    ShopId            = shopId,
-                    ShopName          = shopName,
-                    PodId             = podId,
-                    TotalCalls        = totalCalls,
-                    OverflowCalls     = GetInt(grid, r, startCol + 1),
-                    QueueCalls        = GetInt(grid, r, startCol + 2),
-                    HandledCalls      = GetInt(grid, r, startCol + 3),
-                    MissedCalls       = GetInt(grid, r, startCol + 4),
-                    TransferredCalls  = GetInt(grid, r, startCol + 5),
-                    PctOverflow       = GetDouble(grid, r, startCol + 6),
-                    PctQueued         = GetDouble(grid, r, startCol + 7),
-                    PctHandled        = GetDouble(grid, r, startCol + 8),
-                    PctMissedOfQueued = GetDouble(grid, r, startCol + 9),
-                    PctTransferred    = GetDouble(grid, r, endCol - 1 < headerRow.Count ? startCol + 10 : startCol + 10),
+                    WeekStart        = week,
+                    ShopId           = shopId,
+                    ShopName         = shopName,
+                    PodId            = podId,
+                    TotalCalls       = totalCalls,
+                    OverflowCalls    = GetInt(grid, r, m0 + 1),
+                    QueueCalls       = GetInt(grid, r, m0 + 2),
+                    HandledCalls     = GetInt(grid, r, m0 + 3),
+                    MissedCalls      = GetInt(grid, r, m0 + 4),
+                    TransferredCalls = GetInt(grid, r, m0 + 5),
+                    PctOverflow      = GetDouble(grid, r, m0 + 6),
+                    PctQueued        = GetDouble(grid, r, m0 + 7),
+                    PctHandled       = GetDouble(grid, r, m0 + 8),
+                    PctMissedOfQueued= GetDouble(grid, r, m0 + 9),
+                    PctTransferred   = GetDouble(grid, r, m0 + 10),
                 });
             }
         }
