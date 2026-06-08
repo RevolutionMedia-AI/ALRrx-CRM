@@ -5,6 +5,7 @@ import {
   setSliceAuthToken,
   sliceLogin,
 } from '../../services/sliceAuthApi';
+import { getGoogleAccessToken, setGoogleAccessToken } from '../../utils/googleTokenStore';
 import type { SliceUserInfo } from '../types';
 
 interface SliceAuthContextType {
@@ -46,6 +47,36 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
           }
         })
         .finally(() => setLoading(false));
+      return;
+    }
+    const googleToken = getGoogleAccessToken();
+    if (googleToken) {
+      sliceGoogleLogin(googleToken)
+        .then((res) => {
+          localStorage.setItem(SLICE_TOKEN_KEY, res.token);
+          setSliceAuthToken(res.token);
+          setToken(res.token);
+          setUser({
+            id: '',
+            email: res.email,
+            fullName: res.fullName,
+            role: res.role,
+            createdAt: new Date().toISOString(),
+          });
+        })
+        .catch((err: unknown) => {
+          const status = err && typeof err === 'object' && 'response' in err
+            ? (err as { response?: { status?: number } }).response?.status
+            : undefined;
+          if (status === 401 || status === 403) {
+            localStorage.removeItem(SLICE_TOKEN_KEY);
+            setSliceAuthToken(null);
+            setToken(null);
+          } else {
+            console.warn('slice google rehydrate failed (transient):', err);
+          }
+        })
+        .finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
@@ -66,6 +97,7 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithGoogle = async (accessToken: string) => {
+    setGoogleAccessToken(accessToken);
     const res = await sliceGoogleLogin(accessToken);
     localStorage.setItem(SLICE_TOKEN_KEY, res.token);
     setSliceAuthToken(res.token);

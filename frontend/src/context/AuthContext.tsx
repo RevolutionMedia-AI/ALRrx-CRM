@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, type UserInfo } from '../services/authApi';
+import { getGoogleAccessToken, setGoogleAccessToken } from '../utils/googleTokenStore';
 
 // ─── DEV BYPASS ────────────────────────────────────────────────────────────────
 // Set VITE_DEV_BYPASS=true in frontend/.env.local to skip login locally.
@@ -60,6 +61,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setLoading(false);
       });
+      return;
+    }
+    const googleToken = getGoogleAccessToken();
+    if (googleToken) {
+      apiGoogleLogin(googleToken)
+        .then((res) => {
+          localStorage.setItem('alrrx_token', res.token);
+          setAuthToken(res.token);
+          setToken(res.token);
+          setUser(res.user);
+        })
+        .catch((err: unknown) => {
+          const status = err && typeof err === 'object' && 'response' in err
+            ? (err as { response?: { status?: number } }).response?.status
+            : undefined;
+          if (status === 401) {
+            setGoogleAccessToken(null);
+          } else {
+            console.warn('Google rehydrate failed (transient), keeping token:', err);
+          }
+        })
+        .finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
@@ -74,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginWithGoogle = async (credential: string) => {
+    setGoogleAccessToken(credential);
     const res = await apiGoogleLogin(credential);
     localStorage.setItem('alrrx_token', res.token);
     setAuthToken(res.token);
@@ -83,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('alrrx_token');
+    setGoogleAccessToken(null);
     setAuthToken(null);
     setToken(null);
     setUser(null);
