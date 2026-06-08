@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { listAllVicidialSales, updateVicidialSale, deleteVicidialSale, type VicidialSaleUpdatePayload } from '../../services/vicidialFormApi';
+import { listAllVicidialSales, updateVicidialSale, deleteVicidialSale, exportVicidialSalesExcel, type VicidialSaleUpdatePayload } from '../../services/vicidialFormApi';
 import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
 
@@ -197,6 +197,7 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
   const [editError, setEditError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const range = useMemo(() => getEffectivePeriod(pagePeriod, pageCustomStart, pageCustomEnd), [pagePeriod, pageCustomStart, pageCustomEnd]);
 
@@ -295,6 +296,27 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
     }
   };
 
+  const handleExportExcel = async () => {
+    if (filteredSales.length === 0 || exportingExcel) return;
+    setExportingExcel(true);
+    try {
+      const stamp = new Date().toISOString().split('T')[0];
+      const agentPart = repFilter === 'all' ? '' : `_${repFilter.replace(/\s+/g, '_')}`;
+      const periodPart = pagePeriod ?? 'All';
+      const filename = `ALTRX_VicidialSales_${periodPart}${agentPart}_${stamp}.xlsx`;
+      await exportVicidialSalesExcel(filteredSales, filename, {
+        period: pagePeriod,
+        from: range.from,
+        to: range.to,
+        agentFilter: repFilter,
+      });
+    } catch (err: unknown) {
+      setDeleteError(extractErrorMessage(err, 'Could not export the sales to Excel'));
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const saleToDelete = deletingId !== null ? sales.find((s) => s.id === deletingId) ?? null : null;
 
   return (
@@ -326,6 +348,17 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
               </select>
             </div>
           )}
+          <button
+            onClick={handleExportExcel}
+            disabled={loading || exportingExcel || filteredSales.length === 0}
+            className="text-xs px-2.5 py-1 border border-whisper-border dark:border-gray-700 rounded text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-gray-100 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Export current view to Excel"
+          >
+            <span className={`material-symbols-outlined text-sm ${exportingExcel ? 'animate-spin' : ''}`}>
+              {exportingExcel ? 'progress_activity' : 'download'}
+            </span>
+            <span>{exportingExcel ? 'Generating...' : 'Export Excel'}</span>
+          </button>
           <button
             onClick={() => setRefreshNonce((n) => n + 1)}
             disabled={loading}
