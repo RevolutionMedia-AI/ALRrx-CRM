@@ -11,7 +11,16 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://+:{port}");
+var aspnetUrls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS");
+if (!string.IsNullOrEmpty(aspnetUrls))
+{
+    // Supervisord wins: ALRrx listens on :5000 inside the combined container.
+    builder.WebHost.UseUrls(aspnetUrls);
+}
+else
+{
+    builder.WebHost.UseUrls($"http://+:{port}");
+}
 
 var allowedOrigins = (Environment.GetEnvironmentVariable("ALLOWED_ORIGINS") ?? "*")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

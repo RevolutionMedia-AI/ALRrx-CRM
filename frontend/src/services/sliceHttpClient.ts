@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const sliceClient = axios.create({ baseURL: '/api/slice', timeout: 30000 });
+export const sliceClient = axios.create({ baseURL: '/api/slice', timeout: 15000 });
 
 sliceClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('slice_token');
