@@ -8,7 +8,6 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import RealTimePage from './pages/RealTimePage';
 import UsersPage from './pages/UsersPage';
 import VicidialFormPage from './pages/VicidialFormPage';
-import AppSelectorPage from './pages/AppSelectorPage';
 import AppLayout from './components/Layout/AppLayout';
 import SliceLoginPage from './slice/pages/SliceLoginPage';
 import SliceShopOverviewPage from './slice/pages/SliceShopOverviewPage';
@@ -64,9 +63,29 @@ function ChooseRoute() {
     return <Navigate to="/login" replace />;
   }
   if (!shouldShowAppChooser(email)) {
-    return <Navigate to={slice.user ? '/slice' : '/'} replace />;
+    return <Navigate to={slice.user ? '/slice' : '/dashboard'} replace />;
   }
   return <AppChooserPage />;
+}
+
+function RootRoute() {
+  const alrrx = useAuth();
+  const slice = useSliceAuth();
+  if (alrrx.loading || slice.loading) return <LoadingScreen />;
+  const email = alrrx.user?.email ?? slice.user?.email;
+  if (!email) {
+    return <Navigate to="/login" replace />;
+  }
+  if (shouldShowAppChooser(email)) {
+    return <Navigate to="/choose" replace />;
+  }
+  if (slice.user && !alrrx.user) {
+    return <Navigate to="/slice" replace />;
+  }
+  if (alrrx.user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Navigate to="/login" replace />;
 }
 
 function AppRoutes() {
@@ -127,8 +146,7 @@ function AppRoutes() {
       />
 
       <Route path="/form_sale" element={<VicidialFormPage />} />
-      <Route path="/altrx" element={<Navigate to="/" replace />} />
-      <Route path="/" element={<AppSelectorPage />} />
+      <Route path="/" element={<RootRoute />} />
       <Route
         path="/dashboard"
         element={
