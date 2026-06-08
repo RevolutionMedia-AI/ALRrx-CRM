@@ -4,6 +4,8 @@ import {
   uploadSliceExcel,
   getSliceJobs,
   sliceExportUrl,
+  sliceTemplateUrl,
+  sliceBlankTemplateUrl,
 } from '../../services/sliceReportsApi';
 import { useSliceJobPolling } from '../hooks/useSliceJobPolling';
 import Dropzone from '../components/Dropzone';
@@ -106,6 +108,25 @@ export default function SliceFileUploadPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadTemplate = async () => {
+    const token = localStorage.getItem('slice_token');
+    if (!token) return;
+    const url = job?.reportId ? sliceTemplateUrl(job.reportId) : sliceBlankTemplateUrl();
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const link = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = link;
+    a.download = job?.reportId
+      ? `Slice_Template_${job.reportId.slice(0, 8)}.xlsx`
+      : 'Slice_Template_Blank.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(link);
+  };
+
   const status: SliceJobStatus | 'Uploading' | 'Idle' = submitting
     ? 'Uploading'
     : job
@@ -184,6 +205,15 @@ export default function SliceFileUploadPage() {
             )}
 
             <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="flex items-center justify-center gap-2 bg-surface border border-whisper-border text-primary py-3 px-4 rounded font-semibold hover:bg-surface-container transition-colors text-sm"
+                title="Download an empty Excel template with the three sections (Daily Global, Daily Agent, Shop Daily). Fill it in and re-upload."
+              >
+                <span className="material-symbols-outlined text-lg">file_download</span>
+                Download Excel Template
+              </button>
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}

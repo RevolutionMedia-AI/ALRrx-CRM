@@ -52,6 +52,14 @@ export function sliceExportUrl(reportId: string, format: 'xlsx' | 'csv'): string
   return `/api/slice/reports/${reportId}/export/${format}`;
 }
 
+export function sliceTemplateUrl(reportId: string): string {
+  return `/api/slice/reports/${reportId}/template`;
+}
+
+export function sliceBlankTemplateUrl(): string {
+  return `/api/slice/reports/template/blank`;
+}
+
 export async function uploadSliceZip(file: File, onProgress?: (pct: number) => void): Promise<SliceUploadJobResponse> {
   const form = new FormData();
   form.append('file', file);

@@ -71,7 +71,7 @@ public sealed class ExcelParserService : IExcelParserService
             GeneratedAt = DateTime.UtcNow,
         };
 
-        try { ParseRowGrid(rows, report); }
+        try { ParseRowGrid(rows, report, filePath); }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not parse CSV {File}", filePath);
@@ -115,7 +115,7 @@ public sealed class ExcelParserService : IExcelParserService
             }
             grid.Add(line);
         }
-        ParseRowGrid(grid, report);
+        ParseRowGrid(grid, report, ws.Name);
     }
 
     // ─── CSV path ─────────────────────────────────────────────────────────────
@@ -191,10 +191,21 @@ public sealed class ExcelParserService : IExcelParserService
 
     // ─── Common section parsers (work on a row grid) ──────────────────────────
 
-    private static void ParseRowGrid(IList<IList<string>> grid, SliceReport report)
+    private static void ParseRowGrid(IList<IList<string>> grid, SliceReport report, string sourceHint)
     {
-        if (TryParseShopCallMetricsPivoted(grid, report)) return;
+        // 1. Detect well-known layouts by name/header and map to a section.
+        if (TryParsePodLevelPivoted(grid, report))               return;
+        if (TryParseShopLevelPivoted(grid, report))              return;
+        if (TryParseAgentLevelPivoted(grid, report))             return;
+        if (TryParseOrderFromCalls(grid, report))                return;
+        if (TryParseCallMetricsByShopType(grid, report))         return;
+        if (TryParseOverflow15Min(grid, report))                  return;
+        if (TryParseOverflowHourly(grid, report))                 return;
+        if (TryParseShopLevelOrderMetrics(grid, report))          return;
+        if (TryParseShopCallMetricsPivoted(grid, report))         return;
 
+        // 2. Fallback to the classic "Daily Global / Daily Agent / Shop Daily"
+        //    section-header format (used by the Excel template).
         for (int row = 0; row < grid.Count; row++)
         {
             var cellValue = GetCell(grid, row, 0);
@@ -215,6 +226,9 @@ public sealed class ExcelParserService : IExcelParserService
                 continue;
             }
         }
+
+        // Suppress unused-warning on the hint parameter (kept for future telemetry).
+        _ = sourceHint;
     }
 
     /// <summary>
@@ -424,5 +438,460 @@ public sealed class ExcelParserService : IExcelParserService
         if (string.IsNullOrEmpty(s)) return 0.0;
         s = s.Replace(",", "").Replace("%", "").Trim();
         return double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var n) ? n : 0.0;
+    }
+
+    // ─── Per-CSV-shape auto-detectors ──────────────────────────────────────
+    //
+    // Each detector returns true if it recognized the layout and populated the
+    // corresponding report section(s). The detectors are ordered roughly by
+    // specificity so the more distinctive layouts win first.
+
+    /// <summary>
+    /// <c>pod_level_-_call_metrics.csv</c>: one row per (Pod, Day). Daily-block
+    /// layout: [date, Total, Overflow, Queue, Handled, Missed, Transferred, %×4].
+    /// One file == one daily snapshot (the latest day). Adds to <c>DailyGlobal</c>.
+    /// </summary>
+    private static bool TryParsePodLevelPivoted(IList<IList<string>> grid, SliceReport report)
+    {
+        if (grid.Count < 2) return false;
+        var headerRow = grid.Count > 1 ? grid[1] : grid[0];
+        int podIdCol = FindColumn(headerRow, "Pod ID");
+        if (podIdCol < 0) return false;
+
+        // Find the first date column to know where the metric block starts.
+        var dateRow = grid[0];
+        int firstDateCol = -1;
+        for (int c = 0; c < dateRow.Count; c++)
+        {
+            if (DateTime.TryParse(dateRow[c]?.Trim() ?? string.Empty,
+                CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out _))
+            {
+                firstDateCol = c;
+                break;
+            }
+        }
+        if (firstDateCol < 0) return false;
+
+        int blockWidth = 11; // Total, Overflow, Queue, Handled, Missed, Transferred, %×4 + Total (col 0)
+        int endCol = firstDateCol + blockWidth;
+
+        for (int r = 2; r < grid.Count; r++)
+        {
+            var pod = GetCell(grid, r, podIdCol);
+            if (string.IsNullOrWhiteSpace(pod) || !pod.StartsWith("ES-", StringComparison.OrdinalIgnoreCase)) continue;
+
+            // Roll up every weekly block on this row.
+            int total = 0, overflow = 0, queue = 0, handled = 0, missed = 0, transferred = 0;
+            for (int c = firstDateCol; c < endCol && c < headerRow.Count; c += 11)
+            {
+                total       += GetInt(grid, r, c + 1);
+                overflow    += GetInt(grid, r, c + 2);
+                queue       += GetInt(grid, r, c + 3);
+                handled     += GetInt(grid, r, c + 4);
+                missed      += GetInt(grid, r, c + 5);
+                transferred += GetInt(grid, r, c + 6);
+            }
+            if (total == 0 && handled == 0) continue;
+
+            report.DailyGlobal.Add(new DailyGlobalRow
+            {
+                Pod              = pod,
+                Queued           = queue,
+                Handled          = handled,
+                MissedCalls      = missed,
+                TransferredCalls = transferred,
+                // We don't compute % here — the merge step averages them from
+                // each report, and the user can patch them through the editor.
+            });
+        }
+        return report.DailyGlobal.Count > 0;
+    }
+
+    /// <summary>
+    /// <c>agent_level_metrics_-_daily.csv</c>: one row per (Agent, Pod). Eight
+    /// metric columns per daily block (HC, TC, Holds, AvgHold, ASA, AHT, ACW, %OnHold,
+    /// %SL<15, %Transfers). Adds to <c>DailyAgents</c>.
+    /// </summary>
+    private static bool TryParseAgentLevelPivoted(IList<IList<string>> grid, SliceReport report)
+    {
+        if (grid.Count < 3) return false;
+        var headerRow = grid[1];
+        int agentCol = FindColumn(headerRow, "Agent Username");
+        int routingCol = FindColumn(headerRow, "Agent Routing Profile Name");
+        if (agentCol < 0) return false;
+
+        var dateRow = grid[0];
+        var dayStarts = new List<int>();
+        for (int c = 0; c < dateRow.Count; c++)
+        {
+            if (DateTime.TryParse(dateRow[c]?.Trim() ?? string.Empty,
+                CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out _))
+            {
+                dayStarts.Add(c);
+            }
+        }
+        if (dayStarts.Count == 0) return false;
+
+        int blockWidth = 9; // HC, TC, Holds, AvgHold, ASA, AHT, ACW, %OnHold, %SL<15, %Transfers
+        for (int r = 2; r < grid.Count; r++)
+        {
+            var agent = GetCell(grid, r, agentCol);
+            if (string.IsNullOrWhiteSpace(agent) || !agent.Contains('@')) continue;
+
+            // Extract Pod and supervisor from the routing profile (ES-12-JUNIOR → ES-12 / JUNIOR).
+            var routing = routingCol >= 0 ? GetCell(grid, r, routingCol) : string.Empty;
+            var (pod, _) = SplitRoutingProfile(routing);
+
+            int hc = 0, tc = 0, holds = 0, trans = 0;
+            double avgHold = 0, asa = 0, aht = 0, acw = 0, pctHold = 0, pctSL = 0, pctTrans = 0;
+            int blockCount = 0;
+            for (int c = 0; c < dayStarts.Count; c++)
+            {
+                int m0 = dayStarts[c] + 1;
+                int hcDay = GetInt(grid, r, m0);
+                if (hcDay == 0 && GetString(grid, r, m0) == string.Empty) continue;
+                hc        += hcDay;
+                tc        += GetInt(grid, r, m0 + 1);
+                holds     += GetInt(grid, r, m0 + 2);
+                avgHold   += GetDouble(grid, r, m0 + 3);
+                asa       += GetDouble(grid, r, m0 + 4);
+                aht       += GetDouble(grid, r, m0 + 5);
+                acw       += GetDouble(grid, r, m0 + 6);
+                pctHold   += GetDouble(grid, r, m0 + 7);
+                pctSL     += GetDouble(grid, r, m0 + 8);
+                trans     += GetInt(grid, r, m0 + 9);
+                pctTrans  += GetDouble(grid, r, m0 + 9);
+                blockCount++;
+                if (blockWidth <= 0) break;
+            }
+            if (blockCount == 0) continue;
+
+            report.DailyAgents.Add(new DailyAgentRow
+            {
+                Pod                = pod,
+                AgentEmail         = agent,
+                HC                 = hc,
+                TC                 = tc,
+                NumberOfHolds      = holds,
+                AvgHoldTime        = SafeAvg(avgHold, blockCount),
+                ASA                = SafeAvg(asa, blockCount),
+                AHT                = SafeAvg(aht, blockCount),
+                ACW                = SafeAvg(acw, blockCount),
+                PctContactsOnHold  = SafeAvg(pctHold, blockCount),
+                PctSLUnder15Sec    = SafeAvg(pctSL, blockCount),
+                PctTransfers       = SafeAvg(pctTrans, blockCount),
+            });
+        }
+        return report.DailyAgents.Count > 0;
+    }
+
+    /// <summary>
+    /// Splits "ES-12-JUNIOR" into ("ES-12", "JUNIOR"). Returns empty strings
+    /// when the input does not match the expected pattern.
+    /// </summary>
+    private static (string pod, string tier) SplitRoutingProfile(string routing)
+    {
+        if (string.IsNullOrWhiteSpace(routing)) return (string.Empty, string.Empty);
+        var parts = routing.Split('-');
+        if (parts.Length < 3) return (routing, string.Empty);
+        return ($"{parts[0]}-{parts[1]}", parts[2]);
+    }
+
+    private static double SafeAvg(double total, int n) => n == 0 ? 0.0 : total / n;
+
+    /// <summary>
+    /// Returns the first column index whose header matches <paramref name="needle"/>
+    /// (case-insensitive exact match). -1 if not found.
+    /// </summary>
+    private static int FindColumn(IList<string> headerRow, string needle)
+    {
+        for (int c = 0; c < headerRow.Count; c++)
+        {
+            if (headerRow[c]?.Trim().Equals(needle, StringComparison.OrdinalIgnoreCase) == true) return c;
+        }
+        return -1;
+    }
+
+    /// <summary>
+    /// <c>_order_from_calls.csv</c>: simple layout, no pivoting.
+    /// Columns: Date, Total Calls, Distinct Customers, Order Count, % from calls, % from customers.
+    /// Maps to <c>DailyGlobal</c> as "phantom pod ORDERS" (so the user can see the
+    /// trend in the same chart) or to <c>ShopDaily</c> as a single aggregate row.
+    /// We map to <c>ShopDaily</c> because the columns are shop-level aggregates.
+    /// </summary>
+    private static bool TryParseOrderFromCalls(IList<IList<string>> grid, SliceReport report)
+    {
+        if (grid.Count < 2) return false;
+        var headerRow = grid[0];
+        int orderCountCol = FindColumn(headerRow, "Order Count");
+        int totalCallsCol  = FindColumn(headerRow, "Total Calls");
+        if (orderCountCol < 0 || totalCallsCol < 0) return false;
+
+        int totalOrders = 0, totalCalls = 0, rows = 0;
+        for (int r = 1; r < grid.Count; r++)
+        {
+            int orderCount = GetInt(grid, r, orderCountCol);
+            int totalCalls  = GetInt(grid, r, totalCallsCol);
+            if (orderCount == 0 && totalCalls == 0) continue;
+            totalOrders += orderCount;
+            totalCalls  += totalCalls;
+            rows++;
+        }
+        if (rows == 0) return false;
+
+        report.ShopDaily.Add(new ShopDailyRow
+        {
+            ShopName       = "ORDERS_FROM_CALLS",
+            TotalOrders    = totalOrders,
+            RefundedOrders = 0,
+            ErrorRate      = 0,
+            ConversionRate = totalCalls == 0 ? 0 : Math.Round((double)totalOrders / totalCalls * 100.0, 1),
+        });
+        return true;
+    }
+
+    /// <summary>
+    /// <c>shop_level_-_call_metrics.csv</c> pivoted layout with 15 columns per
+    /// weekly block (Shop ID, Shop Name, Pod ID, Live on Phone Date, Total, Overflow,
+    /// Queue, Handled, Missed, Transferred, %×4). Adds to <c>ShopCallMetrics</c>.
+    /// </summary>
+    private static bool TryParseShopLevelPivoted(IList<IList<string>> grid, SliceReport report)
+    {
+        if (grid.Count < 3) return false;
+        var headerRow = grid[1];
+        int shopIdCol   = FindColumn(headerRow, "Shop ID");
+        int shopNameCol = FindColumn(headerRow, "Shop Name");
+        int podIdCol    = FindColumn(headerRow, "Pod ID");
+        int liveOnCol   = FindColumn(headerRow, "Live on Phone Date");
+        int totalCallsCol = FindColumn(headerRow, "Total Calls");
+        if (shopIdCol < 0 || shopNameCol < 0 || podIdCol < 0 || totalCallsCol < 0) return false;
+
+        // Each weekly block = 11 columns: Total, Overflow, Queue, Handled, Missed,
+        // Transferred, %Overflow, %Queued, %Handled, %Missed, %Transferred.
+        const int blockWidth = 11;
+
+        for (int r = 2; r < grid.Count; r++)
+        {
+            var shopId   = GetCell(grid, r, shopIdCol);
+            var shopName = GetCell(grid, r, shopNameCol);
+            var podId    = GetCell(grid, r, podIdCol);
+            if (string.IsNullOrWhiteSpace(shopId) || string.IsNullOrWhiteSpace(shopName)) continue;
+
+            // The first date column (where the weekly metrics start) is totalCallsCol
+            // minus one (the "Live on Phone Date" column right before the first metric).
+            int firstBlockStart = totalCallsCol - 1;
+
+            for (int offset = 0; offset < headerRow.Count - firstBlockStart; offset += blockWidth)
+            {
+                int dateCol = firstBlockStart + offset;
+                int total = GetInt(grid, r, dateCol + 1);
+                if (total == 0 && GetString(grid, r, dateCol + 1) == string.Empty) continue;
+
+                DateTime weekStart = DateTime.UtcNow.Date;
+                if (liveOnCol >= 0)
+                {
+                    DateTime.TryParse(GetCell(grid, r, liveOnCol + offset),
+                        CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out weekStart);
+                }
+
+                report.ShopCallMetrics.Add(new ShopCallMetricsRow
+                {
+                    WeekStart        = weekStart,
+                    ShopId           = shopId,
+                    ShopName         = shopName,
+                    PodId            = podId,
+                    TotalCalls       = total,
+                    OverflowCalls    = GetInt(grid, r, dateCol + 2),
+                    QueueCalls       = GetInt(grid, r, dateCol + 3),
+                    HandledCalls     = GetInt(grid, r, dateCol + 4),
+                    MissedCalls      = GetInt(grid, r, dateCol + 5),
+                    TransferredCalls = GetInt(grid, r, dateCol + 6),
+                    PctOverflow      = GetDouble(grid, r, dateCol + 7),
+                    PctQueued        = GetDouble(grid, r, dateCol + 8),
+                    PctHandled       = GetDouble(grid, r, dateCol + 9),
+                    PctMissedOfQueued= GetDouble(grid, r, dateCol + 10),
+                    PctTransferred   = GetDouble(grid, r, dateCol + 11),
+                });
+            }
+        }
+        return report.ShopCallMetrics.Count > 0;
+    }
+
+    /// <summary>
+    /// <c>shop_level_-_order_metrics.csv</c> pivoted by date with 5 columns per
+    /// day (Orders, Refunded, Removed Items, Removed Count, % errors). Adds a
+    /// <c>ShopDaily</c> row per shop.
+    /// </summary>
+    private static bool TryParseShopLevelOrderMetrics(IList<IList<string>> grid, SliceReport report)
+    {
+        if (grid.Count < 2) return false;
+        var headerRow = grid[0];
+        int shopIdCol  = FindColumn(headerRow, "Shop ID");
+        int ordersCol  = FindColumn(headerRow, "Orders Count");
+        int refundCol  = FindColumn(headerRow, "Refunded Orders");
+        int errorsCol  = FindColumn(headerRow, "%orders with errors");
+        if (shopIdCol < 0 || ordersCol < 0) return false;
+
+        // Daily block width = 5.
+        const int blockWidth = 5;
+        int firstBlockStart = ordersCol;
+        if (refundCol > 0) firstBlockStart = refundCol;
+        if (firstBlockStart <= shopIdCol) return false;
+
+        for (int r = 1; r < grid.Count; r++)
+        {
+            var shopId = GetCell(grid, r, shopIdCol);
+            if (string.IsNullOrWhiteSpace(shopId)) continue;
+
+            int total = 0, refunded = 0;
+            double pctErrors = 0;
+            int blocks = 0;
+            for (int offset = 0; offset < headerRow.Count - firstBlockStart; offset += blockWidth)
+            {
+                int o = GetInt(grid, r, firstBlockStart + offset);
+                int r2 = refundCol >= 0 ? GetInt(grid, r, refundCol + offset) : 0;
+                double e = errorsCol >= 0 ? GetDouble(grid, r, errorsCol + offset) : 0;
+                if (o == 0 && r2 == 0) continue;
+                total    += o;
+                refunded += r2;
+                pctErrors += e;
+                blocks++;
+            }
+            if (blocks == 0) continue;
+
+            report.ShopDaily.Add(new ShopDailyRow
+            {
+                ShopName       = shopId,
+                TotalOrders    = total,
+                RefundedOrders = refunded,
+                ErrorRate      = SafeAvg(pctErrors, blocks),
+                ConversionRate = 0,
+            });
+        }
+        return report.ShopDaily.Count > 0;
+    }
+
+    /// <summary>
+    /// <c>call_metrics_by_shop_type_*.csv</c>: two rows (new / established / total)
+    /// with 11 metrics per day. We expose the TOTAL row as <c>DailyGlobal</c>
+    /// entries keyed by pod "ALL" (so it appears in the same chart as the pods).
+    /// </summary>
+    private static bool TryParseCallMetricsByShopType(IList<IList<string>> grid, SliceReport report)
+    {
+        if (grid.Count < 2) return false;
+        var headerRow = grid[0];
+        int typeCol    = FindColumn(headerRow, "Shop Type");
+        int shopsCol   = FindColumn(headerRow, "#shops");
+        int totalCol   = FindColumn(headerRow, "Total Calls");
+        int missedCol  = FindColumn(headerRow, "Missed Calls");
+        int queueCol   = FindColumn(headerRow, "Queue Calls");
+        int handledCol = FindColumn(headerRow, "Handled Calls");
+        int transCol   = FindColumn(headerRow, "Transferred Calls");
+        if (typeCol < 0 || totalCol < 0) return false;
+
+        // The block width is the distance between two adjacent #shops columns.
+        int blockWidth = 11;
+        var secondShops = -1;
+        for (int c = shopsCol + 1; c < headerRow.Count; c++)
+        {
+            if (headerRow[c]?.Trim().Equals("#shops", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                secondShops = c;
+                break;
+            }
+        }
+        if (secondShops > 0) blockWidth = secondShops - shopsCol;
+
+        for (int r = 1; r < grid.Count; r++)
+        {
+            var label = GetCell(grid, r, typeCol);
+            if (!label.Equals("total", StringComparison.OrdinalIgnoreCase)) continue;
+            for (int offset = 0; offset + totalCol < headerRow.Count; offset += blockWidth)
+            {
+                int total = GetInt(grid, r, totalCol + offset);
+                if (total == 0 && GetString(grid, r, totalCol + offset) == string.Empty) continue;
+                report.DailyGlobal.Add(new DailyGlobalRow
+                {
+                    Pod              = "ALL",
+                    Queued           = GetInt(grid, r, queueCol + offset),
+                    Handled          = GetInt(grid, r, handledCol + offset),
+                    MissedCalls      = GetInt(grid, r, missedCol + offset),
+                    TransferredCalls = GetInt(grid, r, transCol + offset),
+                });
+            }
+            break; // only the total row
+        }
+        return report.DailyGlobal.Count > 0;
+    }
+
+    /// <summary>
+    /// <c>overflow_calls_-_last_1_complete_day_(15_min_interval).csv</c>:
+    /// time series with one row per 15-min interval. Two columns: Queue, Overflow.
+    /// Exposed as a new <c>ShopCallMetrics</c> row per interval under a virtual
+    /// shop "OVERFLOW_15MIN". The frontend can ignore this for now; it lives in
+    /// the export only.
+    /// </summary>
+    private static bool TryParseOverflow15Min(IList<IList<string>> grid, SliceReport report)
+    {
+        if (grid.Count < 2) return false;
+        var headerRow = grid[0];
+        int minuteCol = FindColumn(headerRow, "Call initiation Timestamp Minute15");
+        int queueCol  = FindColumn(headerRow, "Queue Calls");
+        int overflowCol = FindColumn(headerRow, "Overflow Calls");
+        if (minuteCol < 0 || queueCol < 0) return false;
+
+        int count = 0;
+        for (int r = 1; r < grid.Count; r++)
+        {
+            var ts = GetCell(grid, r, minuteCol);
+            if (string.IsNullOrWhiteSpace(ts)) continue;
+            if (!DateTime.TryParse(ts, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var dt))
+                continue;
+            report.ShopCallMetrics.Add(new ShopCallMetricsRow
+            {
+                WeekStart     = dt.Date,
+                ShopId        = "OVERFLOW_15MIN",
+                ShopName      = "OVERFLOW_15MIN",
+                PodId         = "ALL",
+                QueueCalls    = GetInt(grid, r, queueCol),
+                OverflowCalls = overflowCol >= 0 ? GetInt(grid, r, overflowCol) : 0,
+            });
+            count++;
+        }
+        return count > 0;
+    }
+
+    /// <summary>
+    /// <c>overflow_calls_-_last_7_complete_days_(hourly_interval).csv</c>:
+    /// time series with one row per hour. Two columns: Queue, Overflow.
+    /// </summary>
+    private static bool TryParseOverflowHourly(IList<IList<string>> grid, SliceReport report)
+    {
+        if (grid.Count < 2) return false;
+        var headerRow = grid[0];
+        int hourCol = FindColumn(headerRow, "Call initiation Timestamp Hour");
+        int queueCol  = FindColumn(headerRow, "Queue Calls");
+        int overflowCol = FindColumn(headerRow, "Overflow Calls");
+        if (hourCol < 0 || queueCol < 0) return false;
+
+        int count = 0;
+        for (int r = 1; r < grid.Count; r++)
+        {
+            var ts = GetCell(grid, r, hourCol);
+            if (string.IsNullOrWhiteSpace(ts)) continue;
+            if (!DateTime.TryParse(ts, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var dt))
+                continue;
+            report.ShopCallMetrics.Add(new ShopCallMetricsRow
+            {
+                WeekStart     = dt.Date,
+                ShopId        = "OVERFLOW_HOURLY",
+                ShopName      = "OVERFLOW_HOURLY",
+                PodId         = "ALL",
+                QueueCalls    = GetInt(grid, r, queueCol),
+                OverflowCalls = overflowCol >= 0 ? GetInt(grid, r, overflowCol) : 0,
+            });
+            count++;
+        }
+        return count > 0;
     }
 }

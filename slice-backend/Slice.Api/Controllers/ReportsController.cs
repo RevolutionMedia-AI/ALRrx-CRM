@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Slice.Application.DTOs;
 using Slice.Domain.Entities;
 using Slice.Domain.Interfaces;
+using Slice.Infrastructure.Excel;
 
 namespace Slice.Api.Controllers;
 
@@ -15,8 +16,13 @@ namespace Slice.Api.Controllers;
 public sealed class ReportsController : ControllerBase
 {
     private readonly IReportRepository _reports;
+    private readonly TemplateGeneratorService _templateGenerator;
 
-    public ReportsController(IReportRepository reports) => _reports = reports;
+    public ReportsController(IReportRepository reports, TemplateGeneratorService templateGenerator)
+    {
+        _reports = reports;
+        _templateGenerator = templateGenerator;
+    }
 
     // ─── Read endpoints (all authenticated users) ─────────────────────────────
 
@@ -88,8 +94,54 @@ public sealed class ReportsController : ControllerBase
         if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path))
             return NotFound(new { error = "Export file not found. Re-process the report." });
 
-        // PhysicalFile streams the file directly to the response — avoids loading it into memory.
+        // PhysicalFile streams the file directamente to the response — avoids loading it into memory.
         return PhysicalFile(path, contentType, $"Slice_Report_{report.ReportDate:yyyyMMdd}.{ext}");
+    }
+
+    /// <summary>
+    /// Descarga una plantilla Excel editable con las tres hojas esperadas por
+    /// <c>ExcelParserService</c> (<c>Daily Global</c>, <c>Daily Agent</c>,
+    /// <c>Shop Daily</c>). Si el reporte ya tiene datos, la plantilla viene
+    /// pre-rellenada; si no, las hojas se devuelven vacías para que el usuario
+    /// las complete a mano y las suba de vuelta.
+    /// </summary>
+    [HttpGet("{reportId}/template")]
+    public async Task<IActionResult> Template(string reportId)
+    {
+        var report = await _reports.GetByIdAsync(reportId);
+        if (report == null) return NotFound();
+
+        if (!User.IsInRole("Admin") && !report.GeneratedByEmail.Equals(GetCurrentEmail(), StringComparison.OrdinalIgnoreCase))
+            return Forbid();
+
+        var outDir = Path.Combine(Path.GetTempPath(), "slice", "templates");
+        var path = _templateGenerator.BuildTemplate(report, outDir);
+        return PhysicalFile(
+            path,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"Slice_Template_{report.ReportDate:yyyyMMdd}.xlsx");
+    }
+
+    /// <summary>
+    /// Descarga una plantilla Excel vacía (sin asociar a un reporte existente).
+    /// Útil cuando todavía no hay reportes y el usuario quiere empezar a llenar
+    /// datos a mano antes de subir el ZIP.
+    /// </summary>
+    [HttpGet("template/blank")]
+    public IActionResult BlankTemplate()
+    {
+        var empty = new SliceReport
+        {
+            Id          = Guid.NewGuid().ToString(),
+            ReportDate  = DateTime.UtcNow.Date,
+            GeneratedAt = DateTime.UtcNow,
+        };
+        var outDir = Path.Combine(Path.GetTempPath(), "slice", "templates");
+        var path = _templateGenerator.BuildTemplate(empty, outDir);
+        return PhysicalFile(
+            path,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "Slice_Template_Blank.xlsx");
     }
 
     // ─── Edit endpoints (Admin only) ─────────────────────────────────────────

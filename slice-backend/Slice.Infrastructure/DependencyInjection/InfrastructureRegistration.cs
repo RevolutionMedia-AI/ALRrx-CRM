@@ -38,6 +38,7 @@ public static class InfrastructureRegistration
         services.AddScoped<IExcelParserService, ExcelParserService>();
         services.AddScoped<IReportMergeService, ReportMergeService>();
         services.AddScoped<IFileProcessingOrchestrator, FileProcessingOrchestrator>();
+        services.AddScoped<TemplateGeneratorService>();
 
         // User seed (runs on startup)
         services.AddHostedService<UserSeedService>();
