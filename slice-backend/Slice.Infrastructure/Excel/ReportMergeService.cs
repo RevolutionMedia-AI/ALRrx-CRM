@@ -166,9 +166,7 @@ public sealed class ReportMergeService : IReportMergeService
         // ── Bloque Global ─────────────────────────────────────────────────────
         sb.AppendLine("=== Global ===");
         sb.AppendLine("Pod,Queued,Handle,Missed Calls,Transferred Calls,%Queued,%Handled,%missed,%Transferred,Conv %,Order Count,Refunded Orders,% Orders with errors");
-        var globalRows = report.DailyGlobal.Count > 0
-            ? report.DailyGlobal.ToList()
-            : GetPlaceholderGlobalRows();
+        var globalRows = ResolveGlobalRowsForExport(report);
         foreach (var g in globalRows)
             sb.AppendLine($"{g.Pod},{g.Queued},{g.Handled},{g.MissedCalls},{g.TransferredCalls}," +
                           $"{g.PctQueued:F2},{g.PctHandled:F2},{g.PctMissed:F2},{g.PctTransferred:F2}," +
@@ -260,9 +258,7 @@ public sealed class ReportMergeService : IReportMergeService
         });
         row++;
 
-        var globalRows = report.DailyGlobal.Count > 0
-            ? report.DailyGlobal.ToList()
-            : GetPlaceholderGlobalRows();
+        var globalRows = ResolveGlobalRowsForExport(report);
 
         foreach (var g in globalRows)
         {
@@ -281,6 +277,87 @@ public sealed class ReportMergeService : IReportMergeService
             ws.Cells[row, 13].Value = g.PctOrdersWithErrors;
             row++;
         }
+    }
+
+    /// <summary>
+    /// Resuelve las filas del bloque Global. Orden de prioridad:
+    /// 1. <c>report.DailyGlobal</c> si tiene al menos una fila con datos
+    ///    reales (volumenes distintos de 0). Esto cubre el caso del .zip diario
+    ///    bien parseado.
+    /// 2. Agregacion de <c>report.ShopCallMetrics</c> por <c>PodId</c>
+    ///    (tomando la WeekStart mas reciente por pod). Esto cubre el caso
+    ///    actual donde DailyGlobal esta vacio o solo tiene sumas malas de
+    ///    14 dias con los % colapsados a 0.
+    /// 3. Placeholders con los PODs tipicos (ES-12/16/17/18).
+    /// </summary>
+    private static List<DailyGlobalRow> ResolveGlobalRowsForExport(SliceReport report)
+    {
+        var dailyWithData = report.DailyGlobal
+            .Where(r => r.Queued + r.Handled + r.MissedCalls + r.TransferredCalls +
+                        r.OrderCount + r.RefundedOrders > 0)
+            .ToList();
+        if (dailyWithData.Count > 0)
+        {
+            return report.DailyGlobal.ToList();
+        }
+
+        if (report.ShopCallMetrics.Count > 0)
+        {
+            return AggregateShopMetricsByPod(report.ShopCallMetrics);
+        }
+
+        return GetPlaceholderGlobalRows();
+    }
+
+    /// <summary>
+    /// Agrega las metricas de llamadas de <c>ShopCallMetrics</c> agrupadas por
+    /// <c>PodId</c>, tomando la WeekStart mas reciente por pod. Los volumenes
+    /// se suman, los porcentajes se promedian ponderados por TotalCalls.
+    /// OrderCount/RefundedOrders/%OrdersWithErrors quedan en 0 porque esas
+    /// metricas no existen en ShopCallMetrics; se mantienen en 0 para que el
+    /// usuario sepa que no hay datos de orders por POD en el snapshot.
+    /// </summary>
+    private static List<DailyGlobalRow> AggregateShopMetricsByPod(IEnumerable<ShopCallMetricsRow> metrics)
+    {
+        var result = new List<DailyGlobalRow>();
+
+        foreach (var podGroup in metrics
+            .GroupBy(m => string.IsNullOrWhiteSpace(m.PodId) ? "(unassigned)" : m.PodId))
+        {
+            // Tomar la WeekStart mas reciente por pod (cada tienda puede tener
+            // multiples semanas; aqui sumamos todo porque el snapshot no
+            // distingue periodicidad).
+            var rows = podGroup.ToList();
+            if (rows.Count == 0) continue;
+
+            int totalCalls   = rows.Sum(r => r.TotalCalls);
+            int overflow     = rows.Sum(r => r.OverflowCalls);
+            int queued       = rows.Sum(r => r.QueueCalls);
+            int handled      = rows.Sum(r => r.HandledCalls);
+            int missed       = rows.Sum(r => r.MissedCalls);
+            int transferred  = rows.Sum(r => r.TransferredCalls);
+
+            result.Add(new DailyGlobalRow
+            {
+                Pod                = podGroup.Key,
+                Queued             = queued,
+                Handled            = handled,
+                MissedCalls        = missed,
+                TransferredCalls   = transferred,
+                PctQueued          = totalCalls > 0 ? (double)queued      / totalCalls * 100 : 0,
+                PctHandled         = totalCalls > 0 ? (double)handled     / totalCalls * 100 : 0,
+                PctMissed          = totalCalls > 0 ? (double)missed      / queued   * 100 : 0,
+                PctTransferred     = totalCalls > 0 ? (double)transferred / totalCalls * 100 : 0,
+                ConvPct            = 0,
+                OrderCount         = 0,
+                RefundedOrders     = 0,
+                PctOrdersWithErrors= 0,
+            });
+        }
+
+        return result
+            .OrderBy(r => r.Pod, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     /// <summary>
@@ -445,76 +522,50 @@ public sealed class ReportMergeService : IReportMergeService
     }
 
     /// <summary>
-    /// Construye las filas de Shop cruzando <c>ShopDaily</c> (que tiene
-    /// OrderCount/Conv/Refunded/Error) con <c>ShopCallMetrics</c> (que tiene las
-    /// metricas de llamadas por Shop+Pod+Week). Cuando ambos existen para un
-    /// mismo shop, se prefiere la fila de ShopCallMetrics con la WeekStart mas
-    /// reciente. Si solo hay ShopDaily, igual se emite la fila con las
-    /// metricas de llamadas en 0/vacias.
+    /// Construye las filas de Shop para el snapshot. La fuente principal es
+    /// <c>ShopCallMetrics</c> (que tiene ShopId, ShopName, PodId y todas las
+    /// metricas de llamadas por semana/dia). Se enriquece con
+    /// <c>ShopDaily</c> (que tiene OrderCount/Refunded/Conv/Error) cruzando
+    /// por <c>ShopName</c>.
+    ///
+    /// Decisión clave: SOLO emitimos filas que tienen metricas de llamadas
+    /// reales. NO iteramos <c>ShopDaily</c> para emitir filas con todos los
+    /// volumenes en 0 y 'Pod' como ShopId, porque eso ensucia el reporte con
+    /// cientos de tiendas historicas que no tienen datos utiles en este
+    /// snapshot. Si una tienda esta en ShopDaily pero no en ShopCallMetrics,
+    /// se omite (sus datos de orders ya estan en el Snapshot si se necesitan
+    /// via otro endpoint).
     /// </summary>
     private static List<ShopRowExport> BuildShopRowsForExport(SliceReport report)
     {
-        if (report.ShopDaily.Count == 0 && report.ShopCallMetrics.Count == 0)
+        if (report.ShopCallMetrics.Count == 0)
         {
             return new List<ShopRowExport>();
         }
 
-        var metricsByShop = report.ShopCallMetrics
-            .GroupBy(m => m.ShopName, StringComparer.OrdinalIgnoreCase)
+        var ordersByShop = report.ShopDaily
+            .GroupBy(s => s.ShopName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 g => g.Key,
-                g => g.OrderByDescending(m => m.WeekStart).First(),
+                g => g.First(),
                 StringComparer.OrdinalIgnoreCase);
 
-        var seenShops = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Agrupar ShopCallMetrics por (ShopName, PodId) y tomar la fila con la
+        // WeekStart mas reciente. Asi una misma tienda con varios PODs sale
+        // como varias filas (una por POD), que es lo que el template muestra.
         var result = new List<ShopRowExport>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var s in report.ShopDaily)
+        foreach (var grp in report.ShopCallMetrics
+            .GroupBy(m => (m.ShopName, m.PodId), comparer: ShopPodKeyComparer.Instance)
+            .OrderBy(g => g.Key.PodId).ThenBy(g => g.Key.ShopName))
         {
-            seenShops.Add(s.ShopName);
-            if (metricsByShop.TryGetValue(s.ShopName, out var m))
-            {
-                result.Add(new ShopRowExport
-                {
-                    PodLabel        = string.IsNullOrWhiteSpace(m.PodId) ? "Pod" : m.PodId,
-                    ShopId          = m.ShopId,
-                    TotalCalls      = m.TotalCalls,
-                    OverflowCalls   = m.OverflowCalls,
-                    QueueCalls      = m.QueueCalls,
-                    HandledCalls    = m.HandledCalls,
-                    MissedCalls     = m.MissedCalls,
-                    TransferredCalls= m.TransferredCalls,
-                    PctOverflow     = m.PctOverflow,
-                    PctQueued       = m.PctQueued,
-                    PctHandled      = m.PctHandled,
-                    PctMissed       = m.PctMissedOfQueued,
-                    PctTransferred  = m.PctTransferred,
-                    OrderCount      = s.TotalOrders,
-                    ConversionRate  = s.ConversionRate,
-                    RefundedOrders  = s.RefundedOrders,
-                    ErrorRate       = s.ErrorRate,
-                });
-            }
-            else
-            {
-                result.Add(new ShopRowExport
-                {
-                    PodLabel        = "Pod",
-                    ShopId          = string.Empty,
-                    OrderCount      = s.TotalOrders,
-                    ConversionRate  = s.ConversionRate,
-                    RefundedOrders  = s.RefundedOrders,
-                    ErrorRate       = s.ErrorRate,
-                });
-            }
-        }
+            var m = grp.OrderByDescending(x => x.WeekStart).First();
+            if (string.IsNullOrWhiteSpace(m.ShopName)) continue;
 
-        // Shops que solo tienen metricas de llamadas (sin ShopDaily): los
-        // incluimos para no perder datos.
-        foreach (var kv in metricsByShop)
-        {
-            if (seenShops.Contains(kv.Key)) continue;
-            var m = kv.Value;
+            ShopDailyRow? orders = null;
+            ordersByShop.TryGetValue(m.ShopName, out orders);
+
             result.Add(new ShopRowExport
             {
                 PodLabel        = string.IsNullOrWhiteSpace(m.PodId) ? "Pod" : m.PodId,
@@ -530,10 +581,28 @@ public sealed class ReportMergeService : IReportMergeService
                 PctHandled      = m.PctHandled,
                 PctMissed       = m.PctMissedOfQueued,
                 PctTransferred  = m.PctTransferred,
+                OrderCount      = orders?.TotalOrders    ?? 0,
+                ConversionRate  = orders?.ConversionRate ?? 0,
+                RefundedOrders  = orders?.RefundedOrders ?? 0,
+                ErrorRate       = orders?.ErrorRate      ?? 0,
             });
+            seen.Add(m.ShopName);
         }
 
         return result;
+    }
+
+    /// <summary>Comparer case-insensitive para tuplas (ShopName, PodId).</summary>
+    private sealed class ShopPodKeyComparer : IEqualityComparer<(string ShopName, string PodId)>
+    {
+        public static readonly ShopPodKeyComparer Instance = new();
+        public bool Equals((string ShopName, string PodId) a, (string ShopName, string PodId) b) =>
+            string.Equals(a.ShopName, b.ShopName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(a.PodId,    b.PodId,    StringComparison.OrdinalIgnoreCase);
+        public int GetHashCode((string ShopName, string PodId) obj) =>
+            HashCode.Combine(
+                obj.ShopName?.ToLowerInvariant(),
+                obj.PodId?.ToLowerInvariant());
     }
 
     /// <summary>

@@ -2,8 +2,9 @@
 # Bumping CACHE_BUST below forces Docker to invalidate every cache layer
 # downstream — use this when slice-backend changes are not being picked up by
 # the registry. The default of 1 is harmless; CI overrides it to the commit SHA.
-# 2026-06-09-bust-4: snapshot sheet + fix de offset Agent (B-M, no A-M)
-ARG CACHE_BUST=2026-06-09-bust-4
+# 2026-06-09-bust-5: fix de exportador (Shop desde ShopCallMetrics unicamente,
+# Global derivado de ShopCallMetrics cuando DailyGlobal esta vacio o malo).
+ARG CACHE_BUST=2026-06-09-bust-5
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend
