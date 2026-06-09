@@ -16,6 +16,15 @@ const STATUS_BADGE: Record<SliceJobStatus, { label: string; classes: string; dot
   Failed: { label: 'Failed', classes: 'bg-deep-rose/10 text-deep-rose border-deep-rose/20', dot: 'bg-deep-rose' },
 };
 
+// Fallback for any status the backend might emit that the frontend hasn't been
+// updated for yet (e.g. "Uploading", or future stages). Prevents the
+// "Cannot read properties of undefined (reading 'classes')" crash.
+const UNKNOWN_BADGE = {
+  label: 'Unknown',
+  classes: 'bg-muted-slate/10 text-muted-slate border-muted-slate/20',
+  dot: 'bg-muted-slate',
+};
+
 function formatUtc(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -85,7 +94,7 @@ export default function AuditLedgerTable({ jobs, loading }: AuditLedgerTableProp
               </tr>
             ) : (
               jobs.map((job) => {
-                const badge = STATUS_BADGE[job.status];
+                const badge = STATUS_BADGE[job.status] ?? UNKNOWN_BADGE;
                 return (
                   <tr
                     key={job.jobId}
