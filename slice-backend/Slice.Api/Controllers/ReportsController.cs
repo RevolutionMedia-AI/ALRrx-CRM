@@ -200,6 +200,67 @@ public sealed class ReportsController : ControllerBase
         return Ok(row);
     }
 
+    // ─── Period endpoints (DB-backed) ──────────────────────────────────────────
+
+    /// <summary>
+    /// Retorna los reportes cuyo <c>ReportDate</c> cae en el dia UTC indicado.
+    /// Acepta <c>?date=YYYY-MM-DD</c> y opcional <c>?pod=ES-12</c> para filtrar
+    /// por POD (filtra las filas internas, no el reporte entero).
+    /// </summary>
+    [HttpGet("daily")]
+    public async Task<IActionResult> GetDaily([FromQuery] string date, [FromQuery] string? pod = null)
+    {
+        if (!TryParseDate(date, out var d))
+            return BadRequest(new { error = "Query 'date' must be a valid YYYY-MM-DD string." });
+        var email = GetCurrentEmail();
+        var reports = User.IsInRole("Admin")
+            ? await _reports.GetByDateAsync(d, pod)
+            : (await _reports.GetByDateAsync(d, pod)).Where(r => r.GeneratedByEmail.Equals(email, StringComparison.OrdinalIgnoreCase)).ToList();
+        return Ok(reports);
+    }
+
+    /// <summary>
+    /// Retorna los reportes cuyo <c>ReportDate</c> cae dentro del rango
+    /// inclusivo [<c>start</c>, <c>end</c>]. Acepta <c>?start=YYYY-MM-DD&amp;end=YYYY-MM-DD</c>
+    /// y opcional <c>?pod=ES-12</c>.
+    /// </summary>
+    [HttpGet("range")]
+    public async Task<IActionResult> GetRange([FromQuery] string start, [FromQuery] string end, [FromQuery] string? pod = null)
+    {
+        if (!TryParseDate(start, out var s) || !TryParseDate(end, out var e))
+            return BadRequest(new { error = "Query 'start' and 'end' must be valid YYYY-MM-DD strings." });
+        if (e < s)
+            return BadRequest(new { error = "'end' must be on or after 'start'." });
+        var email = GetCurrentEmail();
+        var reports = User.IsInRole("Admin")
+            ? await _reports.GetByDateRangeAsync(s, e, pod)
+            : (await _reports.GetByDateRangeAsync(s, e, pod)).Where(r => r.GeneratedByEmail.Equals(email, StringComparison.OrdinalIgnoreCase)).ToList();
+        return Ok(reports);
+    }
+
+    /// <summary>
+    /// Retorna los reportes cuyo <c>ReportDate</c> cae dentro del mes indicado.
+    /// Acepta <c>?year=YYYY&amp;month=MM</c> y opcional <c>?pod=ES-12</c>.
+    /// </summary>
+    [HttpGet("monthly")]
+    public async Task<IActionResult> GetMonthly([FromQuery] int year, [FromQuery] int month, [FromQuery] string? pod = null)
+    {
+        if (year < 1900 || year > 2200 || month < 1 || month > 12)
+            return BadRequest(new { error = "Query 'year' and 'month' must be a valid year (1900-2200) and month (1-12)." });
+        var email = GetCurrentEmail();
+        var reports = User.IsInRole("Admin")
+            ? await _reports.GetByMonthAsync(year, month, pod)
+            : (await _reports.GetByMonthAsync(year, month, pod)).Where(r => r.GeneratedByEmail.Equals(email, StringComparison.OrdinalIgnoreCase)).ToList();
+        return Ok(reports);
+    }
+
+    private static bool TryParseDate(string? raw, out DateOnly date)
+    {
+        date = default;
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        return DateOnly.TryParseExact(raw, "yyyy-MM-dd", out date);
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private string GetCurrentEmail() =>

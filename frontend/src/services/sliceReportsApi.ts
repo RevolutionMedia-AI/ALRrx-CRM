@@ -19,6 +19,52 @@ export async function getSliceReport(reportId: string): Promise<SliceReport> {
   // Normalize: backend may omit empty sections, but every consumer assumes
   // arrays. Defensive defaulting prevents "Cannot read properties of undefined"
   // crashes in the UI when a section is null.
+  return normalizeReport(data);
+}
+
+// ─── Period queries (DB-backed via SQLite) ────────────────────────────────────
+
+/**
+ * Returns reports whose ReportDate falls on the given UTC day. The backend
+ * applies the standard access policy (admins see all, others see their own).
+ * Optionally filter rows by Pod inside the report via `pod`.
+ */
+export async function getSliceReportsByDate(
+  date: string,
+  pod?: string
+): Promise<SliceReport[]> {
+  const params: Record<string, string> = { date };
+  if (pod) params.pod = pod;
+  const { data } = await sliceClient.get<SliceReport[]>('/reports/daily', { params });
+  return (data ?? []).map(normalizeReport);
+}
+
+/** Returns reports whose ReportDate falls in [start, end] inclusive. */
+export async function getSliceReportsByDateRange(
+  start: string,
+  end: string,
+  pod?: string
+): Promise<SliceReport[]> {
+  const params: Record<string, string> = { start, end };
+  if (pod) params.pod = pod;
+  const { data } = await sliceClient.get<SliceReport[]>('/reports/range', { params });
+  return (data ?? []).map(normalizeReport);
+}
+
+/** Returns reports whose ReportDate falls within the given month (1-12). */
+export async function getSliceReportsByMonth(
+  year: number,
+  month: number,
+  pod?: string
+): Promise<SliceReport[]> {
+  const params: Record<string, string | number> = { year, month };
+  if (pod) params.pod = pod;
+  const { data } = await sliceClient.get<SliceReport[]>('/reports/monthly', { params });
+  return (data ?? []).map(normalizeReport);
+}
+
+/** Applies the same defensive defaulting as getSliceReport to a report payload. */
+function normalizeReport(data: SliceReport): SliceReport {
   return {
     ...data,
     shopDaily:        data.shopDaily        ?? [],

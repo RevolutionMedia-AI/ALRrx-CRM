@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Slice.Application.Interfaces;
@@ -5,6 +6,7 @@ using Slice.Domain.Interfaces;
 using Slice.Infrastructure.Auth;
 using Slice.Infrastructure.Email;
 using Slice.Infrastructure.Excel;
+using Slice.Infrastructure.Persistence;
 using Slice.Infrastructure.Processing;
 using Slice.Infrastructure.Repositories;
 using Slice.Infrastructure.Seeding;
@@ -29,9 +31,16 @@ public static class InfrastructureRegistration
         services.AddSingleton<InMemoryUserRepository>();
         services.AddSingleton<IUserRepository>(sp => sp.GetRequiredService<InMemoryUserRepository>());
 
-        // Repositories (in-memory; swap for DB implementations without changing callers)
+        // EF Core + SQLite for persistent report storage. The default connection
+        // string points at /data/slice.db, which the Dockerfile/Docker Compose
+        // maps to a persistent volume. Override in appsettings for tests.
+        var connectionString = configuration["Slice:Database:ConnectionString"]
+            ?? "Data Source=/data/slice.db";
+        services.AddDbContext<SliceDbContext>(opts => opts.UseSqlite(connectionString));
+        services.AddScoped<IReportRepository, EfReportRepository>();
+        // Job repository still uses in-memory: jobs are short-lived and we don't
+        // need historical queries on them.
         services.AddSingleton<IJobRepository, InMemoryJobRepository>();
-        services.AddSingleton<IReportRepository, InMemoryReportRepository>();
 
         // File processing
         services.AddScoped<IZipExtractionService, ZipExtractionService>();

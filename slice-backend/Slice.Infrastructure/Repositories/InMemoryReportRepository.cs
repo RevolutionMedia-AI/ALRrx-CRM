@@ -47,4 +47,46 @@ public sealed class InMemoryReportRepository : IReportRepository
 
         return Task.FromResult(result);
     }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<SliceReport>> GetByDateAsync(DateOnly date, string? podFilter = null)
+    {
+        var dayStart = date.ToDateTime(TimeOnly.MinValue);
+        var dayEnd = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        IReadOnlyList<SliceReport> result = _store.Values
+            .Where(r => r.ReportDate >= dayStart && r.ReportDate < dayEnd)
+            .Where(r => string.IsNullOrWhiteSpace(podFilter)
+                         || r.DailyGlobal.Any(g => g.Pod.Equals(podFilter.Trim(), StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(r => r.GeneratedAt)
+            .ToList();
+        return Task.FromResult(result);
+    }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<SliceReport>> GetByDateRangeAsync(DateOnly start, DateOnly end, string? podFilter = null)
+    {
+        var rangeStart = start.ToDateTime(TimeOnly.MinValue);
+        var rangeEnd = end.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        IReadOnlyList<SliceReport> result = _store.Values
+            .Where(r => r.ReportDate >= rangeStart && r.ReportDate < rangeEnd)
+            .Where(r => string.IsNullOrWhiteSpace(podFilter)
+                         || r.DailyGlobal.Any(g => g.Pod.Equals(podFilter.Trim(), StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(r => r.ReportDate)
+            .ToList();
+        return Task.FromResult(result);
+    }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<SliceReport>> GetByMonthAsync(int year, int month, string? podFilter = null)
+    {
+        var firstOfMonth = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var firstOfNext  = firstOfMonth.AddMonths(1);
+        IReadOnlyList<SliceReport> result = _store.Values
+            .Where(r => r.ReportDate >= firstOfMonth && r.ReportDate < firstOfNext)
+            .Where(r => string.IsNullOrWhiteSpace(podFilter)
+                         || r.DailyGlobal.Any(g => g.Pod.Equals(podFilter.Trim(), StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(r => r.ReportDate)
+            .ToList();
+        return Task.FromResult(result);
+    }
 }

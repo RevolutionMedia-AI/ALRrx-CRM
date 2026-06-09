@@ -2,10 +2,10 @@
 # Bumping CACHE_BUST below forces Docker to invalidate every cache layer
 # downstream — use this when slice-backend changes are not being picked up by
 # the registry. The default of 1 is harmless; CI overrides it to the commit SHA.
-# 2026-06-09-bust-9: reescribir TryParsePodLevelPivoted para que lea
-# todas las metricas (11 en diario, 14 en semanal) y use la fecha mas
-# reciente en vez de sumar todos los dias/semanas.
-ARG CACHE_BUST=2026-06-09-bust-9
+# 2026-06-09-bust-10: persistir SliceReports en SQLite via EF Core 8.0.10
+# (migracion 20260609234608_InitialSchema), exponer /reports/daily, /range
+# y /monthly, y anadir selector de periodo en el frontend.
+ARG CACHE_BUST=2026-06-09-bust-10
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend
@@ -45,6 +45,9 @@ RUN dotnet publish Slice.Api/Slice.Api.csproj -c Release -o /publish-slice
 # ─── Stage 3: Runtime image (nginx + 2 dotnet apps managed by supervisord) ────
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 RUN apt-get update && apt-get install -y nginx supervisor && rm -rf /var/lib/apt/lists/*
+# Ensure the SQLite path exists so the slice-api can create /data/slice.db on
+# first boot even if the Northflank volume is mounted slightly later.
+RUN mkdir -p /data && chmod 0777 /data
 
 # Static SPA
 COPY --from=frontend /app/dist /usr/share/nginx/html

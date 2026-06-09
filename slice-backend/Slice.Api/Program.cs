@@ -1,11 +1,13 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OfficeOpenXml;
 using Slice.Application.DependencyInjection;
 using Slice.Api.Middleware;
 using Slice.Infrastructure.DependencyInjection;
+using Slice.Infrastructure.Persistence;
 
 // ─── EPPlus license ───────────────────────────────────────────────────────────
 // Must be called once before any ExcelPackage is created.
@@ -141,5 +143,37 @@ app.Use(async (ctx, next) =>
 });
 
 app.MapControllers();
+
+// ─── DB initialization ────────────────────────────────────────────────────────
+// Apply pending EF Core migrations on startup so the .db schema is always
+// up to date with the latest entity model. This is idempotent (no-op if
+// there are no pending migrations) and runs after the host is built so
+// scoped services like DbContext can be resolved.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<SliceDbContext>();
+    try
+    {
+        db.Database.Migrate();
+        Console.WriteLine($"[slice-api] database migrated: {db.Database.GetConnectionString()}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[slice-api] FATAL: database migration failed: {ex.Message}");
+        throw;
+    }
+}
+
+// DEBUG: DB diagnostics endpoint — confirms the SQLite file path and the
+// number of reports persisted. Useful to validate the persistent volume
+// is mounted at the expected path.
+app.MapGet("/debug/db", (SliceDbContext db) => Results.Ok(new
+{
+    connectionString = db.Database.GetConnectionString(),
+    reportCount      = db.Reports.Count(),
+    jobCount         = db.ProcessingJobs.Count(),
+    dailyGlobalRows  = db.DailyGlobal.Count(),
+    shopCallMetricsRows = db.ShopCallMetrics.Count(),
+}));
 
 app.Run();

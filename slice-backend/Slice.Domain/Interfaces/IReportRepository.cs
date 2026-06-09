@@ -19,4 +19,16 @@ public interface IReportRepository
 
     /// <summary>Returns all reports in the store, newest first.</summary>
     Task<IReadOnlyList<SliceReport>> GetAllAsync();
+
+    // ── Period queries (DB-backed only) ─────────────────────────────────────
+
+    /// <summary>Returns all reports whose <c>ReportDate</c> falls on the given UTC day.</summary>
+    Task<IReadOnlyList<SliceReport>> GetByDateAsync(DateOnly date, string? podFilter = null);
+
+    /// <summary>Returns all reports whose <c>ReportDate</c> falls within the inclusive range.</summary>
+    Task<IReadOnlyList<SliceReport>> GetByDateRangeAsync(DateOnly start, DateOnly end, string? podFilter = null);
+
+    /// <summary>Returns all reports whose <c>ReportDate</c> falls within the given month.</summary>
+    Task<IReadOnlyList<SliceReport>> GetByMonthAsync(int year, int month, string? podFilter = null);
 }
+

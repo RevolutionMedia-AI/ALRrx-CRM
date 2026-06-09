@@ -17,6 +17,7 @@ import SliceFileUploadPage from './slice/pages/SliceFileUploadPage';
 import SlicePlaceholderPage from './slice/pages/SlicePlaceholderPage';
 import SlicePodOverviewPage from './slice/pages/SlicePodOverviewPage';
 import SliceHistoryAuditPage from './slice/pages/SliceHistoryAuditPage';
+import SliceReportsPeriodPage from './slice/pages/SliceReportsPeriodPage';
 import SliceLayout from './slice/components/SliceLayout';
 import { useState, useEffect, type ReactNode } from 'react';
 
@@ -160,6 +161,14 @@ function AppRoutes() {
         element={
           <SliceProtectedRoute>
             <SliceHistoryAuditPage />
+          </SliceProtectedRoute>
+        }
+      />
+      <Route
+        path="/slice/reports-period"
+        element={
+          <SliceProtectedRoute>
+            <SliceReportsPeriodPage />
           </SliceProtectedRoute>
         }
       />

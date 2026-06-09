@@ -12,12 +12,13 @@ const navItems: NavItem[] = [
   { label: 'POD Overview', path: '/slice/pod', icon: 'dashboard' },
   { label: 'Agent Overview', path: '/slice/agents', icon: 'groups' },
   { label: 'Shop Overview', path: '/slice', icon: 'storefront' },
+  { label: 'Reports by Period', path: '/slice/reports-period', icon: 'calendar_month' },
   { label: 'File Upload Center', path: '/slice/upload', icon: 'upload_file' },
   { label: 'History & Audit', path: '/slice/history', icon: 'history' },
 ];
 
-// Reorder to match mockup (POD first, then Agents, then Shop, then Upload, then History)
-const navOrder = ['/slice/pod', '/slice/agents', '/slice', '/slice/upload', '/slice/history'];
+// Reorder to match mockup (POD first, then Agents, then Shop, then Period, then Upload, then History)
+const navOrder = ['/slice/pod', '/slice/agents', '/slice', '/slice/reports-period', '/slice/upload', '/slice/history'];
 const sortedNav = [...navItems].sort(
   (a, b) => navOrder.indexOf(a.path) - navOrder.indexOf(b.path)
 );
