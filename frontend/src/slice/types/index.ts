@@ -26,6 +26,7 @@ export interface SliceUploadJobResponse {
 
 export interface SliceShopDailyRow {
   shopName: string;
+  shopId: string;
   totalOrders: number;
   refundedOrders: number;
   errorRate: number;

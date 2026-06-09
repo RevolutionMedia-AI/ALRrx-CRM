@@ -88,6 +88,7 @@ public sealed class DailyAgentRow
 public sealed class ShopDailyRow
 {
     public string ShopName       { get; set; } = string.Empty;
+    public string ShopId         { get; set; } = string.Empty;
     public int    TotalOrders    { get; set; }
     public int    RefundedOrders { get; set; }
     public double ErrorRate      { get; set; }

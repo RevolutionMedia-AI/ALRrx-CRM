@@ -777,6 +777,7 @@ public sealed class ExcelParserService : IExcelParserService
             report.ShopDaily.Add(new ShopDailyRow
             {
                 ShopName       = shopId,
+                ShopId         = shopId,
                 TotalOrders    = total,
                 RefundedOrders = refunded,
                 ErrorRate      = SafeAvg(pctErrors, blocks),
@@ -1360,6 +1361,7 @@ public sealed class ExcelParserService : IExcelParserService
             report.ShopDaily.Add(new ShopDailyRow
             {
                 ShopName       = $"WEEKLY_ORDERS:{shopId}",
+                ShopId         = shopId,
                 TotalOrders    = total,
                 RefundedOrders = refunded,
                 ErrorRate      = SafeAvg(pctErrors, blocks),

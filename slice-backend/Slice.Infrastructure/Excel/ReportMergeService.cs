@@ -92,9 +92,13 @@ public sealed class ReportMergeService : IReportMergeService
                 .Select(grp =>
                 {
                     var e = grp.ToList();
+                    // Tomamos el primer ShopId no vacio del grupo (todos deberian
+                    // ser iguales para una misma ShopName).
+                    var shopId = e.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.ShopId))?.ShopId ?? string.Empty;
                     return new ShopDailyRow
                     {
                         ShopName       = grp.Key,
+                        ShopId         = shopId,
                         TotalOrders    = e.Sum(x => x.TotalOrders),
                         RefundedOrders = e.Sum(x => x.RefundedOrders),
                         ErrorRate      = SafeAvg(e, x => x.ErrorRate),
@@ -529,8 +533,8 @@ public sealed class ReportMergeService : IReportMergeService
     /// Construye las filas de Shop para el snapshot. La fuente principal es
     /// <c>ShopCallMetrics</c> (que tiene ShopId, ShopName, PodId y todas las
     /// metricas de llamadas por semana/dia). Se enriquece con
-    /// <c>ShopDaily</c> (que tiene OrderCount/Refunded/Conv/Error) cruzando
-    /// por <c>ShopName</c>.
+    /// <c>ShopDaily</c> (que tiene ShopId, OrderCount, RefundedOrders,
+    /// ErrorRate, ConversionRate) cruzando por <c>ShopId</c>.
     ///
     /// Decisión clave: SOLO emitimos filas que tienen metricas de llamadas
     /// reales. NO iteramos <c>ShopDaily</c> para emitir filas con todos los
@@ -547,28 +551,28 @@ public sealed class ReportMergeService : IReportMergeService
             return new List<ShopRowExport>();
         }
 
-        var ordersByShop = report.ShopDaily
-            .GroupBy(s => s.ShopName, StringComparer.OrdinalIgnoreCase)
+        var ordersByShopId = report.ShopDaily
+            .Where(s => !string.IsNullOrWhiteSpace(s.ShopId))
+            .GroupBy(s => s.ShopId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 g => g.Key,
                 g => g.First(),
                 StringComparer.OrdinalIgnoreCase);
 
-        // Agrupar ShopCallMetrics por (ShopName, PodId) y tomar la fila con la
+        // Agrupar ShopCallMetrics por (ShopId, PodId) y tomar la fila con la
         // WeekStart mas reciente. Asi una misma tienda con varios PODs sale
         // como varias filas (una por POD), que es lo que el template muestra.
         var result = new List<ShopRowExport>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var grp in report.ShopCallMetrics
-            .GroupBy(m => (m.ShopName, m.PodId), comparer: ShopPodKeyComparer.Instance)
-            .OrderBy(g => g.Key.PodId).ThenBy(g => g.Key.ShopName))
+            .GroupBy(m => (m.ShopId, m.PodId), comparer: ShopPodKeyComparer.Instance)
+            .OrderBy(g => g.Key.PodId).ThenBy(g => g.Key.ShopId))
         {
             var m = grp.OrderByDescending(x => x.WeekStart).First();
-            if (string.IsNullOrWhiteSpace(m.ShopName)) continue;
+            if (string.IsNullOrWhiteSpace(m.ShopId)) continue;
 
             ShopDailyRow? orders = null;
-            ordersByShop.TryGetValue(m.ShopName, out orders);
+            ordersByShopId.TryGetValue(m.ShopId, out orders);
 
             result.Add(new ShopRowExport
             {
@@ -590,22 +594,21 @@ public sealed class ReportMergeService : IReportMergeService
                 RefundedOrders  = orders?.RefundedOrders ?? 0,
                 ErrorRate       = orders?.ErrorRate      ?? 0,
             });
-            seen.Add(m.ShopName);
         }
 
         return result;
     }
 
-    /// <summary>Comparer case-insensitive para tuplas (ShopName, PodId).</summary>
-    private sealed class ShopPodKeyComparer : IEqualityComparer<(string ShopName, string PodId)>
+    /// <summary>Comparer case-insensitive para tuplas (ShopId, PodId).</summary>
+    private sealed class ShopPodKeyComparer : IEqualityComparer<(string ShopId, string PodId)>
     {
         public static readonly ShopPodKeyComparer Instance = new();
-        public bool Equals((string ShopName, string PodId) a, (string ShopName, string PodId) b) =>
-            string.Equals(a.ShopName, b.ShopName, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(a.PodId,    b.PodId,    StringComparison.OrdinalIgnoreCase);
-        public int GetHashCode((string ShopName, string PodId) obj) =>
+        public bool Equals((string ShopId, string PodId) a, (string ShopId, string PodId) b) =>
+            string.Equals(a.ShopId, b.ShopId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(a.PodId, b.PodId, StringComparison.OrdinalIgnoreCase);
+        public int GetHashCode((string ShopId, string PodId) obj) =>
             HashCode.Combine(
-                obj.ShopName?.ToLowerInvariant(),
+                obj.ShopId?.ToLowerInvariant(),
                 obj.PodId?.ToLowerInvariant());
     }
 
