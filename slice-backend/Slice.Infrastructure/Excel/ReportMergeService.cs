@@ -289,9 +289,10 @@ public sealed class ReportMergeService : IReportMergeService
     ///    reales (volumenes distintos de 0). Esto cubre el caso del .zip diario
     ///    bien parseado.
     /// 2. Agregacion de <c>report.ShopCallMetrics</c> por <c>PodId</c>
-    ///    (tomando la WeekStart mas reciente por pod). Esto cubre el caso
-    ///    actual donde DailyGlobal esta vacio o solo tiene sumas malas de
-    ///    14 dias con los % colapsados a 0.
+    ///    (tomando la WeekStart mas reciente por shop) + cruzar con
+    ///    <c>ShopDaily</c> para obtener OrderCount/RefundedOrders/ErrorRate
+    ///    por POD. Esto cubre el caso actual donde DailyGlobal esta vacio
+    ///    o solo tiene sumas malas de 14 dias con los % colapsados a 0.
     /// 3. Placeholders con los PODs tipicos (ES-12/16/17/18).
     /// </summary>
     private static List<DailyGlobalRow> ResolveGlobalRowsForExport(SliceReport report)
@@ -307,7 +308,7 @@ public sealed class ReportMergeService : IReportMergeService
 
         if (report.ShopCallMetrics.Count > 0)
         {
-            return AggregateShopMetricsByPod(report.ShopCallMetrics);
+            return AggregateShopMetricsByPod(report);
         }
 
         return GetPlaceholderGlobalRows();
@@ -315,22 +316,60 @@ public sealed class ReportMergeService : IReportMergeService
 
     /// <summary>
     /// Agrega las metricas de llamadas de <c>ShopCallMetrics</c> agrupadas por
-    /// <c>PodId</c>, tomando la WeekStart mas reciente por pod. Los volumenes
-    /// se suman, los porcentajes se promedian ponderados por TotalCalls.
-    /// OrderCount/RefundedOrders/%OrdersWithErrors quedan en 0 porque esas
-    /// metricas no existen en ShopCallMetrics; se mantienen en 0 para que el
-    /// usuario sepa que no hay datos de orders por POD en el snapshot.
+    /// <c>PodId</c>, tomando la WeekStart mas reciente por (ShopId, PodId).
+    /// Los volumenes se suman, los porcentajes se recalculan a partir de
+    /// los volumenes agregados.
+    /// Ademas, cruza con <c>ShopDaily</c> por <c>ShopId</c> para obtener
+    /// OrderCount, RefundedOrders y PctOrdersWithErrors por POD (sumando
+    /// las metricas de orders de cada tienda que pertenece al POD).
     /// </summary>
-    private static List<DailyGlobalRow> AggregateShopMetricsByPod(IEnumerable<ShopCallMetricsRow> metrics)
+    private static List<DailyGlobalRow> AggregateShopMetricsByPod(SliceReport report)
     {
+        var metrics = report.ShopCallMetrics;
+
+        // Mapeo ShopId -> PodId usando la WeekStart mas reciente de cada shop.
+        var shopToPod = metrics
+            .Where(m => !string.IsNullOrWhiteSpace(m.ShopId) && !string.IsNullOrWhiteSpace(m.PodId))
+            .GroupBy(m => m.ShopId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(m => m.WeekStart).First().PodId,
+                StringComparer.OrdinalIgnoreCase);
+
+        // Mapeo ShopId -> datos de orders (del parser de shop_level_-_orders_metrics).
+        var ordersByShop = report.ShopDaily
+            .Where(s => !string.IsNullOrWhiteSpace(s.ShopId))
+            .GroupBy(s => s.ShopId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.First(),
+                StringComparer.OrdinalIgnoreCase);
+
+        // Pre-agregar orders por PodId para no recalcular en cada grupo.
+        var ordersByPod = new Dictionary<string, (int Orders, int Refunded, double ErrSum, int ErrCount)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kv in ordersByShop)
+        {
+            if (!shopToPod.TryGetValue(kv.Key, out var pod)) continue;
+            var s = kv.Value;
+            if (!ordersByPod.TryGetValue(pod, out var agg))
+            {
+                agg = (0, 0, 0, 0);
+            }
+            agg.Orders   += s.TotalOrders;
+            agg.Refunded += s.RefundedOrders;
+            if (s.ErrorRate > 0)
+            {
+                agg.ErrSum  += s.ErrorRate;
+                agg.ErrCount += 1;
+            }
+            ordersByPod[pod] = agg;
+        }
+
         var result = new List<DailyGlobalRow>();
 
         foreach (var podGroup in metrics
             .GroupBy(m => string.IsNullOrWhiteSpace(m.PodId) ? "(unassigned)" : m.PodId))
         {
-            // Tomar la WeekStart mas reciente por pod (cada tienda puede tener
-            // multiples semanas; aqui sumamos todo porque el snapshot no
-            // distingue periodicidad).
             var rows = podGroup.ToList();
             if (rows.Count == 0) continue;
 
@@ -341,6 +380,8 @@ public sealed class ReportMergeService : IReportMergeService
             int missed       = rows.Sum(r => r.MissedCalls);
             int transferred  = rows.Sum(r => r.TransferredCalls);
 
+            ordersByPod.TryGetValue(podGroup.Key, out var orders);
+
             result.Add(new DailyGlobalRow
             {
                 Pod                = podGroup.Key,
@@ -350,12 +391,12 @@ public sealed class ReportMergeService : IReportMergeService
                 TransferredCalls   = transferred,
                 PctQueued          = totalCalls > 0 ? (double)queued      / totalCalls * 100 : 0,
                 PctHandled         = totalCalls > 0 ? (double)handled     / totalCalls * 100 : 0,
-                PctMissed          = totalCalls > 0 ? (double)missed      / queued   * 100 : 0,
+                PctMissed          = queued    > 0 ? (double)missed      / queued   * 100 : 0,
                 PctTransferred     = totalCalls > 0 ? (double)transferred / totalCalls * 100 : 0,
                 ConvPct            = 0,
-                OrderCount         = 0,
-                RefundedOrders     = 0,
-                PctOrdersWithErrors= 0,
+                OrderCount         = orders.Orders,
+                RefundedOrders     = orders.Refunded,
+                PctOrdersWithErrors= orders.ErrCount > 0 ? orders.ErrSum / orders.ErrCount : 0,
             });
         }
 
