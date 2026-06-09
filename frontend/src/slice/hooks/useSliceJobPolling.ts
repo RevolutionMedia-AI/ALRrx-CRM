@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { getSliceJobStatus } from '../../services/sliceReportsApi';
 import type { SliceJobStatusDto } from '../types';
+import { isTerminalStatus, normalizeJobStatus } from '../utils/jobStatus';
 
 interface PollingState {
   job: SliceJobStatusDto | null;
@@ -31,9 +32,13 @@ export function useSliceJobPolling(jobId: string | null) {
       try {
         const job = await getSliceJobStatus(jobId);
         if (cancelledRef.current) return;
-        const terminal = job.status === 'Completed' || job.status === 'Failed';
+        const normalized = normalizeJobStatus(job.status);
+        const terminal = isTerminalStatus(job.status);
+        // Sobrescribimos el status con la versión normalizada para que el resto de
+        // la UI (JobStatusCard, badge del ledger) reciba siempre PascalCase.
+        const normalizedJob: SliceJobStatusDto = { ...job, status: normalized };
         setState({
-          job,
+          job: normalizedJob,
           loading: !terminal,
           error: job.errorMessage ?? null,
           uploadProgress: 100,
@@ -51,7 +56,6 @@ export function useSliceJobPolling(jobId: string | null) {
         timerRef.current = setTimeout(tick, 5000);
       }
     };
-
     tick();
 
     return () => {

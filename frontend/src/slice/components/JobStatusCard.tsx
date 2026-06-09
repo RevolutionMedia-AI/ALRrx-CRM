@@ -1,4 +1,5 @@
 import type { SliceJobStatus } from '../types';
+import { normalizeJobStatus } from '../utils/jobStatus';
 
 interface JobStatusCardProps {
   fileName: string;
@@ -61,13 +62,18 @@ export default function JobStatusCard({
   onDownload,
   onReset,
 }: JobStatusCardProps) {
-  const progress = computeProgress(status, processedFiles, totalFiles, uploadProgress);
-  const isTerminal = status === 'Completed' || status === 'Failed';
-  const isActive = status === 'Uploading' || !isTerminal;
+  // Normalizamos para que el badge, label y el switch de progreso siempre
+  // matcheen contra un SliceJobStatus conocido (PascalCase), independientemente
+  // de si el backend ya emite el enum como string o todavía como entero.
+  const normalizedStatus: SliceJobStatus | 'Uploading' | 'Idle' =
+    status === 'Uploading' || status === 'Idle' ? status : normalizeJobStatus(status);
+  const progress = computeProgress(normalizedStatus, processedFiles, totalFiles, uploadProgress);
+  const isTerminal = normalizedStatus === 'Completed' || normalizedStatus === 'Failed';
+  const isActive = normalizedStatus === 'Uploading' || !isTerminal;
 
   return (
     <div className="flex-1 flex flex-col justify-center gap-6">
-      {status === 'Idle' ? (
+      {normalizedStatus === 'Idle' ? (
         <div className="flex flex-col items-center justify-center text-center py-10 gap-3">
           <span className="material-symbols-outlined text-5xl text-muted-slate/40">upload_file</span>
           <p className="text-sm text-secondary">No active process</p>
@@ -76,14 +82,14 @@ export default function JobStatusCard({
       ) : (
         <div
           className={`bg-surface-container-lowest border rounded-lg p-4 ${
-            status === 'Failed' ? 'border-deep-rose/30 bg-deep-rose/5' : 'border-whisper-border'
+            normalizedStatus === 'Failed' ? 'border-deep-rose/30 bg-deep-rose/5' : 'border-whisper-border'
           }`}
         >
           <div className="flex justify-between items-start mb-4 gap-3">
             <div className="min-w-0 flex-1">
               <p className="font-metadata-mono text-primary font-bold truncate">{fileName}</p>
-              <p className={`text-xs mt-1 ${STATUS_COLOR[status]}`}>
-                {STATUS_LABEL[status]}
+              <p className={`text-xs mt-1 ${STATUS_COLOR[normalizedStatus]}`}>
+                {STATUS_LABEL[normalizedStatus]}
                 {jobId && !isTerminal && totalFiles > 0 && (
                   <span className="text-muted-slate">
                     {' '}• {processedFiles}/{totalFiles} files
@@ -98,20 +104,20 @@ export default function JobStatusCard({
               className={`material-symbols-outlined text-2xl ${
                 isActive
                   ? 'text-emerald-signal animate-spin'
-                  : status === 'Completed'
+                  : normalizedStatus === 'Completed'
                   ? 'text-emerald-signal'
                   : 'text-deep-rose'
               }`}
               style={!isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
             >
-              {status === 'Failed' ? 'error' : isActive ? 'sync' : 'check_circle'}
+              {normalizedStatus === 'Failed' ? 'error' : isActive ? 'sync' : 'check_circle'}
             </span>
           </div>
 
           <div className="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
-                status === 'Failed' ? 'bg-deep-rose' : 'bg-primary'
+                normalizedStatus === 'Failed' ? 'bg-deep-rose' : 'bg-primary'
               }`}
               style={{ width: `${progress}%` }}
             />
@@ -126,7 +132,7 @@ export default function JobStatusCard({
       )}
 
       <div className="mt-auto pt-6 border-t border-whisper-border space-y-2">
-        {status === 'Completed' && reportId ? (
+        {normalizedStatus === 'Completed' && reportId ? (
           <button
             onClick={onDownload}
             className="w-full flex items-center justify-center gap-2 bg-emerald-signal text-on-primary py-3 px-4 rounded font-bold hover:opacity-90 transition-opacity active:scale-[0.98] custom-shadow text-sm"
@@ -144,7 +150,7 @@ export default function JobStatusCard({
           </button>
         )}
         <p className="text-xs text-center text-secondary font-metadata-mono">
-          {status === 'Completed' ? 'Report ready' : 'Available after validation completes'}
+          {normalizedStatus === 'Completed' ? 'Report ready' : 'Available after validation completes'}
         </p>
         {isTerminal && (
           <button

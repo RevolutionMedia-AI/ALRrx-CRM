@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using OfficeOpenXml;
@@ -29,6 +30,9 @@ builder.Services
         // without per-property [JsonPropertyName] attributes.
         o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         o.JsonSerializerOptions.DictionaryKeyPolicy  = System.Text.Json.JsonNamingPolicy.CamelCase;
+        // Serializar enums como strings en PascalCase (e.g. JobStatus.Completed → "Completed")
+        // para que el frontend de React pueda matchearlos sin tener que mapear enteros.
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

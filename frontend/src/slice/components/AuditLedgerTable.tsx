@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import type { SliceJobStatus, SliceJobStatusDto } from '../types';
 import { sliceExportUrl } from '../../services/sliceReportsApi';
+import { normalizeJobStatus } from '../utils/jobStatus';
 
 interface AuditLedgerTableProps {
   jobs: SliceJobStatusDto[];
@@ -16,9 +17,10 @@ const STATUS_BADGE: Record<SliceJobStatus, { label: string; classes: string; dot
   Failed: { label: 'Failed', classes: 'bg-deep-rose/10 text-deep-rose border-deep-rose/20', dot: 'bg-deep-rose' },
 };
 
-// Fallback for any status the backend might emit that the frontend hasn't been
-// updated for yet (e.g. "Uploading", or future stages). Prevents the
-// "Cannot read properties of undefined (reading 'classes')" crash.
+// Fallback para status que el backend emita como string crudo que no pudimos
+// normalizar (p.ej. "3" si la respuesta viniera como entero). Evita el crash
+// "Cannot read properties of undefined (reading 'classes')" y muestra el valor
+// real para que sea fácil de debuggear.
 const UNKNOWN_BADGE = {
   label: 'Unknown',
   classes: 'bg-muted-slate/10 text-muted-slate border-muted-slate/20',
@@ -94,7 +96,9 @@ export default function AuditLedgerTable({ jobs, loading }: AuditLedgerTableProp
               </tr>
             ) : (
               jobs.map((job) => {
-                const badge = STATUS_BADGE[job.status] ?? UNKNOWN_BADGE;
+                const normalized = normalizeJobStatus(job.status);
+                const badge = STATUS_BADGE[normalized] ?? UNKNOWN_BADGE;
+                const rawStatus = job.status;
                 return (
                   <tr
                     key={job.jobId}
@@ -108,9 +112,17 @@ export default function AuditLedgerTable({ jobs, loading }: AuditLedgerTableProp
                     <td className="p-4">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold border font-metadata-mono uppercase tracking-wider ${badge.classes}`}
+                        title={
+                          normalized === rawStatus
+                            ? undefined
+                            : `Status crudo del backend: ${String(rawStatus)}`
+                        }
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                         {badge.label}
+                        {badge === UNKNOWN_BADGE && rawStatus !== undefined && (
+                          <span className="text-[9px] opacity-70 ml-1">({String(rawStatus)})</span>
+                        )}
                       </span>
                     </td>
                     <td className="p-4 text-right font-metadata-mono text-xs text-secondary">
