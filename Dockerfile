@@ -2,8 +2,9 @@
 # Bumping CACHE_BUST below forces Docker to invalidate every cache layer
 # downstream — use this when slice-backend changes are not being picked up by
 # the registry. The default of 1 is harmless; CI overrides it to the commit SHA.
-# 2026-06-09-bust-2: invalidar capa slice-api por fix de JsonStringEnumConverter
-ARG CACHE_BUST=2026-06-09-bust-2
+# 2026-06-09-bust-3: invalidar capa slice-api por rework del exportador Excel
+# (3 hojas Daily/Weekly/Monthly con 3 bloques apilados, 17 cols en Shop).
+ARG CACHE_BUST=2026-06-09-bust-3
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

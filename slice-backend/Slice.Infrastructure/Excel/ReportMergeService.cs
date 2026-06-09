@@ -141,10 +141,11 @@ public sealed class ReportMergeService : IReportMergeService
         var filePath = Path.Combine(outDir, $"Slice_Report_{report.Id}.xlsx");
 
         using var package = new ExcelPackage();
-        BuildGlobalSheet(package, report);
-        BuildAgentSheet(package, report);
-        BuildShopSheet(package, report);
-        BuildShopCallMetricsSheet(package, report);
+        // Layout alineado con el template "Dashoard Draft (3).xlsx":
+        // 3 hojas, cada una con 3 bloques apilados (Global + Agent + Shop).
+        BuildPeriodSheet(package, "Daily Report", "Daily Global", "Daily Agent", "Shop Daily", report, period: "daily");
+        BuildPeriodSheet(package, "Weekly",       "Weekly Global", "Weekly Agent", "Shop Weekly", report, period: "weekly");
+        BuildPeriodSheet(package, "Monthly",      "Monthly Global","Monthly Agent","Shop Monthly", report, period: "monthly");
 
         await package.SaveAsAsync(new FileInfo(filePath), ct);
         _logger.LogInformation("XLSX exported to {Path}", filePath);
@@ -160,8 +161,9 @@ public sealed class ReportMergeService : IReportMergeService
 
         var sb = new StringBuilder();
 
+        // ── Bloque Daily Global (también representa Weekly y Monthly con los mismos datos) ──
         sb.AppendLine("=== Daily Global ===");
-        sb.AppendLine("Pod,Queued,Handled,Missed Calls,Transferred Calls,%Queued,%Handled,%Missed,%Transferred,Conv %,Order Count,Refunded Orders,% Orders with Errors");
+        sb.AppendLine("Pod,Queued,Handle,Missed Calls,Transferred Calls,%Queued,%Handled,%missed,%Transferred,Conv %,Order Count,Refunded Orders,% Orders with errors");
         foreach (var g in report.DailyGlobal)
             sb.AppendLine($"{g.Pod},{g.Queued},{g.Handled},{g.MissedCalls},{g.TransferredCalls}," +
                           $"{g.PctQueued:F2},{g.PctHandled:F2},{g.PctMissed:F2},{g.PctTransferred:F2}," +
@@ -169,7 +171,7 @@ public sealed class ReportMergeService : IReportMergeService
 
         sb.AppendLine();
         sb.AppendLine("=== Daily Agent ===");
-        sb.AppendLine("Pod,Supervisor,Agent,HC,TC,Holds,Avg Hold Time,ASA,AHT,ACW,% On Hold,%SL<15s,% Transfers,Shift");
+        sb.AppendLine("Pod,Supervisor,Agent,HC,TC,Number of Holds,Avg Hold Time,ASA,AHT,ACW,% Contacts on Hold,%SL under 15 sec,% Transfers,Shift");
         foreach (var a in report.DailyAgents)
             sb.AppendLine($"{a.Pod},{a.SupervisorName},{a.AgentEmail},{a.HC},{a.TC},{a.NumberOfHolds}," +
                           $"{a.AvgHoldTime:F2},{a.ASA:F2},{a.AHT:F2},{a.ACW:F2}," +
@@ -177,20 +179,12 @@ public sealed class ReportMergeService : IReportMergeService
 
         sb.AppendLine();
         sb.AppendLine("=== Shop Daily ===");
-        sb.AppendLine("Shop,Total Orders,Refunded Orders,Error Rate,Conversion Rate");
-        foreach (var s in report.ShopDaily)
-            sb.AppendLine($"{s.ShopName},{s.TotalOrders},{s.RefundedOrders},{s.ErrorRate:F2},{s.ConversionRate:F2}");
-
-        if (report.ShopCallMetrics.Count > 0)
-        {
-            sb.AppendLine();
-            sb.AppendLine("=== Shop Call Metrics ===");
-            sb.AppendLine("Week Start,Shop ID,Shop Name,Pod ID,Total Calls,Overflow,Queued,Handled,Missed,Transferred,%Overflow,%Queued,%Handled,%Missed of Queued,%Transferred");
-            foreach (var c in report.ShopCallMetrics)
-                sb.AppendLine($"{c.WeekStart:yyyy-MM-dd},{c.ShopId},{c.ShopName},{c.PodId}," +
-                              $"{c.TotalCalls},{c.OverflowCalls},{c.QueueCalls},{c.HandledCalls},{c.MissedCalls},{c.TransferredCalls}," +
-                              $"{c.PctOverflow:F2},{c.PctQueued:F2},{c.PctHandled:F2},{c.PctMissedOfQueued:F2},{c.PctTransferred:F2}");
-        }
+        sb.AppendLine("Pod - Shops,Shop ID,Total Calls,Overflow,Queued,Handle,Missed Calls,Transferred Calls,%Overflow,%Queued,%Handled,%missed,%Transferred,Order Count,Conv %,Refunded Orders,% Orders with errors");
+        var shopRows = FilterShopsByPeriod(report, "daily");
+        foreach (var s in shopRows)
+            sb.AppendLine($"{s.PodLabel},{s.ShopId},{s.TotalCalls},{s.OverflowCalls},{s.QueueCalls},{s.HandledCalls},{s.MissedCalls},{s.TransferredCalls}," +
+                          $"{s.PctOverflow:F2},{s.PctQueued:F2},{s.PctHandled:F2},{s.PctMissed:F2},{s.PctTransferred:F2}," +
+                          $"{s.OrderCount},{s.ConversionRate:F2},{s.RefundedOrders},{s.ErrorRate:F2}");
 
         await File.WriteAllTextAsync(filePath, sb.ToString(), Encoding.UTF8, ct);
         _logger.LogInformation("CSV exported to {Path}", filePath);
@@ -199,130 +193,294 @@ public sealed class ReportMergeService : IReportMergeService
 
     // ─── XLSX sheet builders ──────────────────────────────────────────────────
 
-    /// <summary>Adds the "Daily Global" worksheet with pod-level metrics.</summary>
-    private static void BuildGlobalSheet(ExcelPackage package, SliceReport report)
+    /// <summary>
+    /// Construye una hoja con los 3 bloques apilados (Global + Agent + Shop),
+    /// replicando el layout de la plantilla "Dashoard Draft (3).xlsx":
+    ///
+    ///     <Global Header Title>     (fila N)
+    ///     [column headers]           (fila N+1)
+    ///     [data rows]
+    ///     (fila en blanco)
+    ///     <Agent Header Title>       (fila M)
+    ///     [POD | <POD_NAME> | Sup | <Supervisor>]  (fila M+1)
+    ///     [Agent column headers]     (fila M+2)
+    ///     [agent rows]
+    ///     (fila en blanco)
+    ///     <Shop Header Title>        (fila K)
+    ///     [Pod-Shop | Shop ID | ...] (fila K+1)
+    ///     [shop rows]
+    ///
+    /// Por ahora todas las hojas se llenan con los datos diarios del reporte
+    /// (DailyGlobal / DailyAgents / ShopCallMetrics). Las hojas Weekly y Monthly
+    /// se generan con los mismos datos hasta que el backend agregue ingestión
+    /// específica para esos periodos; el layout queda listo para recibirlos.
+    /// </summary>
+    private static void BuildPeriodSheet(
+        ExcelPackage package,
+        string sheetName,
+        string globalTitle,
+        string agentTitle,
+        string shopTitle,
+        SliceReport report,
+        string period)
     {
-        var ws      = package.Workbook.Worksheets.Add("Daily Global");
-        var headers = new[]
-        {
-            "Pod", "Queued", "Handled", "Missed Calls", "Transferred Calls",
-            "%Queued", "%Handled", "%Missed", "%Transferred", "Conv %",
-            "Order Count", "Refunded Orders", "% Orders with Errors",
-        };
-        WriteHeader(ws, 1, headers);
+        var ws = package.Workbook.Worksheets.Add(sheetName);
 
-        int row = 2;
-        foreach (var g in report.DailyGlobal)
+        // ── Bloque 1: Global ─────────────────────────────────────────────────
+        // Fila 1 = título del bloque, Fila 2 = headers, Fila 3+ = datos.
+        int row = 1;
+        ws.Cells[row, 1].Value = globalTitle;
+        StyleSectionTitle(ws.Cells[row, 1, row, 13]);
+        row++;
+
+        var globalHeaders = new[]
         {
-            ws.Cells[row, 1].Value  = g.Pod;
-            ws.Cells[row, 2].Value  = g.Queued;
-            ws.Cells[row, 3].Value  = g.Handled;
-            ws.Cells[row, 4].Value  = g.MissedCalls;
-            ws.Cells[row, 5].Value  = g.TransferredCalls;
-            ws.Cells[row, 6].Value  = g.PctQueued;
-            ws.Cells[row, 7].Value  = g.PctHandled;
-            ws.Cells[row, 8].Value  = g.PctMissed;
-            ws.Cells[row, 9].Value  = g.PctTransferred;
-            ws.Cells[row, 10].Value = g.ConvPct;
-            ws.Cells[row, 11].Value = g.OrderCount;
-            ws.Cells[row, 12].Value = g.RefundedOrders;
-            ws.Cells[row, 13].Value = g.PctOrdersWithErrors;
+            "Pod", "Queued", "Handle", "Missed Calls", "Transferred Calls",
+            "%Queued", "%Handled", "%missed", "%Transferred", "Conv %",
+            "Order Count", "Refunded  Orders", "% Orders with errors",
+        };
+        WriteHeader(ws, row, globalHeaders);
+        row++;
+
+        var globalRows = FilterByPeriod(report.DailyGlobal, period);
+        if (globalRows.Count == 0)
+        {
+            ws.Cells[row, 1].Value = "(no data for this period)";
             row++;
         }
-
-        ws.Cells[ws.Dimension.Address].AutoFitColumns();
-    }
-
-    /// <summary>Adds the "Daily Agent" worksheet with individual agent metrics.</summary>
-    private static void BuildAgentSheet(ExcelPackage package, SliceReport report)
-    {
-        var ws      = package.Workbook.Worksheets.Add("Daily Agent");
-        var headers = new[]
+        else
         {
-            "Pod", "Supervisor", "Agent", "HC", "TC", "Holds",
-            "Avg Hold Time", "ASA", "AHT", "ACW", "% On Hold", "%SL<15s", "% Transfers", "Shift",
-        };
-        WriteHeader(ws, 1, headers);
-
-        int row = 2;
-        foreach (var a in report.DailyAgents)
-        {
-            ws.Cells[row, 1].Value  = a.Pod;
-            ws.Cells[row, 2].Value  = a.SupervisorName;
-            ws.Cells[row, 3].Value  = a.AgentEmail;
-            ws.Cells[row, 4].Value  = a.HC;
-            ws.Cells[row, 5].Value  = a.TC;
-            ws.Cells[row, 6].Value  = a.NumberOfHolds;
-            ws.Cells[row, 7].Value  = a.AvgHoldTime;
-            ws.Cells[row, 8].Value  = a.ASA;
-            ws.Cells[row, 9].Value  = a.AHT;
-            ws.Cells[row, 10].Value = a.ACW;
-            ws.Cells[row, 11].Value = a.PctContactsOnHold;
-            ws.Cells[row, 12].Value = a.PctSLUnder15Sec;
-            ws.Cells[row, 13].Value = a.PctTransfers;
-            ws.Cells[row, 14].Value = a.Shift;
-            row++;
+            foreach (var g in globalRows)
+            {
+                ws.Cells[row, 1].Value  = g.Pod;
+                ws.Cells[row, 2].Value  = g.Queued;
+                ws.Cells[row, 3].Value  = g.Handled;
+                ws.Cells[row, 4].Value  = g.MissedCalls;
+                ws.Cells[row, 5].Value  = g.TransferredCalls;
+                ws.Cells[row, 6].Value  = g.PctQueued;
+                ws.Cells[row, 7].Value  = g.PctHandled;
+                ws.Cells[row, 8].Value  = g.PctMissed;
+                ws.Cells[row, 9].Value  = g.PctTransferred;
+                ws.Cells[row, 10].Value = g.ConvPct;
+                ws.Cells[row, 11].Value = g.OrderCount;
+                ws.Cells[row, 12].Value = g.RefundedOrders;
+                ws.Cells[row, 13].Value = g.PctOrdersWithErrors;
+                row++;
+            }
         }
 
-        ws.Cells[ws.Dimension.Address].AutoFitColumns();
+        // Fila en blanco de separación.
+        row++;
+
+        // ── Bloque 2: Agent (agrupado por POD) ────────────────────────────────
+        ws.Cells[row, 1].Value = agentTitle;
+        StyleSectionTitle(ws.Cells[row, 1, row, 13]);
+        row++;
+
+        var agentColumnHeaders = new[]
+        {
+            "Agent", "HC", "TC", "Number of Holds", "Avg. Hold Time", "ASA",
+            "AHT", "ACW", "% Contacts on Hold", "%SL under 15 sec", "% Transfers", "Shift",
+        };
+
+        var agentRows = FilterAgentsByPeriod(report.DailyAgents, period);
+        if (agentRows.Count == 0)
+        {
+            ws.Cells[row, 1].Value = "(no data for this period)";
+            row++;
+        }
+        else
+        {
+            foreach (var podGroup in agentRows.GroupBy(a => a.Pod ?? string.Empty).OrderBy(g => g.Key))
+            {
+                // Fila de cabecera del POD: B=Pod label, C=POD name, J=Sup label, K=Supervisor
+                ws.Cells[row, 2].Value = "POD";
+                ws.Cells[row, 3].Value = podGroup.Key;
+                ws.Cells[row, 10].Value = "Sup";
+                var supervisor = podGroup.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a.SupervisorName))?.SupervisorName ?? string.Empty;
+                ws.Cells[row, 11].Value = supervisor;
+                StylePodHeaderRow(ws.Cells[row, 1, row, 13]);
+                row++;
+
+                // Fila de headers de las columnas de agente
+                ws.Cells[row, 2].Value = "Agent";
+                WriteHeader(ws.Cells[row, 1, row, 13], agentColumnHeaders);
+                row++;
+
+                // Filas de agentes (placeholders para Full Time / Part Time si no hay datos)
+                if (!podGroup.Any())
+                {
+                    ws.Cells[row, 2].Value = "agent.name@slice.com";
+                    ws.Cells[row, 13].Value = "Full Time";
+                    row++;
+                    ws.Cells[row, 2].Value = "agent.name@slice.com";
+                    ws.Cells[row, 13].Value = "Part Time";
+                    row++;
+                }
+                else
+                {
+                    foreach (var a in podGroup)
+                    {
+                        ws.Cells[row, 2].Value  = a.AgentEmail;
+                        ws.Cells[row, 3].Value  = a.HC;
+                        ws.Cells[row, 4].Value  = a.TC;
+                        ws.Cells[row, 5].Value  = a.NumberOfHolds;
+                        ws.Cells[row, 6].Value  = a.AvgHoldTime;
+                        ws.Cells[row, 7].Value  = a.ASA;
+                        ws.Cells[row, 8].Value  = a.AHT;
+                        ws.Cells[row, 9].Value  = a.ACW;
+                        ws.Cells[row, 10].Value = a.PctContactsOnHold;
+                        ws.Cells[row, 11].Value = a.PctSLUnder15Sec;
+                        ws.Cells[row, 12].Value = a.PctTransfers;
+                        ws.Cells[row, 13].Value = a.Shift;
+                        row++;
+                    }
+                }
+            }
+        }
+
+        // Fila en blanco de separación.
+        row++;
+
+        // ── Bloque 3: Shop (17 columnas, formato plantilla) ───────────────────
+        ws.Cells[row, 2].Value = shopTitle;
+        StyleSectionTitle(ws.Cells[row, 2, row, 18]);
+        row++;
+
+        var shopHeaders = new[]
+        {
+            "Pod - Shops", "Shop ID", "Total Calls", "Overflow", "Queued", "Handle",
+            "Missed Calls", "Transferred Calls", "%Overflow", "%Queued", "%Handled",
+            "%missed", "%Transferred", "Order Count", "Conv %", "Refunded  Orders",
+            "% Orders with errors",
+        };
+        WriteHeader(ws, row, shopHeaders);
+        row++;
+
+        var shopRows = FilterShopsByPeriod(report, period);
+        if (shopRows.Count == 0)
+        {
+            ws.Cells[row, 2].Value = "(no data for this period)";
+            row++;
+        }
+        else
+        {
+            foreach (var s in shopRows)
+            {
+                ws.Cells[row, 2].Value  = s.PodLabel;       // B
+                ws.Cells[row, 3].Value  = s.ShopId;         // C
+                ws.Cells[row, 4].Value  = s.TotalCalls;     // D
+                ws.Cells[row, 5].Value  = s.OverflowCalls;  // E
+                ws.Cells[row, 6].Value  = s.QueueCalls;     // F
+                ws.Cells[row, 7].Value  = s.HandledCalls;   // G
+                ws.Cells[row, 8].Value  = s.MissedCalls;    // H
+                ws.Cells[row, 9].Value  = s.TransferredCalls;// I
+                ws.Cells[row, 10].Value = s.PctOverflow;    // J
+                ws.Cells[row, 11].Value = s.PctQueued;      // K
+                ws.Cells[row, 12].Value = s.PctHandled;     // L
+                ws.Cells[row, 13].Value = s.PctMissed;      // M
+                ws.Cells[row, 14].Value = s.PctTransferred; // N
+                ws.Cells[row, 15].Value = s.OrderCount;     // O
+                ws.Cells[row, 16].Value = s.ConversionRate; // P
+                ws.Cells[row, 17].Value = s.RefundedOrders; // Q
+                ws.Cells[row, 18].Value = s.ErrorRate;      // R
+                row++;
+            }
+        }
+
+        if (ws.Dimension != null) ws.Cells[ws.Dimension.Address].AutoFitColumns();
     }
 
-    /// <summary>Adds the "Shop Daily" worksheet. Skipped if the report has no shop rows.</summary>
-    private static void BuildShopSheet(ExcelPackage package, SliceReport report)
+    private readonly struct ShopRowExport
     {
-        if (report.ShopDaily.Count == 0) return;
+        public string PodLabel        { get; init; }
+        public string ShopId          { get; init; }
+        public int    TotalCalls      { get; init; }
+        public int    OverflowCalls   { get; init; }
+        public int    QueueCalls      { get; init; }
+        public int    HandledCalls    { get; init; }
+        public int    MissedCalls     { get; init; }
+        public int    TransferredCalls{ get; init; }
+        public double PctOverflow     { get; init; }
+        public double PctQueued       { get; init; }
+        public double PctHandled      { get; init; }
+        public double PctMissed       { get; init; }
+        public double PctTransferred  { get; init; }
+        public int    OrderCount      { get; init; }
+        public double ConversionRate  { get; init; }
+        public int    RefundedOrders  { get; init; }
+        public double ErrorRate       { get; init; }
+    }
 
-        var ws = package.Workbook.Worksheets.Add("Shop Daily");
-        WriteHeader(ws, 1, ["Shop", "Total Orders", "Refunded Orders", "Error Rate", "Conversion Rate"]);
+    private static List<DailyGlobalRow> FilterByPeriod(IEnumerable<DailyGlobalRow> rows, string period)
+    {
+        // Por ahora todos los bloques usan los datos diarios: el backend no
+        // separa todavía agregaciones weekly/monthly. Cuando se agregue, este
+        // helper será el punto de extensión.
+        _ = period;
+        return rows.ToList();
+    }
 
-        int row = 2;
+    private static List<DailyAgentRow> FilterAgentsByPeriod(IEnumerable<DailyAgentRow> rows, string period)
+    {
+        _ = period;
+        return rows.ToList();
+    }
+
+    private static List<ShopRowExport> FilterShopsByPeriod(SliceReport report, string period)
+    {
+        _ = period;
+        // ShopDaily provee Conversion/Refunded/Error/OrderCount pero no métricas
+        // de llamadas. ShopCallMetrics provee las métricas de llamadas por
+        // (Shop, Pod, Week). Cruzamos ambos por (ShopName) y preferimos la fila
+        // de ShopCallMetrics con la WeekStart más reciente cuando hay varias.
+        var metricsByShop = report.ShopCallMetrics
+            .GroupBy(m => m.ShopName, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(m => m.WeekStart).First(),
+                StringComparer.OrdinalIgnoreCase);
+
+        var result = new List<ShopRowExport>();
         foreach (var s in report.ShopDaily)
         {
-            ws.Cells[row, 1].Value = s.ShopName;
-            ws.Cells[row, 2].Value = s.TotalOrders;
-            ws.Cells[row, 3].Value = s.RefundedOrders;
-            ws.Cells[row, 4].Value = s.ErrorRate;
-            ws.Cells[row, 5].Value = s.ConversionRate;
-            row++;
+            if (metricsByShop.TryGetValue(s.ShopName, out var m))
+            {
+                result.Add(new ShopRowExport
+                {
+                    PodLabel        = string.IsNullOrWhiteSpace(m.PodId) ? "Pod" : m.PodId,
+                    ShopId          = m.ShopId,
+                    TotalCalls      = m.TotalCalls,
+                    OverflowCalls   = m.OverflowCalls,
+                    QueueCalls      = m.QueueCalls,
+                    HandledCalls    = m.HandledCalls,
+                    MissedCalls     = m.MissedCalls,
+                    TransferredCalls= m.TransferredCalls,
+                    PctOverflow     = m.PctOverflow,
+                    PctQueued       = m.PctQueued,
+                    PctHandled      = m.PctHandled,
+                    PctMissed       = m.PctMissedOfQueued,
+                    PctTransferred  = m.PctTransferred,
+                    OrderCount      = s.TotalOrders,
+                    ConversionRate  = s.ConversionRate,
+                    RefundedOrders  = s.RefundedOrders,
+                    ErrorRate       = s.ErrorRate,
+                });
+            }
+            else
+            {
+                result.Add(new ShopRowExport
+                {
+                    PodLabel        = "Pod",
+                    ShopId          = string.Empty,
+                    OrderCount      = s.TotalOrders,
+                    ConversionRate  = s.ConversionRate,
+                    RefundedOrders  = s.RefundedOrders,
+                    ErrorRate       = s.ErrorRate,
+                });
+            }
         }
-
-        ws.Cells[ws.Dimension.Address].AutoFitColumns();
-    }
-
-    /// <summary>Adds the "Shop Call Metrics" worksheet. Skipped if empty.</summary>
-    private static void BuildShopCallMetricsSheet(ExcelPackage package, SliceReport report)
-    {
-        if (report.ShopCallMetrics.Count == 0) return;
-
-        var ws = package.Workbook.Worksheets.Add("Shop Call Metrics");
-        WriteHeader(ws, 1, [
-            "Week Start", "Shop ID", "Shop Name", "Pod ID",
-            "Total Calls", "Overflow", "Queued", "Handled", "Missed", "Transferred",
-            "%Overflow", "%Queued", "%Handled", "%Missed of Queued", "%Transferred",
-        ]);
-
-        int row = 2;
-        foreach (var c in report.ShopCallMetrics)
-        {
-            ws.Cells[row, 1].Value  = c.WeekStart;
-            ws.Cells[row, 2].Value  = c.ShopId;
-            ws.Cells[row, 3].Value  = c.ShopName;
-            ws.Cells[row, 4].Value  = c.PodId;
-            ws.Cells[row, 5].Value  = c.TotalCalls;
-            ws.Cells[row, 6].Value  = c.OverflowCalls;
-            ws.Cells[row, 7].Value  = c.QueueCalls;
-            ws.Cells[row, 8].Value  = c.HandledCalls;
-            ws.Cells[row, 9].Value  = c.MissedCalls;
-            ws.Cells[row, 10].Value = c.TransferredCalls;
-            ws.Cells[row, 11].Value = c.PctOverflow;
-            ws.Cells[row, 12].Value = c.PctQueued;
-            ws.Cells[row, 13].Value = c.PctHandled;
-            ws.Cells[row, 14].Value = c.PctMissedOfQueued;
-            ws.Cells[row, 15].Value = c.PctTransferred;
-            row++;
-        }
-
-        ws.Cells[ws.Dimension.Address].AutoFitColumns();
+        return result;
     }
 
     /// <summary>
@@ -338,6 +496,42 @@ public sealed class ReportMergeService : IReportMergeService
             ws.Cells[row, col].Style.Font.Color.SetColor(Color.White);
             ws.Cells[row, col].Style.Font.Bold = true;
         }
+    }
+
+    /// <summary>Escribe los headers de un bloque que no empieza en la columna A.</summary>
+    private static void WriteHeader(ExcelRange range, string[] headers)
+    {
+        int startRow = range.Start.Row;
+        int startCol = range.Start.Column;
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var cell = range.Worksheet.Cells[startRow, startCol + i];
+            cell.Value = headers[i];
+            cell.Style.Fill.PatternType = ExcelFillStyle.Solid;
+            cell.Style.Fill.BackgroundColor.SetColor(HeaderColor);
+            cell.Style.Font.Color.SetColor(Color.White);
+            cell.Style.Font.Bold = true;
+        }
+    }
+
+    /// <summary>Estilo del título de bloque (negrita, fondo tenue, sin bordes Slice-blue).</summary>
+    private static void StyleSectionTitle(ExcelRange range)
+    {
+        range.Merge = true;
+        range.Style.Font.Bold = true;
+        range.Style.Font.Size = 12;
+        range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+        range.Style.Fill.PatternType = ExcelFillStyle.Solid;
+        range.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(240, 240, 240));
+    }
+
+    /// <summary>Estilo para la fila de cabecera de cada POD dentro del bloque Agent.</summary>
+    private static void StylePodHeaderRow(ExcelRange range)
+    {
+        range.Style.Fill.PatternType = ExcelFillStyle.Solid;
+        range.Style.Fill.BackgroundColor.SetColor(HeaderColor);
+        range.Style.Font.Color.SetColor(Color.White);
+        range.Style.Font.Bold = true;
     }
 
     /// <summary>Returns the average of <paramref name="selector"/> over <paramref name="items"/>, or 0 if the list is empty.</summary>
