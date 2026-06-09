@@ -15,6 +15,8 @@ import SliceShopOverviewPage from './slice/pages/SliceShopOverviewPage';
 import SliceAgentOverviewPage from './slice/pages/SliceAgentOverviewPage';
 import SliceFileUploadPage from './slice/pages/SliceFileUploadPage';
 import SlicePlaceholderPage from './slice/pages/SlicePlaceholderPage';
+import SlicePodOverviewPage from './slice/pages/SlicePodOverviewPage';
+import SliceHistoryAuditPage from './slice/pages/SliceHistoryAuditPage';
 import SliceLayout from './slice/components/SliceLayout';
 import { useState, useEffect, type ReactNode } from 'react';
 
@@ -141,11 +143,7 @@ function AppRoutes() {
         path="/slice/pod"
         element={
           <SliceProtectedRoute>
-            <SlicePlaceholderPage
-              title="POD Overview"
-              description="Aggregated call-center metrics by POD."
-              icon="dashboard"
-            />
+            <SlicePodOverviewPage />
           </SliceProtectedRoute>
         }
       />
@@ -161,11 +159,7 @@ function AppRoutes() {
         path="/slice/history"
         element={
           <SliceProtectedRoute>
-            <SlicePlaceholderPage
-              title="History & Audit"
-              description="Past reports and edit audit log."
-              icon="history"
-            />
+            <SliceHistoryAuditPage />
           </SliceProtectedRoute>
         }
       />
