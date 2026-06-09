@@ -428,14 +428,18 @@ public sealed class ReportMergeService : IReportMergeService
         }
     }
 
-    /// <summary>Bloque Shop: titulo en B, headers en B-R (17 cols), datos en B-R. Columna A vacia.</summary>
+    /// <summary>Bloque Shop: titulo en B-R, headers en B-R (17 cols), datos en B-R. Columna A vacia como margen.</summary>
     private static void WriteShopBlock(ExcelWorksheet ws, ref int row, SliceReport report)
     {
         ws.Cells[row, 2].Value = "Shop";
         StyleSectionTitle(ws.Cells[row, 2, row, 18]);
         row++;
 
-        WriteHeader(ws, row, new[]
+        // Headers en B-R (rango 2-18, 17 columnas) para que coincidan con la
+        // posicion de los datos. Antes estaban en A-Q (1-17) y eso dejaba la
+        // columna A vacia mientras los datos iban en B-R, desalineando todos
+        // los valores con su header.
+        WriteHeader(ws.Cells[row, 2, row, 18], new[]
         {
             "Pod - Shops", "Shop ID", "Total Calls", "Overflow", "Queued", "Handle",
             "Missed Calls", "Transferred Calls", "%Overflow", "%Queued", "%Handled",

@@ -88,7 +88,9 @@ public sealed class TemplateGeneratorService
         StyleSectionTitle(ws.Cells[row, 2, row, 18]);
         row++;
 
-        WriteHeader(ws, row, new[]
+        // Headers en B-R (rango 2-18, 17 columnas) para que coincidan con la
+        // posicion de los datos. Columna A queda vacia como margen.
+        WriteHeader(ws.Cells[row, 2, row, 18], new[]
         {
             "Pod - Shops", "Shop ID", "Total Calls", "Overflow", "Queued", "Handle",
             "Missed Calls", "Transferred Calls", "%Overflow", "%Queued", "%Handled",
