@@ -7,15 +7,15 @@ namespace Slice.Infrastructure.Excel;
 
 /// <summary>
 /// Builds a downloadable Excel template that mirrors the layout of
-/// <c>Dashoard Draft (3).xlsx</c>: 3 sheets (<c>Daily Report</c>, <c>Weekly</c>,
-/// <c>Monthly</c>), each with 3 stacked blocks (Global + Agent + Shop).
-/// When the source <see cref="SliceReport"/> already has data, the template is
-/// pre-populated; otherwise the sheets ship empty so the user can fill them in
-/// by hand and re-upload.
+/// <c>Dashoard Draft (3).xlsx</c>: una sola hoja "Slice Report (Template)" con
+/// 3 bloques apilados (Global + Agent + Shop). Sirve como punto de referencia
+/// visual para que el usuario sepa qué estructura tiene el reporte exportado.
 /// </summary>
 public sealed class TemplateGeneratorService
 {
     private static readonly Color HeaderColor = Color.FromArgb(31, 119, 180);
+
+    private static readonly string[] DefaultPodPlaceholders = { "ES-12", "ES-16", "ES-17", "ES-18" };
 
     public string BuildTemplate(SliceReport report, string outDir)
     {
@@ -23,40 +23,25 @@ public sealed class TemplateGeneratorService
         var filePath = Path.Combine(outDir, $"Slice_Template_{report.Id}.xlsx");
 
         using var package = new ExcelPackage();
-        BuildPeriodSheet(package, "Daily Report", "Daily Global", "Daily Agent", "Shop Daily", report);
-        BuildPeriodSheet(package, "Weekly",       "Weekly Global", "Weekly Agent", "Shop Weekly", report);
-        BuildPeriodSheet(package, "Monthly",      "Monthly Global","Monthly Agent","Shop Monthly", report);
-        package.SaveAs(new FileInfo(filePath));
-        return filePath;
-    }
-
-    private static void BuildPeriodSheet(
-        ExcelPackage package,
-        string sheetName,
-        string globalTitle,
-        string agentTitle,
-        string shopTitle,
-        SliceReport report)
-    {
-        var ws = package.Workbook.Worksheets.Add(sheetName);
+        var ws = package.Workbook.Worksheets.Add("Slice Report (Template)");
 
         int row = 1;
-        ws.Cells[row, 1].Value = globalTitle;
+
+        // ── Bloque Global ────────────────────────────────────────────────────
+        ws.Cells[row, 1].Value = "Global";
         StyleSectionTitle(ws.Cells[row, 1, row, 13]);
         row++;
 
-        var globalHeaders = new[]
+        WriteHeader(ws, row, new[]
         {
             "Pod", "Queued", "Handle", "Missed Calls", "Transferred Calls",
             "%Queued", "%Handled", "%missed", "%Transferred", "Conv %",
             "Order Count", "Refunded  Orders", "% Orders with errors",
-        };
-        WriteHeader(ws, row, globalHeaders);
+        });
         row++;
 
-        // Filas placeholder por cada POD típico (ES-12/16/17/18) para guiar al usuario.
-        var podPlaceholders = new[] { "ES-12", "ES-16", "ES-17", "ES-18" };
-        foreach (var pod in podPlaceholders)
+        // Filas placeholder con los PODs tipicos.
+        foreach (var pod in DefaultPodPlaceholders)
         {
             ws.Cells[row, 1].Value = pod;
             row++;
@@ -64,8 +49,8 @@ public sealed class TemplateGeneratorService
 
         row++; // separador
 
-        // ── Bloque Agent ────────────────────────────────────────────────────
-        ws.Cells[row, 1].Value = agentTitle;
+        // ── Bloque Agent ─────────────────────────────────────────────────────
+        ws.Cells[row, 1].Value = "Agent";
         StyleSectionTitle(ws.Cells[row, 1, row, 13]);
         row++;
 
@@ -75,7 +60,7 @@ public sealed class TemplateGeneratorService
             "AHT", "ACW", "% Contacts on Hold", "%SL under 15 sec", "% Transfers", "Shift",
         };
 
-        foreach (var pod in podPlaceholders)
+        foreach (var pod in DefaultPodPlaceholders)
         {
             ws.Cells[row, 2].Value = "POD";
             ws.Cells[row, 3].Value = pod;
@@ -84,8 +69,8 @@ public sealed class TemplateGeneratorService
             StylePodHeaderRow(ws.Cells[row, 1, row, 13]);
             row++;
 
-            ws.Cells[row, 2].Value = "Agent";
-            WriteHeader(ws.Cells[row, 1, row, 13], agentColumnHeaders);
+            // Headers en B-M (12 columnas) para que coincidan con los datos.
+            WriteHeader(ws.Cells[row, 2, row, 13], agentColumnHeaders);
             row++;
 
             ws.Cells[row, 2].Value = "agent.name@slice.com";
@@ -98,25 +83,26 @@ public sealed class TemplateGeneratorService
 
         row++; // separador
 
-        // ── Bloque Shop ─────────────────────────────────────────────────────
-        ws.Cells[row, 2].Value = shopTitle;
+        // ── Bloque Shop ──────────────────────────────────────────────────────
+        ws.Cells[row, 2].Value = "Shop";
         StyleSectionTitle(ws.Cells[row, 2, row, 18]);
         row++;
 
-        var shopHeaders = new[]
+        WriteHeader(ws, row, new[]
         {
             "Pod - Shops", "Shop ID", "Total Calls", "Overflow", "Queued", "Handle",
             "Missed Calls", "Transferred Calls", "%Overflow", "%Queued", "%Handled",
             "%missed", "%Transferred", "Order Count", "Conv %", "Refunded  Orders",
             "% Orders with errors",
-        };
-        WriteHeader(ws, row, shopHeaders);
+        });
         row++;
         ws.Cells[row, 2].Value = "Capri Pizza Pasta Kabobs";
         ws.Cells[row, 3].Value = "73";
         row++;
 
         if (ws.Dimension != null) ws.Cells[ws.Dimension.Address].AutoFitColumns();
+        package.SaveAs(new FileInfo(filePath));
+        return filePath;
     }
 
     private static void WriteHeader(ExcelWorksheet ws, int row, string[] headers)
