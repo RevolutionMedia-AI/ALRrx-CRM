@@ -114,6 +114,17 @@ app.MapGet("/health", () => Results.Ok(new
     startedAt = DateTime.UtcNow,
 }));
 
+// DEBUG: build-info endpoint — confirms which commit the deployed image is
+// actually running. Hit `GET /api/slice/debug/build` (rewritten by nginx).
+app.MapGet("/debug/build", () => Results.Ok(new
+{
+    buildSha  = buildSha,
+    startedAt = DateTime.UtcNow,
+    processId = Environment.ProcessId,
+    machine   = Environment.MachineName,
+    framework = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
+}));
+
 // DEBUG: log every request to fileupload endpoints so we can confirm the
 // deploy is exercising the new code path.
 app.Use(async (ctx, next) =>
