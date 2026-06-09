@@ -2,9 +2,10 @@
 # Bumping CACHE_BUST below forces Docker to invalidate every cache layer
 # downstream — use this when slice-backend changes are not being picked up by
 # the registry. The default of 1 is harmless; CI overrides it to the commit SHA.
-# 2026-06-09-bust-8: derivar Global desde ShopCallMetrics + cruzar con
-# ShopDaily para sacar Order Count, Refunded Orders y %Orders with errors.
-ARG CACHE_BUST=2026-06-09-bust-8
+# 2026-06-09-bust-9: reescribir TryParsePodLevelPivoted para que lea
+# todas las metricas (11 en diario, 14 en semanal) y use la fecha mas
+# reciente en vez de sumar todos los dias/semanas.
+ARG CACHE_BUST=2026-06-09-bust-9
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

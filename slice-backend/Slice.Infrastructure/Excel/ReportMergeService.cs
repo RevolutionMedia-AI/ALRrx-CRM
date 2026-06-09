@@ -286,13 +286,13 @@ public sealed class ReportMergeService : IReportMergeService
     /// <summary>
     /// Resuelve las filas del bloque Global. Orden de prioridad:
     /// 1. <c>report.DailyGlobal</c> si tiene al menos una fila con datos
-    ///    reales (volumenes distintos de 0). Esto cubre el caso del .zip diario
-    ///    bien parseado.
-    /// 2. Agregacion de <c>report.ShopCallMetrics</c> por <c>PodId</c>
-    ///    (tomando la WeekStart mas reciente por shop) + cruzar con
-    ///    <c>ShopDaily</c> para obtener OrderCount/RefundedOrders/ErrorRate
-    ///    por POD. Esto cubre el caso actual donde DailyGlobal esta vacio
-    ///    o solo tiene sumas malas de 14 dias con los % colapsados a 0.
+    ///    reales (volumenes distintos de 0). Despues del rewrite del parser
+    ///    TryParsePodLevelPivoted, DailyGlobal ya viene bien parseado
+    ///    directamente del CSV (volumenes correctos, % correctos, dia/semana
+    ///    mas reciente, no suma acumulada).
+    /// 2. Si DailyGlobal esta vacio, agregar ShopCallMetrics por PodId
+    ///    (semanal, datos de la semana mas reciente por shop) + cruzar con
+    ///    ShopDaily para los OrderCount/RefundedOrders/%OrdersWithErrors.
     /// 3. Placeholders con los PODs tipicos (ES-12/16/17/18).
     /// </summary>
     private static List<DailyGlobalRow> ResolveGlobalRowsForExport(SliceReport report)

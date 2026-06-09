@@ -470,40 +470,125 @@ public sealed class ExcelParserService : IExcelParserService
         int podIdCol = FindColumn(headerRow, "Pod ID");
         if (podIdCol < 0) return false;
 
-        // Find every date column to know where blocks start and how wide they are.
-        var dateRow = grid[0];
-        var dayStarts = new List<int>();
-        for (int c = 0; c < dateRow.Count; c++)
+        // Find every "Total Calls" column in the header. Each occurrence
+        // marks the start of a new day/week block. The metrics are at
+        // fixed offsets within the block (column names repeat), so this
+        // works for both the 11-col daily variant and the 14-col weekly
+        // variant without hard-coding blockWidth.
+        var totalCols = new List<int>();
+        for (int c = 0; c < headerRow.Count; c++)
         {
-            if (DateTime.TryParse(dateRow[c]?.Trim() ?? string.Empty,
-                CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out _))
+            if (headerRow[c]?.Trim().Equals("Total Calls", StringComparison.OrdinalIgnoreCase) == true)
             {
-                dayStarts.Add(c);
+                totalCols.Add(c);
             }
         }
-        if (dayStarts.Count < 2) return false;
+        if (totalCols.Count < 1) return false;
 
-        // Block width = distance between two consecutive date columns.
-        int blockWidth = dayStarts[1] - dayStarts[0];
-        if (blockWidth < 7) return false;
+        // Block width = distance between the first two "Total Calls" columns
+        // (or 11 if there's only one block, e.g. the daily file with 14
+        // days where the second block is just another date column).
+        int blockWidth = totalCols.Count >= 2
+            ? totalCols[1] - totalCols[0]
+            : 11;
 
+        // Read the column offsets of each metric WITHIN the first block
+        // (the block repeats the same names, so we only need to scan
+        // once). If a metric is missing in the first block (e.g. weekly
+        // adds extra % columns), its offset is -1 and we skip it.
+        int firstBlockStart = totalCols[0]; // first "Total Calls" col
+        int firstDateCol    = firstBlockStart - 1; // date is 1 col before
+        int blockEnd        = firstBlockStart + blockWidth;
+
+        int OffsetOf(string label)
+        {
+            for (int c = firstBlockStart; c < blockEnd; c++)
+            {
+                if (headerRow[c]?.Trim().Equals(label, StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return c - firstDateCol; // offset relative to date col
+                }
+            }
+            return -1;
+        }
+
+        int totalOff    = OffsetOf("Total Calls");
+        int overflowOff = OffsetOf("Overflow Calls");
+        int queueOff    = OffsetOf("Queue Calls");
+        int handledOff  = OffsetOf("Handled Calls");
+        int missedOff   = OffsetOf("Missed Calls");
+        int transferOff = OffsetOf("Transferred Calls");
+
+        if (totalOff < 0 || overflowOff < 0 || queueOff < 0 ||
+            handledOff < 0 || missedOff < 0 || transferOff < 0)
+        {
+            return false;
+        }
+
+        int pctQueuedOff   = OffsetOf("%Queued of total calls");
+        int pctHandledOff  = OffsetOf("%Handled of total calls");
+        int pctMissedOff   = OffsetOf("%Missed of queued calls");
+
+        // Build list of date columns (one per block) by reading the date row.
+        // For each POD, we only keep the row from the MOST RECENT date so
+        // we don't sum accumulated days/weeks (which produces nonsense for
+        // percentages).
+        var dateRow = grid[0];
+        var blockDates = new List<DateTime?>();
+        foreach (var tc in totalCols)
+        {
+            int dateColIdx = tc - 1;
+            if (dateColIdx >= 0 && dateColIdx < dateRow.Count &&
+                DateTime.TryParse(dateRow[dateColIdx]?.Trim() ?? string.Empty,
+                    CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var d))
+            {
+                blockDates.Add(d.Date);
+            }
+            else
+            {
+                blockDates.Add(null);
+            }
+        }
+
+        int mostRecentIdx = blockDates.Count - 1;
+        DateTime? maxDate = null;
+        for (int i = 0; i < blockDates.Count; i++)
+        {
+            if (blockDates[i].HasValue && (!maxDate.HasValue || blockDates[i]!.Value > maxDate.Value))
+            {
+                maxDate = blockDates[i];
+                mostRecentIdx = i;
+            }
+        }
+
+        // For each POD, read metrics from the most recent block only.
         for (int r = 2; r < grid.Count; r++)
         {
             var pod = GetCell(grid, r, podIdCol);
-            if (string.IsNullOrWhiteSpace(pod) || !pod.StartsWith("ES-", StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.IsNullOrWhiteSpace(pod) ||
+                !pod.StartsWith("ES-", StringComparison.OrdinalIgnoreCase)) continue;
 
-            int total = 0, overflow = 0, queue = 0, handled = 0, missed = 0, transferred = 0;
-            for (int c = 0; c < dayStarts.Count; c++)
-            {
-                int m0 = dayStarts[c];
-                total       += GetInt(grid, r, m0 + 1);
-                overflow    += GetInt(grid, r, m0 + 2);
-                queue       += GetInt(grid, r, m0 + 3);
-                handled     += GetInt(grid, r, m0 + 4);
-                missed      += GetInt(grid, r, m0 + 5);
-                transferred += GetInt(grid, r, m0 + 6);
-            }
+            int bStart = totalCols[mostRecentIdx] - 1; // date col of that block
+
+            int total    = GetInt(grid, r, bStart + totalOff);
+            int overflow = GetInt(grid, r, bStart + overflowOff);
+            int queue    = GetInt(grid, r, bStart + queueOff);
+            int handled  = GetInt(grid, r, bStart + handledOff);
+            int missed   = GetInt(grid, r, bStart + missedOff);
+            int transfer = GetInt(grid, r, bStart + transferOff);
+
             if (total == 0 && handled == 0) continue;
+
+            // Read percentages from CSV; if absent, recalculate from volumes.
+            double pctQueued = pctQueuedOff >= 0
+                ? GetDouble(grid, r, bStart + pctQueuedOff)
+                : (total > 0 ? (double)queue / total * 100 : 0);
+            double pctHandled = pctHandledOff >= 0
+                ? GetDouble(grid, r, bStart + pctHandledOff)
+                : (total > 0 ? (double)handled / total * 100 : 0);
+            double pctMissed = pctMissedOff >= 0
+                ? GetDouble(grid, r, bStart + pctMissedOff)
+                : (queue > 0 ? (double)missed / queue * 100 : 0);
 
             report.DailyGlobal.Add(new DailyGlobalRow
             {
@@ -511,7 +596,13 @@ public sealed class ExcelParserService : IExcelParserService
                 Queued           = queue,
                 Handled          = handled,
                 MissedCalls      = missed,
-                TransferredCalls = transferred,
+                TransferredCalls = transfer,
+                PctQueued        = pctQueued,
+                PctHandled       = pctHandled,
+                PctMissed        = pctMissed,
+                PctTransferred   = total > 0 ? (double)transfer / total * 100 : 0,
+                // Order metrics (OrderCount, RefundedOrders, %OrdersWithErrors)
+                // are populated later from ShopDaily in the export consumer.
             });
         }
         return report.DailyGlobal.Count > 0;
