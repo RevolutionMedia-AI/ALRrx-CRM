@@ -2,10 +2,14 @@
 # Bumping CACHE_BUST below forces Docker to invalidate every cache layer
 # downstream — use this when slice-backend changes are not being picked up by
 # the registry. The default of 1 is harmless; CI overrides it to the commit SHA.
-# 2026-06-09-bust-10: persistir SliceReports en SQLite via EF Core 8.0.10
-# (migracion 20260609234608_InitialSchema), exponer /reports/daily, /range
-# y /monthly, y anadir selector de periodo en el frontend.
-ARG CACHE_BUST=2026-06-09-bust-10
+# 2026-06-09-bust-11: arreglar disposed DbContext en FileProcessingOrchestrator.
+# La version anterior lanzaba ProcessFilesInternalAsync como fire-and-forget
+# desde un servicio Scoped, lo que hacia que la DbContext se disposed junto
+# con el scope del request HTTP. Ahora el orchestrator inyecta
+# IServiceScopeFactory y crea su propio scope para el trabajo en background
+# (tanto para EnqueueAsync como para EnqueueZipAsync), de modo que la
+# DbContext permanece viva hasta que la tarea termina.
+ARG CACHE_BUST=2026-06-09-bust-11
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

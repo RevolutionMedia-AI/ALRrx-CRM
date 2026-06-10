@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Slice.Application.Interfaces;
 using Slice.Domain.Entities;
@@ -24,27 +25,27 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
     /// <summary>Interval at which we log the current processing progress.</summary>
     private static readonly TimeSpan ProgressLogInterval = TimeSpan.FromSeconds(5);
 
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IZipExtractionService _zipExtractor;
     private readonly IExcelParserService _excelParser;
     private readonly IReportMergeService _mergeService;
     private readonly IJobRepository _jobRepo;
-    private readonly IReportRepository _reportRepo;
     private readonly ILogger<FileProcessingOrchestrator> _logger;
 
     public FileProcessingOrchestrator(
+        IServiceScopeFactory scopeFactory,
         IZipExtractionService zipExtractor,
         IExcelParserService excelParser,
         IReportMergeService mergeService,
         IJobRepository jobRepo,
-        IReportRepository reportRepo,
         ILogger<FileProcessingOrchestrator> logger)
     {
+        _scopeFactory = scopeFactory;
         _zipExtractor = zipExtractor;
-        _excelParser = excelParser;
+        _excelParser  = excelParser;
         _mergeService = mergeService;
-        _jobRepo = jobRepo;
-        _reportRepo = reportRepo;
-        _logger = logger;
+        _jobRepo      = jobRepo;
+        _logger       = logger;
     }
 
     /// <inheritdoc/>
@@ -81,7 +82,22 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         await _jobRepo.SaveAsync(job);
 
         // Fire-and-forget: processing continues after the HTTP response is returned.
-        _ = ProcessFilesInternalAsync(job, tempPaths, CancellationToken.None);
+        // The background work runs in its own DI scope so it owns a fresh DbContext
+        // that doesn't get disposed when the HTTP request scope ends.
+        _ = Task.Run(async () =>
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var reportRepo = scope.ServiceProvider.GetRequiredService<IReportRepository>();
+            try
+            {
+                await ProcessFilesInternalAsync(job, tempPaths, CancellationToken.None, reportRepo);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Background processing failed for job {JobId}", job.Id);
+                await FailJobAsync(job, ex.Message);
+            }
+        });
 
         return job.Id;
     }
@@ -100,7 +116,15 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
                          FileShare.None, bufferSize: 81920, useAsync: true))
             await zipStream.CopyToAsync(fs, ct);
 
-        _ = ProcessZipInternalAsync(job, tempZip, CancellationToken.None);
+        _ = Task.Run(async () =>
+        {
+            try { await ProcessZipInternalAsync(job, tempZip, CancellationToken.None); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Background ZIP processing failed for job {JobId}", job.Id);
+                await FailJobAsync(job, ex.Message);
+            }
+        });
 
         return job.Id;
     }
@@ -109,6 +133,12 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
 
     private async Task ProcessZipInternalAsync(ProcessingJob job, string zipPath, CancellationToken ct)
     {
+        // Resolve per-job scoped services BEFORE the HTTP request scope ends, so
+        // the background work has its own DbContext lifetime that we control.
+        using var scope = _scopeFactory.CreateScope();
+        var zipExtractor = scope.ServiceProvider.GetRequiredService<IZipExtractionService>();
+        var reportRepo   = scope.ServiceProvider.GetRequiredService<IReportRepository>();
+
         try
         {
             job.Status = JobStatus.Extracting;
@@ -116,7 +146,7 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
 
             await using var zipStream = new FileStream(zipPath, FileMode.Open,
                 FileAccess.Read, FileShare.Read, bufferSize: 81920, useAsync: true);
-            var extractedFiles = await _zipExtractor.ExtractAsync(zipStream, job.Id.ToString(), ct);
+            var extractedFiles = await zipExtractor.ExtractAsync(zipStream, job.Id.ToString(), ct);
 
             if (extractedFiles.Count == 0)
             {
@@ -134,7 +164,7 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
             job.SourceFiles = extractedFiles.ToList();
             await _jobRepo.UpdateAsync(job);
 
-            await ProcessFilesInternalAsync(job, extractedFiles, ct);
+            await ProcessFilesInternalAsync(job, extractedFiles, ct, reportRepo);
         }
         catch (Exception ex)
         {
@@ -147,7 +177,11 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         }
     }
 
-    private async Task ProcessFilesInternalAsync(ProcessingJob job, IReadOnlyList<string> filePaths, CancellationToken ct)
+    private async Task ProcessFilesInternalAsync(
+        ProcessingJob job,
+        IReadOnlyList<string> filePaths,
+        CancellationToken ct,
+        IReportRepository reportRepo)
     {
         job.Status = JobStatus.Processing;
         await _jobRepo.UpdateAsync(job);
@@ -159,7 +193,6 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         var processedCount = 0;
         var totalFiles     = filePaths.Count;
         var pipelineSw     = Stopwatch.StartNew();
-        var lastProgressSw = Stopwatch.StartNew();
 
         // Background heartbeat: log progress every ProgressLogInterval so a
         // hang is visible in the logs without waiting for the job to finish.
@@ -184,6 +217,12 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
             new ParallelOptions { MaxDegreeOfParallelism = MaxConcurrentFiles, CancellationToken = ct },
             async (path, token) =>
             {
+                // Each parallel branch needs its own scope so the DbContext isn't
+                // shared across threads. The parser is scoped because it owns
+                // EPPlus licenses and other per-request state.
+                using var branchScope = _scopeFactory.CreateScope();
+                var branchParser = branchScope.ServiceProvider.GetRequiredService<IExcelParserService>();
+
                 var fileSw = Stopwatch.StartNew();
                 var fileName = Path.GetFileName(path);
 
@@ -194,7 +233,7 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
 
                 try
                 {
-                    var report = await _excelParser.ParseAsync(path, linkedCts.Token);
+                    var report = await branchParser.ParseAsync(path, linkedCts.Token);
                     fileSw.Stop();
 
                     if (report != null)
@@ -246,13 +285,15 @@ public sealed class FileProcessingOrchestrator : IFileProcessingOrchestrator
         job.Status = JobStatus.Merging;
         await _jobRepo.UpdateAsync(job);
 
+        // Merge + export are CPU-only and stateless — no DbContext involvement,
+        // so a single instance is fine.
         var merged = _mergeService.Merge(parsedReports);
         merged.GeneratedByEmail = job.CreatedByEmail;
 
         merged.MergedXlsxPath = await _mergeService.ExportXlsxAsync(merged, ct);
         merged.MergedCsvPath  = await _mergeService.ExportCsvAsync(merged, ct);
 
-        await _reportRepo.SaveAsync(merged);
+        await reportRepo.SaveAsync(merged);
 
         job.Status      = JobStatus.Completed;
         job.CompletedAt = DateTime.UtcNow;
