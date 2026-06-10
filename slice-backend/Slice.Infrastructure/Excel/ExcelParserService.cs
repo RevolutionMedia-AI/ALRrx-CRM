@@ -98,6 +98,12 @@ public sealed class ExcelParserService : IExcelParserService
     /// <summary>
     /// Scans a single worksheet row-by-row looking for section header keywords,
     /// then delegates to the corresponding section parser.
+    ///
+    /// Performance: bulk-reads the entire sheet as a 2D <c>object[,]</c> via
+    /// <c>ws.Cells.Value</c>. This is ~10× faster than calling
+    /// <c>ws.Cells[r, c].GetValue&lt;string&gt;()</c> per cell because EPPlus
+    /// resolves each individual cell through property accessors, while the
+    /// bulk read goes through the underlying XML reader once.
     /// </summary>
     private static void ParseWorksheet(ExcelWorksheet ws, SliceReport report)
     {
@@ -105,13 +111,24 @@ public sealed class ExcelParserService : IExcelParserService
         int cols = ws.Dimension?.Columns ?? 0;
         if (rows == 0 || cols == 0) return;
 
+        // ws.Cells.Value returns a 2D array indexed from [1,1] to [rows, cols].
+        // It can be null when the worksheet is fully empty (rare but possible).
+        var raw = ws.Cells.Value as object[,];
+        if (raw is null) return;
+
+        // Cap the column count to prevent OOM on malformed sheets. The
+        // layout detectors only ever read the first ~30 columns.
+        int maxCol = Math.Min(cols, 64);
+
         var grid = new List<IList<string>>(rows);
         for (int r = 1; r <= rows; r++)
         {
-            var line = new List<string>(cols);
-            for (int c = 1; c <= cols; c++)
+            var line = new List<string>(maxCol);
+            for (int c = 1; c <= maxCol; c++)
             {
-                line.Add(ws.Cells[r, c].GetValue<string>()?.Trim() ?? string.Empty);
+                var v = raw[r, c];
+                var s = v?.ToString()?.Trim();
+                line.Add(s ?? string.Empty);
             }
             grid.Add(line);
         }
@@ -602,6 +619,17 @@ public sealed class ExcelParserService : IExcelParserService
         int podIdCol = FindColumn(headerRow, "Pod ID");
         if (podIdCol < 0) return false;
 
+        // Guard: shop_level_-_call_metrics.csv has the same "Pod ID" + "Total Calls"
+        // headers as pod_level_-_call_metrics.csv. We differentiate by checking
+        // for the presence of "Shop ID" / "Shop Name" — those only exist on the
+        // shop-level CSVs. If present, this is shop data and must be routed to
+        // TryParseShopLevelPivoted instead (bust-19).
+        if (FindColumn(headerRow, "Shop ID") >= 0 ||
+            FindColumn(headerRow, "Shop Name") >= 0)
+        {
+            return false;
+        }
+
         // Find every "Total Calls" column in the header. Each occurrence
         // marks the start of a new day/week block. The metrics are at
         // fixed offsets within the block (column names repeat), so this
@@ -885,12 +913,13 @@ public sealed class ExcelParserService : IExcelParserService
 
     /// <summary>
     /// <c>shop_level_-_call_metrics.csv</c> pivoted layout. Two variants:
-    ///   - DAILY  (11 cols per day after the date): Total, Overflow, Queue, Handled,
-    ///     Missed, Transferred, %×4
-    ///   - WEEKLY (same 11 cols, just repeated more times; no "Live on Phone Date")
-    /// In both variants the header row contains "Shop ID" + "Shop Name" + "Pod ID"
-    /// + "Total Calls" and the date row sits at the same column index as
-    /// "Total Calls" minus one.
+    ///   - DAILY  (10 metric cols per day): Total, Overflow, Queue, Handled,
+    ///     Missed, Transferred, %Overflow, %Queued, %Handled, %Missed of queued
+    ///   - WEEKLY (same 10 cols, just repeated more times; no "Live on Phone Date")
+    /// The header row contains "Shop ID" + "Shop Name" + "Pod ID" + "Total Calls"
+    /// (and optionally "Live on Phone Date"). The date row (row 0) has the same
+    /// date repeated across all 10 metric cols of a block, so we can use the
+    /// first col of each block to extract the date (bust-19).
     /// </summary>
     private static bool TryParseShopLevelPivoted(IList<IList<string>> grid, SliceReport report)
     {
@@ -903,8 +932,25 @@ public sealed class ExcelParserService : IExcelParserService
         int totalCallsCol = FindColumn(headerRow, "Total Calls");
         if (shopIdCol < 0 || shopNameCol < 0 || podIdCol < 0 || totalCallsCol < 0) return false;
 
-        // Block = 11 metric cols: Total..Transferred..%×4.
-        const int blockWidth = 11;
+        // Compute the actual block width by finding the next "Total Calls" column
+        // after the first one. The CSV has 10 metric cols per day, so the next
+        // "Total Calls" is 10 cols over. This is more robust than hardcoding 10
+        // (the previous code used 11, which read 1 col past each block, causing
+        // every metric to be misaligned by 1 and producing nonsense data — bust-19).
+        int blockWidth = 10;
+        for (int c = totalCallsCol + 1; c < headerRow.Count; c++)
+        {
+            if (headerRow[c]?.Trim().Equals("Total Calls", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                blockWidth = c - totalCallsCol;
+                break;
+            }
+        }
+
+        // Date row 0 has the same date for all 10 cols of a single day. The
+        // first col of each block is the metric col that immediately follows
+        // a date label, so the date in row 0 at `totalCallsCol + offset` is
+        // the date for the block starting at `totalCallsCol + offset`.
 
         for (int r = 2; r < grid.Count; r++)
         {
@@ -913,21 +959,40 @@ public sealed class ExcelParserService : IExcelParserService
             var podId    = GetCell(grid, r, podIdCol);
             if (string.IsNullOrWhiteSpace(shopId) || string.IsNullOrWhiteSpace(shopName)) continue;
 
-            // The first date column (where the weekly metrics start) is totalCallsCol
-            // minus one (the "Live on Phone Date" column right before the first metric).
-            int firstBlockStart = totalCallsCol - 1;
-
-            for (int offset = 0; offset < headerRow.Count - firstBlockStart && offset < 1000 * blockWidth; offset += blockWidth)
+            for (int offset = 0;
+                 offset + totalCallsCol + 9 < headerRow.Count && offset < 1000 * blockWidth;
+                 offset += blockWidth)
             {
-                int dateCol = firstBlockStart + offset;
-                int total = GetInt(grid, r, dateCol + 1);
-                if (total == 0 && GetString(grid, r, dateCol + 1) == string.Empty) continue;
+                int m0 = totalCallsCol + offset;   // first metric col of this block
+                int total = GetInt(grid, r, m0);
+                // Skip empty days (no calls at all for this shop on this date).
+                if (total == 0 && GetString(grid, r, m0) == string.Empty) continue;
 
+                // Date for the block: read from the date row at the first
+                // col of the block. Fall back to the "Live on Phone Date" col
+                // on the data row (which is the per-shop first-day date) if
+                // the date row is empty.
                 DateTime weekStart = DateTime.UtcNow.Date;
-                if (liveOnCol >= 0)
+                if (DateTime.TryParse(GetCell(grid, 0, m0)?.Trim() ?? string.Empty,
+                    CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var d))
                 {
-                    DateTime.TryParse(GetCell(grid, r, liveOnCol + offset),
+                    weekStart = d.Date;
+                }
+                else if (liveOnCol >= 0)
+                {
+                    DateTime.TryParse(GetCell(grid, r, liveOnCol),
                         CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out weekStart);
+                }
+
+                // The daily layout has 10 metric cols per day (no PctTransferred
+                // at the end); the weekly layout has 11 (the extra col is
+                // `%Transferred of handled`). Only read the 11th percentage
+                // when blockWidth >= 11 — otherwise m0+10 would bleed into the
+                // next block (bust-19).
+                double pctTransferred = 0;
+                if (blockWidth >= 11)
+                {
+                    pctTransferred = GetDouble(grid, r, m0 + 10);
                 }
 
                 report.ShopCallMetrics.Add(new ShopCallMetricsRow
@@ -937,16 +1002,16 @@ public sealed class ExcelParserService : IExcelParserService
                     ShopName         = shopName,
                     PodId            = podId,
                     TotalCalls       = total,
-                    OverflowCalls    = GetInt(grid, r, dateCol + 2),
-                    QueueCalls       = GetInt(grid, r, dateCol + 3),
-                    HandledCalls     = GetInt(grid, r, dateCol + 4),
-                    MissedCalls      = GetInt(grid, r, dateCol + 5),
-                    TransferredCalls = GetInt(grid, r, dateCol + 6),
-                    PctOverflow      = GetDouble(grid, r, dateCol + 7),
-                    PctQueued        = GetDouble(grid, r, dateCol + 8),
-                    PctHandled       = GetDouble(grid, r, dateCol + 9),
-                    PctMissedOfQueued= GetDouble(grid, r, dateCol + 10),
-                    PctTransferred   = GetDouble(grid, r, dateCol + 11),
+                    OverflowCalls    = GetInt(grid, r, m0 + 1),
+                    QueueCalls       = GetInt(grid, r, m0 + 2),
+                    HandledCalls     = GetInt(grid, r, m0 + 3),
+                    MissedCalls      = GetInt(grid, r, m0 + 4),
+                    TransferredCalls = GetInt(grid, r, m0 + 5),
+                    PctOverflow      = GetDouble(grid, r, m0 + 6),
+                    PctQueued        = GetDouble(grid, r, m0 + 7),
+                    PctHandled       = GetDouble(grid, r, m0 + 8),
+                    PctMissedOfQueued= GetDouble(grid, r, m0 + 9),
+                    PctTransferred   = pctTransferred,
                 });
             }
         }
@@ -956,25 +1021,34 @@ public sealed class ExcelParserService : IExcelParserService
     /// <summary>
     /// <c>shop_level_-_order_metrics.csv</c> pivoted by date with 5 columns per
     /// day (Orders, Refunded, Removed Items, Removed Count, % errors). Adds a
-    /// <c>ShopDaily</c> row per shop.
+    /// <c>ShopDaily</c> row per shop. The CSV has the same shape as
+    /// <c>shop_level_-_call_metrics.csv</c>: row 0 is the date row, row 1 is the
+    /// actual column-header row (bust-19).
     /// </summary>
     private static bool TryParseShopLevelOrderMetrics(IList<IList<string>> grid, SliceReport report)
     {
         if (grid.Count < 2) return false;
-        var headerRow = grid[0];
+        // Row 0 is the date row ("Created At Date,2026-05-14,..."). The actual
+        // column headers are in row 1. The previous code read row 0 as the
+        // header, which made it impossible to find "Shop ID" / "Orders Count"
+        // and silently returned false — no ShopDaily rows were ever created
+        // from this file (bust-19).
+        var headerRow = grid[1];
         int shopIdCol  = FindColumn(headerRow, "Shop ID");
         int ordersCol  = FindColumn(headerRow, "Orders Count");
         int refundCol  = FindColumn(headerRow, "Refunded Orders");
         int errorsCol  = FindColumn(headerRow, "%orders with errors");
         if (shopIdCol < 0 || ordersCol < 0) return false;
 
-        // Daily block width = 5.
+        // Daily block width = 5. We start the block at "Orders Count" (not at
+        // "Refunded Orders") so that the parsed column actually maps to the
+        // intended field. The previous code overrode firstBlockStart to
+        // refundCol, which caused Orders/Refunded to read from the same column.
         const int blockWidth = 5;
         int firstBlockStart = ordersCol;
-        if (refundCol > 0) firstBlockStart = refundCol;
         if (firstBlockStart <= shopIdCol) return false;
 
-        for (int r = 1; r < grid.Count; r++)
+        for (int r = 2; r < grid.Count; r++)
         {
             var shopId = GetCell(grid, r, shopIdCol);
             if (string.IsNullOrWhiteSpace(shopId)) continue;
@@ -1522,18 +1596,22 @@ public sealed class ExcelParserService : IExcelParserService
     /// <summary>
     /// <c>shop_level_-_orders_metrics.csv</c> (WEEKLY, 6 columns per week):
     /// Orders, Open food items, Refunded, Orders with items removed, Removed
-    /// Items Count, %orders with errors. The CSV has three header rows: dates
-    /// in row 0, blank row 1, column labels in row 2. One row per shop.
-    /// We map every week into a single aggregated <c>ShopDaily</c> row with
-    /// prefixed <c>WEEKLY_ORDERS:&lt;shopId&gt;</c>.
+    /// Items Count, %orders with errors. Layout is two-header-rows deep:
+    ///   row 0: <c>,,Created At Week,2026-05-11,...</c> (weekly start dates)
+    ///   row 1: <c>,Shop ID,Name,Orders Count,Open food items count,...</c> (column labels)
+    /// One row per shop. We map every week into a single aggregated
+    /// <c>ShopDaily</c> row with prefixed <c>WEEKLY_ORDERS:&lt;shopId&gt;</c>.
     /// </summary>
     private static bool TryParseShopLevelOrdersWeekly(IList<IList<string>> grid, SliceReport report)
     {
-        if (grid.Count < 3) return false;
+        if (grid.Count < 2) return false;
 
-        // row 0 = dates, row 1 = sub-header (often blank), row 2 = column labels
+        // row 0 = dates, row 1 = column labels. The previous code read row 2
+        // as the header, which was the first DATA row — so FindColumn would
+        // miss "Shop ID" / "Orders Count" and the parser would return false
+        // (same bug as the daily TryParseShopLevelOrderMetrics — bust-19).
         var datesRow = grid[0];
-        var headerRow = grid.Count > 2 ? grid[2] : grid[1];
+        var headerRow = grid[1];
 
         int shopIdCol = FindColumn(headerRow, "Shop ID");
         int ordersCol = FindColumn(headerRow, "Orders Count");
@@ -1543,7 +1621,9 @@ public sealed class ExcelParserService : IExcelParserService
 
         const int blockWidth = 6; // Orders, OpenFoodItems, Refunded, ItemsRemoved, RemovedCount, %errors
 
-        for (int r = 3; r < grid.Count; r++)
+        // Data starts at row 2 (the previous code started at row 3, skipping
+        // the first shop's data).
+        for (int r = 2; r < grid.Count; r++)
         {
             var shopId = GetCell(grid, r, shopIdCol);
             if (string.IsNullOrWhiteSpace(shopId)) continue;

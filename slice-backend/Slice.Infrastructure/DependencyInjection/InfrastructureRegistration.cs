@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Slice.Application.Interfaces;
 using Slice.Domain.Interfaces;
 using Slice.Infrastructure.Auth;
+using Slice.Infrastructure.Diagnostics;
 using Slice.Infrastructure.Email;
 using Slice.Infrastructure.Excel;
 using Slice.Infrastructure.Persistence;
@@ -24,6 +25,8 @@ public static class InfrastructureRegistration
         IConfiguration configuration)
     {
         // Auth
+        services.AddSingleton<JwtKeyCache>();
+        services.AddSingleton<EfQueryMetricsInterceptor>();
         services.AddSingleton<IAuthService, JwtAuthService>();
 
         // User store — registered both as the concrete type (for seed service)
@@ -36,7 +39,28 @@ public static class InfrastructureRegistration
         // maps to a persistent volume. Override in appsettings for tests.
         var connectionString = configuration["Slice:Database:ConnectionString"]
             ?? "Data Source=/data/slice.db";
-        services.AddDbContext<SliceDbContext>(opts => opts.UseSqlite(connectionString));
+        services.AddDbContext<SliceDbContext>((sp, opts) =>
+        {
+            opts.UseSqlite(connectionString, sqlite =>
+            {
+                // Bump the EF command timeout above the SQLite default of 30s.
+                // Some periodic summary queries (with 4 child collections) can
+                // exceed 30s on cold cache; we still want a hard ceiling to
+                // fail fast rather than hang the request thread.
+                sqlite.CommandTimeout(60);
+            });
+            // EF query interceptor that times every command and pushes the
+            // measurement into SlicePerformanceMetrics for the /debug/perf
+            // endpoint. Resolved from DI so the interceptor shares the same
+            // singleton counter store as the rest of the app.
+            opts.AddInterceptors(sp.GetRequiredService<EfQueryMetricsInterceptor>());
+            // Enable sensitive-data logging only in dev — we don't want JWT
+            // claims or report bodies in production logs.
+#if DEBUG
+            opts.EnableSensitiveDataLogging();
+#endif
+            opts.EnableDetailedErrors();
+        });
         services.AddScoped<IReportRepository, EfReportRepository>();
         // Job repository still uses in-memory: jobs are short-lived and we don't
         // need historical queries on them.
