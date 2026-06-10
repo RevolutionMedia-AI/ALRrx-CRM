@@ -192,7 +192,12 @@ export default function VSaleForm() {
     const payload: VicidialSaleRequest = {
       ...(validLeadId != null ? { leadId: validLeadId } : {}),
       salesRep: salesRep.trim(),
-      saleDate: new Date(saleDate).toISOString(),
+      // saleDate is a datetime-local value ("YYYY-MM-DDTHH:MM", wall clock in
+      // the business tz). The backend stores it in a MySQL DATETIME column
+      // (no tz), so we must send the wall clock as-is. Calling
+      // .toISOString() here would silently shift the time by the browser's
+      // UTC offset and make the sale land on the wrong day.
+      saleDate: saleDate.length === 16 ? `${saleDate}:00` : saleDate,
       clientPhone: clientPhone.trim(),
       clientName: clientName.trim(),
       clientEmail: clientEmail.trim(),

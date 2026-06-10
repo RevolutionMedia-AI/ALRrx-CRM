@@ -105,13 +105,13 @@ function formatDate(iso: string): string {
 
 function toLocalDateTimeInputValue(iso: string): string {
   if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
-  } catch {
-    return '';
-  }
+  // SaleDate is stored as a wall-clock DATETIME in America/Tijuana (no tz in the
+  // column). The backend serializes it as "YYYY-MM-DDTHH:MM:SS" (no Z, no offset),
+  // so we just slice the first 16 chars to fit the datetime-local input format.
+  // Doing a tz round-trip here (as the previous version did) caused the time to
+  // drift by ±7h on every edit, which is what made sales vanish from the "Today"
+  // filter after the second edit.
+  return iso.slice(0, 16);
 }
 
 function ConfirmDeleteModal({
@@ -422,7 +422,7 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
                         <input
                           type="datetime-local"
                           value={toLocalDateTimeInputValue(editForm.saleDate ?? s.saleDate)}
-                          onChange={(e) => setEditForm((f) => ({ ...f, saleDate: new Date(e.target.value).toISOString() }))}
+                          onChange={(e) => setEditForm((f) => ({ ...f, saleDate: `${e.target.value}:00` }))}
                           className="w-[180px] px-2 py-1 text-xs border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 text-primary"
                         />
                       ) : formatDate(s.saleDate)}
