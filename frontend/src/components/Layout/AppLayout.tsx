@@ -1,6 +1,7 @@
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getAccessGroup } from '../../utils/accessControl';
 import type { ReactNode } from 'react';
 
 const navItems = [
@@ -14,6 +15,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { isDark, toggle } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Dual-platform users (slice + altrx) get routed to the platform picker
+  // instead of a full sign-out. The shared JWT is preserved so they can pick
+  // either side without re-authenticating; the modal's "Sign out" link is
+  // the only path that actually clears the token.
+  const hasDualAccess = !!user && getAccessGroup(user.email) === 'both';
+  const handleSignOut = () => {
+    if (hasDualAccess) {
+      navigate('/select-platform');
+    } else {
+      logout();
+    }
+  };
 
   return (
     <div className="bg-canvas-white dark:bg-gray-950 text-on-surface dark:text-gray-100 font-body-md antialiased min-h-screen transition-colors">
@@ -56,7 +70,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <span className="material-symbols-outlined text-secondary dark:text-gray-400">account_circle</span>
           </div>
           <button
-            onClick={logout}
+            onClick={handleSignOut}
+            title={hasDualAccess ? 'Switch platform or sign out' : 'Sign out'}
             className="bg-primary dark:bg-gray-700 text-on-primary dark:text-gray-100 px-4 py-1.5 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm"
           >
             Sign Out
