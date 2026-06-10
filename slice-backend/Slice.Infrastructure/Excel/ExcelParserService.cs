@@ -215,25 +215,62 @@ public sealed class ExcelParserService : IExcelParserService
         if (TryParseShopCallMetricsPivoted(grid, report))            return;
 
         // 2. Fallback to the classic "Daily Global / Daily Agent / Shop Daily"
-        //    section-header format (used by the Excel template).
+        //    section-header format (used by the Excel template). We scan every
+        //    cell in each row (not just column 0) because the section title can
+        //    be centered above a block of columns while column A is used as a
+        //    visual margin and left blank. The two-tier header pattern is:
+        //      title row:    "Global" / "Agent" / "Shop" (centered, 1 cell only)
+        //      column row:   "Pod" / "Queued" / ...  / "Pod - Shops" / ...
+        //      data row:     "ES-12" / 6132 / ...   / "ALL" / "EXTERNAL..." / ...
+        //    The legacy "Daily Global" / "Shop Daily" title format is still
+        //    supported, but the new shorter title format takes priority.
         for (int row = 0; row < grid.Count; row++)
         {
-            var cellValue = GetCell(grid, row, 0);
+            string rowText = string.Join(' ', Enumerable.Range(0, Math.Min(20, grid[row].Count))
+                .Select(c => GetCell(grid, row, c)));
 
-            if (cellValue.Contains("Daily Global", StringComparison.OrdinalIgnoreCase))
+            if (rowText.Contains("Daily Global", StringComparison.OrdinalIgnoreCase))
             {
                 ParseDailyGlobalSection(grid, row + 2, report);
                 continue;
             }
-            if (cellValue.Contains("Daily Agent", StringComparison.OrdinalIgnoreCase))
+            if (rowText.Contains("Daily Agent", StringComparison.OrdinalIgnoreCase))
             {
                 ParseDailyAgentSection(grid, row + 2, report);
                 continue;
             }
-            if (cellValue.Contains("Shop Daily", StringComparison.OrdinalIgnoreCase))
+            if (rowText.Contains("Shop Daily", StringComparison.OrdinalIgnoreCase))
             {
                 ParseShopDailySection(grid, row + 2, report);
                 continue;
+            }
+
+            // Shorter title format: "Global" or "Agent" or "Shop" alone, in a
+            // row where the only non-empty cell is the title itself. The next
+            // row is the column-header row, and the one after that is the data.
+            string firstNonEmpty = Enumerable.Range(0, grid[row].Count)
+                .Select(c => GetCell(grid, row, c))
+                .FirstOrDefault(s => !string.IsNullOrWhiteSpace(s)) ?? string.Empty;
+            int nonEmptyCount = Enumerable.Range(0, grid[row].Count)
+                .Count(c => !string.IsNullOrWhiteSpace(GetCell(grid, row, c)));
+
+            if (nonEmptyCount == 1)
+            {
+                if (firstNonEmpty.Equals("Global", StringComparison.OrdinalIgnoreCase))
+                {
+                    ParseDailyGlobalSection(grid, row + 2, report);
+                    continue;
+                }
+                if (firstNonEmpty.Equals("Agent", StringComparison.OrdinalIgnoreCase))
+                {
+                    ParseDailyAgentSection(grid, row + 2, report);
+                    continue;
+                }
+                if (firstNonEmpty.Equals("Shop", StringComparison.OrdinalIgnoreCase))
+                {
+                    ParseShopDailySection(grid, row + 2, report);
+                    continue;
+                }
             }
         }
 

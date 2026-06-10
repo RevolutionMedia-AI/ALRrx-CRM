@@ -164,6 +164,13 @@ public sealed class ReportMergeService : IReportMergeService
                     };
                 }));
 
+        // The four order metrics in DailyGlobal (OrderCount, RefundedOrders,
+        // PctOrdersWithErrors, ConvPct) often come from a separate CSV that
+        // the parser may not have ingested. Backfill them from ShopDaily via
+        // ShopCallMetrics (which maps Pod -> ShopId) so the persisted report
+        // shows the real numbers, not zeros.
+        BackfillOrderMetricsFromShopDaily(merged);
+
         return merged;
     }
 
@@ -331,6 +338,13 @@ public sealed class ReportMergeService : IReportMergeService
             .ToList();
         if (dailyWithData.Count > 0)
         {
+            // The Global block has real call-volume data per pod. But the four
+            // order metrics (OrderCount, RefundedOrders, PctOrdersWithErrors,
+            // ConvPct) are often missing in the source — they live in a
+            // different CSV that the parser may or may not have ingested.
+            // Backfill from ShopDaily via ShopCallMetrics (the bridge that
+            // maps Pod -> ShopId) so the export shows real numbers per pod.
+            BackfillOrderMetricsFromShopDaily(report);
             return report.DailyGlobal.ToList();
         }
 
@@ -340,6 +354,61 @@ public sealed class ReportMergeService : IReportMergeService
         }
 
         return GetPlaceholderGlobalRows();
+    }
+
+    /// <summary>
+    /// For each DailyGlobalRow that has 0s in the four order metrics, derive
+    /// OrderCount, RefundedOrders and PctOrdersWithErrors from ShopDaily rows
+    /// belonging to the same pod (using ShopCallMetrics as the Pod -> ShopId
+    /// bridge). ConvPct is left at 0 — we don't have a reliable source for it
+    /// in the current data shape.
+    /// </summary>
+    private static void BackfillOrderMetricsFromShopDaily(SliceReport report)
+    {
+        if (report.ShopCallMetrics.Count == 0 || report.ShopDaily.Count == 0) return;
+
+        // Build PodId -> set of ShopIds.
+        var shopsByPod = report.ShopCallMetrics
+            .Where(m => !string.IsNullOrWhiteSpace(m.PodId) && !string.IsNullOrWhiteSpace(m.ShopId))
+            .GroupBy(m => m.PodId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(m => m.ShopId).Distinct(StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                StringComparer.OrdinalIgnoreCase);
+
+        // Build ShopId -> ShopDaily row (first match wins; CSV ingestion dedupes upstream).
+        var dailyByShop = report.ShopDaily
+            .Where(s => !string.IsNullOrWhiteSpace(s.ShopId))
+            .GroupBy(s => s.ShopId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var g in report.DailyGlobal)
+        {
+            if (g.OrderCount + g.RefundedOrders > 0) continue; // already populated
+            if (!shopsByPod.TryGetValue(g.Pod, out var shopIds)) continue;
+
+            int orders = 0;
+            int refunded = 0;
+            double errSum = 0;
+            int errCount = 0;
+            foreach (var shopId in shopIds)
+            {
+                if (!dailyByShop.TryGetValue(shopId, out var s)) continue;
+                orders   += s.TotalOrders;
+                refunded += s.RefundedOrders;
+                if (s.ErrorRate > 0)
+                {
+                    errSum  += s.ErrorRate;
+                    errCount += 1;
+                }
+            }
+            if (orders + refunded > 0)
+            {
+                g.OrderCount          = orders;
+                g.RefundedOrders      = refunded;
+                g.PctOrdersWithErrors = errCount > 0 ? errSum / errCount : 0;
+            }
+        }
     }
 
     /// <summary>

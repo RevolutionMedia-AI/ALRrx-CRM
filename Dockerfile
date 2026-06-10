@@ -2,20 +2,21 @@
 # Bumping CACHE_BUST below forces Docker to invalidate every cache layer
 # downstream — use this when slice-backend changes are not being picked up by
 # the registry. The default of 1 is harmless; CI overrides it to the commit SHA.
-# 2026-06-09-bust-14: el slice-api estaba siendo OOM-killed por el
-# kernel del contenedor (los logs de supervisord mostraban
-# 'terminated by SIGKILL; not expected'). Causa: GetByIdAsync cargaba
-# las 4 child collections de cada reporte en cada peticion, y el
-# controlador de export + el de 'get full report' hidrataban miles
-# de filas de ShopCallMetrics por reporte, reventando el heap del
-# contenedor. Ahora: 1) GetByIdAsync es shallow (solo columnas
-# escalares, sin Includes); 2) nuevo GetWithChildrenAsync para los
-# endpoints que realmente necesitan los hijos (GetById, chart,
-# edit endpoints); 3) el Export y el Template ahora son shallow
-# (solo necesitan MergedXlsxPath / MergedCsvPath); 4) variables de
-# entorno para que el GC de .NET se mantenga conservador y no
-# rebase el memory limit del contenedor.
-ARG CACHE_BUST=2026-06-09-bust-14
+# 2026-06-09-bust-15: arreglar dos bugs en el parser / merge del Excel.
+# (1) Las 4 metricas de orders del bloque Global (Conv %, Order Count,
+# Refunded Orders, % Orders with errors) siempre quedaban en 0 porque
+# ParseDailyGlobalSection las leia del Excel y devolvia ceros cuando
+# el archivo no las traia. Ahora Merge() llama a
+# BackfillOrderMetricsFromShopDaily, que cruza DailyGlobal.Pod con
+# ShopCallMetrics (puente Pod <-> ShopId) para derivar OrderCount,
+# RefundedOrders y PctOrdersWithErrors de ShopDaily.
+# (2) Desde el commit 2b64547 (offset del bloque Shop, columna A
+# como margen) el bloque Shop no se detectaba porque el parser buscaba
+# 'Shop Daily' solo en columna A. Ahora ParseRowGrid escanea todas
+# las celdas de cada fila y tambien acepta el formato corto donde el
+# titulo 'Shop' (o 'Global' / 'Agent') esta centrado en una sola
+# celda de la fila, sin tocar la columna A.
+ARG CACHE_BUST=2026-06-09-bust-15
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend
