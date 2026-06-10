@@ -88,8 +88,12 @@ export interface SliceReportSummary {
   id: string;
   reportDate: string;
   generatedAt: string;
+  generatedByEmail: string;
   podCount: number;
   agentCount: number;
+  shopDailyCount: number;
+  shopCallMetricsCount: number;
+  dailyGlobal: SliceDailyGlobalRow[];
   mergedCsvPath?: string | null;
   mergedXlsxPath?: string | null;
 }

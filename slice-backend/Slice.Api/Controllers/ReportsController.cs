@@ -14,6 +14,12 @@ namespace Slice.Api.Controllers;
 [Authorize]
 public sealed class ReportsController : ControllerBase
 {
+    /// <summary>Default page size for paginated list/period endpoints.</summary>
+    private const int DefaultPageSize = 50;
+
+    /// <summary>Hard cap on page size to keep responses bounded.</summary>
+    private const int MaxPageSize = 200;
+
     private readonly IReportRepository _reports;
     private readonly TemplateGeneratorService _templateGenerator;
     private readonly ILogger<ReportsController> _logger;
@@ -31,17 +37,20 @@ public sealed class ReportsController : ControllerBase
     // ─── Read endpoints (all authenticated users) ─────────────────────────────
 
     /// <summary>
-    /// Lista todos los reportes. Admins ven todos; otros usuarios solo ven los propios.
+    /// Lista todos los reportes usando la proyección "summary" (sin filas).
+    /// Admins ven todos; otros usuarios solo ven los propios. Paginación vía
+    /// <c>?limit=</c> y <c>?offset=</c> (bust-18).
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] int limit = DefaultPageSize, [FromQuery] int offset = 0)
     {
+        var (effectiveLimit, effectiveOffset) = NormalizePaging(limit, offset);
         var email = GetCurrentEmail();
-        var reports = User.IsInRole("Admin")
-            ? await _reports.GetAllAsync()
-            : await _reports.GetAllByEmailAsync(email);
-
-        return Ok(reports.Select(ReportDtoMapper.ToSummary));
+        var emailFilter = User.IsInRole("Admin") ? null : email;
+        var items = await _reports.GetAllSummariesAsync(emailFilter, effectiveLimit, effectiveOffset);
+        var total = await _reports.CountAllAsync(emailFilter);
+        Response.Headers["X-Total-Count"] = total.ToString();
+        return Ok(items);
     }
 
     /// <summary>
@@ -115,7 +124,6 @@ public sealed class ReportsController : ControllerBase
         }
 
         _logger.LogInformation("Streaming export {Format} for report {ReportId} from {Path}", format, reportId, path);
-        // PhysicalFile streams the file directamente a la respuesta — evita cargarlo en memoria.
         return PhysicalFile(path, contentType, $"Slice_Report_{report.ReportDate:yyyyMMdd}.{ext}");
     }
 
@@ -221,58 +229,81 @@ public sealed class ReportsController : ControllerBase
         return Ok(row);
     }
 
-    // ─── Period endpoints (DB-backed) ──────────────────────────────────────────
+    // ─── Period endpoints (DB-backed, summary projection — bust-18) ──────────
 
     /// <summary>
-    /// Retorna los reportes cuyo <c>ReportDate</c> cae en el dia UTC indicado.
-    /// Acepta <c>?date=YYYY-MM-DD</c> y opcional <c>?pod=ES-12</c> para filtrar
-    /// por POD (filtra las filas internas, no el reporte entero).
+    /// Retorna los summaries de reportes cuyo <c>ReportDate</c> cae en el día
+    /// UTC indicado. Acepta <c>?date=YYYY-MM-DD</c>, opcional
+    /// <c>?pod=ES-12</c> y paginación <c>?limit=</c>/<c>?offset=</c>. Admins ven
+    /// todos; otros usuarios solo los propios. La respuesta es
+    /// <see cref="ReportSummaryWithCounts"/> (header + counts + DailyGlobal
+    /// rows; SIN DailyAgents / ShopDaily / ShopCallMetrics filas — eso era el
+    /// Include × 4 que causaba los timeouts de 15s).
     /// </summary>
     [HttpGet("daily")]
-    public async Task<IActionResult> GetDaily([FromQuery] string date, [FromQuery] string? pod = null)
+    public async Task<IActionResult> GetDaily([FromQuery] string date, [FromQuery] string? pod = null,
+        [FromQuery] int limit = DefaultPageSize, [FromQuery] int offset = 0)
     {
         if (!TryParseDate(date, out var d))
             return BadRequest(new { error = "Query 'date' must be a valid YYYY-MM-DD string." });
+        var (effectiveLimit, effectiveOffset) = NormalizePaging(limit, offset);
         var email = GetCurrentEmail();
-        var reports = User.IsInRole("Admin")
-            ? await _reports.GetByDateAsync(d, pod)
-            : (await _reports.GetByDateAsync(d, pod)).Where(r => r.GeneratedByEmail.Equals(email, StringComparison.OrdinalIgnoreCase)).ToList();
-        return Ok(reports);
+        var items = await _reports.GetByDateSummaryAsync(d, pod, effectiveLimit, effectiveOffset);
+        if (!User.IsInRole("Admin"))
+        {
+            items = items.Where(r => r.GeneratedByEmail.Equals(email, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        var total = await _reports.CountByDateAsync(d, pod);
+        Response.Headers["X-Total-Count"] = total.ToString();
+        return Ok(items);
     }
 
     /// <summary>
-    /// Retorna los reportes cuyo <c>ReportDate</c> cae dentro del rango
-    /// inclusivo [<c>start</c>, <c>end</c>]. Acepta <c>?start=YYYY-MM-DD&amp;end=YYYY-MM-DD</c>
-    /// y opcional <c>?pod=ES-12</c>.
+    /// Retorna los summaries de reportes cuyo <c>ReportDate</c> cae dentro del
+    /// rango inclusivo [<c>start</c>, <c>end</c>]. Mismos query params y
+    /// semántica de paginación que <see cref="GetDaily"/>.
     /// </summary>
     [HttpGet("range")]
-    public async Task<IActionResult> GetRange([FromQuery] string start, [FromQuery] string end, [FromQuery] string? pod = null)
+    public async Task<IActionResult> GetRange([FromQuery] string start, [FromQuery] string end, [FromQuery] string? pod = null,
+        [FromQuery] int limit = DefaultPageSize, [FromQuery] int offset = 0)
     {
         if (!TryParseDate(start, out var s) || !TryParseDate(end, out var e))
             return BadRequest(new { error = "Query 'start' and 'end' must be valid YYYY-MM-DD strings." });
         if (e < s)
             return BadRequest(new { error = "'end' must be on or after 'start'." });
+        var (effectiveLimit, effectiveOffset) = NormalizePaging(limit, offset);
         var email = GetCurrentEmail();
-        var reports = User.IsInRole("Admin")
-            ? await _reports.GetByDateRangeAsync(s, e, pod)
-            : (await _reports.GetByDateRangeAsync(s, e, pod)).Where(r => r.GeneratedByEmail.Equals(email, StringComparison.OrdinalIgnoreCase)).ToList();
-        return Ok(reports);
+        var items = await _reports.GetByDateRangeSummaryAsync(s, e, pod, effectiveLimit, effectiveOffset);
+        if (!User.IsInRole("Admin"))
+        {
+            items = items.Where(r => r.GeneratedByEmail.Equals(email, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        var total = await _reports.CountByDateRangeAsync(s, e, pod);
+        Response.Headers["X-Total-Count"] = total.ToString();
+        return Ok(items);
     }
 
     /// <summary>
-    /// Retorna los reportes cuyo <c>ReportDate</c> cae dentro del mes indicado.
-    /// Acepta <c>?year=YYYY&amp;month=MM</c> y opcional <c>?pod=ES-12</c>.
+    /// Retorna los summaries de reportes cuyo <c>ReportDate</c> cae dentro del
+    /// mes indicado. Mismos query params y semántica de paginación que
+    /// <see cref="GetDaily"/>.
     /// </summary>
     [HttpGet("monthly")]
-    public async Task<IActionResult> GetMonthly([FromQuery] int year, [FromQuery] int month, [FromQuery] string? pod = null)
+    public async Task<IActionResult> GetMonthly([FromQuery] int year, [FromQuery] int month, [FromQuery] string? pod = null,
+        [FromQuery] int limit = DefaultPageSize, [FromQuery] int offset = 0)
     {
         if (year < 1900 || year > 2200 || month < 1 || month > 12)
             return BadRequest(new { error = "Query 'year' and 'month' must be a valid year (1900-2200) and month (1-12)." });
+        var (effectiveLimit, effectiveOffset) = NormalizePaging(limit, offset);
         var email = GetCurrentEmail();
-        var reports = User.IsInRole("Admin")
-            ? await _reports.GetByMonthAsync(year, month, pod)
-            : (await _reports.GetByMonthAsync(year, month, pod)).Where(r => r.GeneratedByEmail.Equals(email, StringComparison.OrdinalIgnoreCase)).ToList();
-        return Ok(reports);
+        var items = await _reports.GetByMonthSummaryAsync(year, month, pod, effectiveLimit, effectiveOffset);
+        if (!User.IsInRole("Admin"))
+        {
+            items = items.Where(r => r.GeneratedByEmail.Equals(email, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        var total = await _reports.CountByMonthAsync(year, month, pod);
+        Response.Headers["X-Total-Count"] = total.ToString();
+        return Ok(items);
     }
 
     private static bool TryParseDate(string? raw, out DateOnly date)
@@ -280,6 +311,14 @@ public sealed class ReportsController : ControllerBase
         date = default;
         if (string.IsNullOrWhiteSpace(raw)) return false;
         return DateOnly.TryParseExact(raw, "yyyy-MM-dd", out date);
+    }
+
+    private static (int limit, int offset) NormalizePaging(int limit, int offset)
+    {
+        if (limit < 1) limit = DefaultPageSize;
+        if (limit > MaxPageSize) limit = MaxPageSize;
+        if (offset < 0) offset = 0;
+        return (limit, offset);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

@@ -1,7 +1,10 @@
 import axios from 'axios';
 import { readSharedToken, clearSharedToken } from '../utils/sharedToken';
 
-export const sliceClient = axios.create({ baseURL: '/api/slice', timeout: 15000 });
+// Bumped from 15s → 30s in bust-18. The summary projection in the period
+// endpoints is dramatically lighter than the old Include×4, but we still
+// keep a defensive ceiling in case of cold-start latency on Northflank.
+export const sliceClient = axios.create({ baseURL: '/api/slice', timeout: 30000 });
 
 sliceClient.interceptors.request.use((config) => {
   // Read from the shared token store so alrrx sessions are also visible here.

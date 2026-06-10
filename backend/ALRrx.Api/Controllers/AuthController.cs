@@ -67,69 +67,19 @@ public sealed class AuthController : ControllerBase
         [FromBody] GoogleLoginRequest request,
         CancellationToken ct = default)
     {
+        GoogleUserInfo? userInfo;
         try
         {
-            using var http = new HttpClient();
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
             http.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", request.AccessToken);
 
-            var userInfo = await http.GetFromJsonAsync<GoogleUserInfo>(
+            userInfo = await http.GetFromJsonAsync<GoogleUserInfo>(
                 "https://www.googleapis.com/oauth2/v3/userinfo", ct);
-
-            if (userInfo is null || string.IsNullOrEmpty(userInfo.Email))
-                return Unauthorized(new { error = "Invalid Google token" });
-
-            if (!userInfo.Email.EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
-                return Unauthorized(new { error = "Only @revolutionmedia.ai emails are allowed" });
-
-            Domain.Entities.AuthUser user = null!;
-            try
-            {
-                user = (await _users.GetByEmailAsync(userInfo.Email, ct))!;
-                if (user is null)
-                {
-                    user = new Domain.Entities.AuthUser
-                    {
-                        Email = userInfo.Email,
-                        PasswordHash = string.Empty,
-                        FullName = userInfo.Name ?? userInfo.Email.Split('@')[0],
-                        Role = Domain.Enums.UserRole.Admin,
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    await _users.CreateAsync(user, ct);
-                }
-                if (!user.IsActive)
-                    return Unauthorized(new { error = "Account is deactivated" });
-            }
-            catch (MySqlConnector.MySqlException)
-            {
-                user = new Domain.Entities.AuthUser
-                {
-                    Id = 1,
-                    Email = userInfo.Email,
-                    FullName = userInfo.Name ?? userInfo.Email.Split('@')[0],
-                    Role = Domain.Enums.UserRole.Admin,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
-                };
-            }
-
-            var token = _auth.GenerateToken(user);
-
-            return Ok(new LoginResponse
-            {
-                Token = token,
-                User = new UserInfoDto
-                {
-                    Id = user.Id,
-                    Email = user.Email,
-                    FullName = user.FullName,
-                    Role = user.Role.ToString(),
-                    IsActive = user.IsActive,
-                    CreatedAt = user.CreatedAt
-                }
-            });
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return Unauthorized(new { error = "Google verification timed out" });
         }
         catch (Exception ex)
         {
@@ -137,9 +87,112 @@ public sealed class AuthController : ControllerBase
             logger.LogError(ex, "Google login failed");
             return Unauthorized(new { error = "Invalid Google credential" });
         }
+
+        if (userInfo is null || string.IsNullOrEmpty(userInfo.Email))
+            return Unauthorized(new { error = "Invalid Google token" });
+
+        if (!userInfo.Email.EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
+            return Unauthorized(new { error = "Only @revolutionmedia.ai emails are allowed" });
+
+        var (user, dbPersisted) = await TryUpsertUserAsync(userInfo, ct);
+
+        if (user is { IsActive: false } && dbPersisted)
+            return Unauthorized(new { error = "Account is deactivated" });
+
+        if (!dbPersisted)
+        {
+            // DB is down/slow — best-effort persist in background so we don't
+            // block the user. The Google token already proves identity + domain.
+            _ = Task.Run(async () =>
+            {
+                using var bgCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                try
+                {
+                    var existing = await _users.GetByEmailAsync(userInfo.Email, bgCts.Token);
+                    if (existing is null)
+                    {
+                        var newUser = new Domain.Entities.AuthUser
+                        {
+                            Email = userInfo.Email,
+                            PasswordHash = string.Empty,
+                            FullName = userInfo.Name ?? userInfo.Email.Split('@')[0],
+                            Role = Domain.Enums.UserRole.Admin,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        await _users.CreateAsync(newUser, bgCts.Token);
+                    }
+                }
+                catch
+                {
+                    // best-effort — swallow
+                }
+            });
+        }
+
+        var token = _auth.GenerateToken(user);
+
+        return Ok(new LoginResponse
+        {
+            Token = token,
+            User = new UserInfoDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                Role = user.Role.ToString(),
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt
+            }
+        });
     }
 
     private record GoogleUserInfo(string Email, string? Name);
+
+    private async Task<(Domain.Entities.AuthUser user, bool dbPersisted)> TryUpsertUserAsync(
+        GoogleUserInfo userInfo, CancellationToken ct)
+    {
+        using var dbCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        dbCts.CancelAfter(TimeSpan.FromSeconds(3));
+        try
+        {
+            var user = await _users.GetByEmailAsync(userInfo.Email, dbCts.Token);
+            if (user is null)
+            {
+                user = new Domain.Entities.AuthUser
+                {
+                    Email = userInfo.Email,
+                    PasswordHash = string.Empty,
+                    FullName = userInfo.Name ?? userInfo.Email.Split('@')[0],
+                    Role = Domain.Enums.UserRole.Admin,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _users.CreateAsync(user, dbCts.Token);
+            }
+            if (!user.IsActive)
+                return (user, true); // propagate as-is; outer returns 401
+            return (user, true);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            // DB is down/slow — synthesize from Google claims so login still works.
+            return (new Domain.Entities.AuthUser
+            {
+                Id = 0,
+                Email = userInfo.Email,
+                PasswordHash = string.Empty,
+                FullName = userInfo.Name ?? userInfo.Email.Split('@')[0],
+                Role = Domain.Enums.UserRole.Admin,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            }, false);
+        }
+    }
 
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login(

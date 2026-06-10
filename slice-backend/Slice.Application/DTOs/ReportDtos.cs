@@ -2,16 +2,6 @@ using Slice.Domain.Entities;
 
 namespace Slice.Application.DTOs;
 
-/// <summary>Resumen de un reporte para listados (sin datos de filas).</summary>
-public record ReportSummaryDto(
-    string Id,
-    DateTime ReportDate,
-    DateTime GeneratedAt,
-    int PodCount,
-    int AgentCount,
-    string? MergedCsvPath,
-    string? MergedXlsxPath);
-
 /// <summary>Datos formateados para un gráfico de líneas o barras.</summary>
 public record ChartDataDto(
     string Label,
@@ -47,16 +37,6 @@ public record ShopDailyRowPatch(
 /// <summary>Convierte entidades <see cref="SliceReport"/> a DTOs para la API.</summary>
 public static class ReportDtoMapper
 {
-    /// <summary>Proyecta un reporte a su resumen sin datos de filas.</summary>
-    public static ReportSummaryDto ToSummary(SliceReport r) => new(
-        r.Id,
-        r.ReportDate,
-        r.GeneratedAt,
-        r.DailyGlobal.Select(g => g.Pod).Distinct().Count(),
-        r.DailyAgents.Count,
-        r.MergedCsvPath,
-        r.MergedXlsxPath);
-
     /// <summary>Proyecta el Daily Global a series de datos para gráficas.</summary>
     public static ChartDataDto ToGlobalChart(SliceReport r)
     {

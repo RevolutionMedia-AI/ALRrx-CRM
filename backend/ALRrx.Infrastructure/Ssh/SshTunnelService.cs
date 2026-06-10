@@ -29,8 +29,26 @@ public sealed class SshTunnelService : ISshTunnelService
         {
             var connectionInfo = BuildConnectionInfo();
 
+            // Fail fast on unreachable SSH hosts. Default SSH.NET timeout is
+            // 60s+ which causes every DB-dependent endpoint to hang for ages
+            // when the tunnel is down.
+            connectionInfo.Timeout = TimeSpan.FromSeconds(5);
+
             _client = new SshClient(connectionInfo);
-            _client.Connect();
+
+            try
+            {
+                _client.Connect();
+            }
+            catch (Exception ex)
+            {
+                _client.Dispose();
+                _client = null;
+                _logger.LogWarning(ex,
+                    "SSH tunnel connect failed (host={Host}:{Port}) — DB-dependent requests will fall back",
+                    _config.Host, _config.Port);
+                throw;
+            }
 
             _port = new ForwardedPortLocal(
                 _config.DatabaseHost,

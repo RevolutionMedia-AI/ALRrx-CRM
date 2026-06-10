@@ -26,21 +26,33 @@ public interface IReportRepository
     /// <summary>Inserts or replaces a report in the store.</summary>
     Task SaveAsync(SliceReport report);
 
-    /// <summary>Returns reports owned by <paramref name="email"/>, newest first.</summary>
-    Task<IReadOnlyList<SliceReport>> GetAllByEmailAsync(string email);
+    // ── Summary projections (bust-18) ─────────────────────────────────────
+    //
+    // The four "Summary" methods below return header + counts (+ the
+    // DailyGlobal rows for the period queries that need per-pod breakdown).
+    // NO DailyAgents rows, NO ShopDaily rows, NO ShopCallMetrics rows are
+    // hydrated. This replaces the old Include × 4 pattern that caused 15s
+    // timeouts on the "Reports by Period" page whenever a daily query
+    // returned more than a handful of reports (each with thousands of
+    // ShopCallMetrics rows). Use these for the list/period endpoints and the
+    // dropdown selectors. For drill-down to a single report use
+    // <see cref="GetWithChildrenAsync"/>.
 
-    /// <summary>Returns all reports in the store, newest first.</summary>
-    Task<IReadOnlyList<SliceReport>> GetAllAsync();
+    /// <summary>Returns report summaries, newest first. <paramref name="emailFilter"/> narrows by owner when provided.</summary>
+    Task<IReadOnlyList<ReportSummaryWithCounts>> GetAllSummariesAsync(string? emailFilter, int limit, int offset);
 
-    // ── Period queries (DB-backed only) ─────────────────────────────────────
+    /// <summary>Returns report summaries whose <c>ReportDate</c> falls on the given UTC day. Includes <c>DailyGlobal</c> rows for per-pod breakdown.</summary>
+    Task<IReadOnlyList<ReportSummaryWithCounts>> GetByDateSummaryAsync(DateOnly date, string? podFilter, int limit, int offset);
 
-    /// <summary>Returns all reports whose <c>ReportDate</c> falls on the given UTC day.</summary>
-    Task<IReadOnlyList<SliceReport>> GetByDateAsync(DateOnly date, string? podFilter = null);
+    /// <summary>Returns report summaries whose <c>ReportDate</c> falls within the inclusive range. Includes <c>DailyGlobal</c> rows.</summary>
+    Task<IReadOnlyList<ReportSummaryWithCounts>> GetByDateRangeSummaryAsync(DateOnly start, DateOnly end, string? podFilter, int limit, int offset);
 
-    /// <summary>Returns all reports whose <c>ReportDate</c> falls within the inclusive range.</summary>
-    Task<IReadOnlyList<SliceReport>> GetByDateRangeAsync(DateOnly start, DateOnly end, string? podFilter = null);
+    /// <summary>Returns report summaries whose <c>ReportDate</c> falls within the given month. Includes <c>DailyGlobal</c> rows.</summary>
+    Task<IReadOnlyList<ReportSummaryWithCounts>> GetByMonthSummaryAsync(int year, int month, string? podFilter, int limit, int offset);
 
-    /// <summary>Returns all reports whose <c>ReportDate</c> falls within the given month.</summary>
-    Task<IReadOnlyList<SliceReport>> GetByMonthAsync(int year, int month, string? podFilter = null);
+    /// <summary>Returns the total count of reports matching the same filters (without pagination).</summary>
+    Task<int> CountByDateAsync(DateOnly date, string? podFilter = null);
+    Task<int> CountByDateRangeAsync(DateOnly start, DateOnly end, string? podFilter = null);
+    Task<int> CountByMonthAsync(int year, int month, string? podFilter = null);
+    Task<int> CountAllAsync(string? emailFilter = null);
 }
-

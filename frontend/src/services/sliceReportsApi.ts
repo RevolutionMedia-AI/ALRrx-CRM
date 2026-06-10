@@ -11,7 +11,7 @@ import type {
 
 export async function getSliceReports(): Promise<SliceReportSummary[]> {
   const { data } = await sliceClient.get<SliceReportSummary[]>('/reports');
-  return data;
+  return data ?? [];
 }
 
 export async function getSliceReport(reportId: string): Promise<SliceReport> {
@@ -25,42 +25,54 @@ export async function getSliceReport(reportId: string): Promise<SliceReport> {
 // ─── Period queries (DB-backed via SQLite) ────────────────────────────────────
 
 /**
- * Returns reports whose ReportDate falls on the given UTC day. The backend
- * applies the standard access policy (admins see all, others see their own).
- * Optionally filter rows by Pod inside the report via `pod`.
+ * Returns summaries of reports whose ReportDate falls on the given UTC day.
+ * The backend applies the standard access policy (admins see all, others see
+ * their own). Optionally filter rows by Pod inside the report via `pod`.
+ *
+ * Bust-18: this now returns the lightweight summary projection
+ * (header + counts + DailyGlobal rows only) — no ShopCallMetrics hydrating.
  */
 export async function getSliceReportsByDate(
   date: string,
-  pod?: string
-): Promise<SliceReport[]> {
-  const params: Record<string, string> = { date };
+  pod?: string,
+  opts?: { limit?: number; offset?: number }
+): Promise<SliceReportSummary[]> {
+  const params: Record<string, string | number> = { date };
   if (pod) params.pod = pod;
-  const { data } = await sliceClient.get<SliceReport[]>('/reports/daily', { params });
-  return (data ?? []).map(normalizeReport);
+  if (opts?.limit !== undefined) params.limit = opts.limit;
+  if (opts?.offset !== undefined) params.offset = opts.offset;
+  const { data } = await sliceClient.get<SliceReportSummary[]>('/reports/daily', { params });
+  return data ?? [];
 }
 
-/** Returns reports whose ReportDate falls in [start, end] inclusive. */
+/** Returns summaries of reports whose ReportDate falls in [start, end] inclusive. */
 export async function getSliceReportsByDateRange(
   start: string,
   end: string,
-  pod?: string
-): Promise<SliceReport[]> {
-  const params: Record<string, string> = { start, end };
+  pod?: string,
+  opts?: { limit?: number; offset?: number }
+): Promise<SliceReportSummary[]> {
+  const params: Record<string, string | number> = { start, end };
   if (pod) params.pod = pod;
-  const { data } = await sliceClient.get<SliceReport[]>('/reports/range', { params });
-  return (data ?? []).map(normalizeReport);
+  if (opts?.limit !== undefined) params.limit = opts.limit;
+  if (opts?.offset !== undefined) params.offset = opts.offset;
+  const { data } = await sliceClient.get<SliceReportSummary[]>('/reports/range', { params });
+  return data ?? [];
 }
 
-/** Returns reports whose ReportDate falls within the given month (1-12). */
+/** Returns summaries of reports whose ReportDate falls within the given month (1-12). */
 export async function getSliceReportsByMonth(
   year: number,
   month: number,
-  pod?: string
-): Promise<SliceReport[]> {
+  pod?: string,
+  opts?: { limit?: number; offset?: number }
+): Promise<SliceReportSummary[]> {
   const params: Record<string, string | number> = { year, month };
   if (pod) params.pod = pod;
-  const { data } = await sliceClient.get<SliceReport[]>('/reports/monthly', { params });
-  return (data ?? []).map(normalizeReport);
+  if (opts?.limit !== undefined) params.limit = opts.limit;
+  if (opts?.offset !== undefined) params.offset = opts.offset;
+  const { data } = await sliceClient.get<SliceReportSummary[]>('/reports/monthly', { params });
+  return data ?? [];
 }
 
 /** Applies the same defensive defaulting as getSliceReport to a report payload. */
@@ -147,5 +159,5 @@ export async function getSliceJobStatus(jobId: string): Promise<SliceJobStatusDt
 
 export async function getSliceJobs(): Promise<SliceJobStatusDto[]> {
   const { data } = await sliceClient.get<SliceJobStatusDto[]>('/fileupload/jobs');
-  return data;
+  return data ?? [];
 }

@@ -18,10 +18,6 @@ public sealed class EfReportRepository : IReportRepository
 
     public async Task<SliceReport?> GetByIdAsync(string reportId)
     {
-        // Lightweight fetch: only the scalar columns, no child collections.
-        // The child collections are loaded lazily by callers that need them
-        // via the explicit GetWithChildrenAsync method below. This avoids
-        // hydrating thousands of ShopCallMetrics rows on every read.
         var entity = await _db.Reports
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == reportId);
@@ -64,34 +60,40 @@ public sealed class EfReportRepository : IReportRepository
         await _db.SaveChangesAsync();
     }
 
-    public async Task<IReadOnlyList<SliceReport>> GetAllByEmailAsync(string email)
+    // ── Summary projections (bust-18) ─────────────────────────────────────
+    //
+    // Each method uses Select projection (not Include) so that the 3 heavy
+    // child collections (DailyAgents / ShopDaily / ShopCallMetrics) are never
+    // hydrated. Only the DailyGlobal rows are loaded for period queries that
+    // need the per-pod breakdown. Counts are computed in SQL via subqueries
+    // to avoid loading rows just to count them.
+
+    public async Task<IReadOnlyList<ReportSummaryWithCounts>> GetAllSummariesAsync(string? emailFilter, int limit, int offset)
     {
-        var entities = await _db.Reports
-            .AsNoTracking()
-            .Include(r => r.DailyGlobal)
-            .Include(r => r.DailyAgents)
-            .Include(r => r.ShopDaily)
-            .Include(r => r.ShopCallMetrics)
-            .Where(r => r.GeneratedByEmail == email)
+        var query = _db.Reports.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(emailFilter))
+        {
+            var email = emailFilter.Trim();
+            query = query.Where(r => r.GeneratedByEmail == email);
+        }
+        return await query
             .OrderByDescending(r => r.GeneratedAt)
+            .Skip(offset)
+            .Take(limit)
+            .Select(r => new ReportSummaryWithCounts(
+                r.Id,
+                r.ReportDate,
+                r.GeneratedAt,
+                r.GeneratedByEmail,
+                r.DailyGlobal.Select(g => g.Pod).Distinct().Count(),
+                r.DailyAgents.Count(),
+                r.ShopDaily.Count(),
+                r.ShopCallMetrics.Count(),
+                new List<DailyGlobalRow>()))
             .ToListAsync();
-        return entities.Select(ToDomain).ToList();
     }
 
-    public async Task<IReadOnlyList<SliceReport>> GetAllAsync()
-    {
-        var entities = await _db.Reports
-            .AsNoTracking()
-            .Include(r => r.DailyGlobal)
-            .Include(r => r.DailyAgents)
-            .Include(r => r.ShopDaily)
-            .Include(r => r.ShopCallMetrics)
-            .OrderByDescending(r => r.GeneratedAt)
-            .ToListAsync();
-        return entities.Select(ToDomain).ToList();
-    }
-
-    public async Task<IReadOnlyList<SliceReport>> GetByDateAsync(DateOnly date, string? podFilter = null)
+    public async Task<IReadOnlyList<ReportSummaryWithCounts>> GetByDateSummaryAsync(DateOnly date, string? podFilter, int limit, int offset)
     {
         var dayStart = date.ToDateTime(TimeOnly.MinValue);
         var dayEnd = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
@@ -103,17 +105,39 @@ public sealed class EfReportRepository : IReportRepository
             var pod = podFilter.Trim();
             query = query.Where(r => r.DailyGlobal.Any(g => g.Pod == pod));
         }
-        var entities = await query
-            .Include(r => r.DailyGlobal)
-            .Include(r => r.DailyAgents)
-            .Include(r => r.ShopDaily)
-            .Include(r => r.ShopCallMetrics)
+        return await query
             .OrderByDescending(r => r.GeneratedAt)
+            .Skip(offset)
+            .Take(limit)
+            .Select(r => new ReportSummaryWithCounts(
+                r.Id,
+                r.ReportDate,
+                r.GeneratedAt,
+                r.GeneratedByEmail,
+                r.DailyGlobal.Select(g => g.Pod).Distinct().Count(),
+                r.DailyAgents.Count(),
+                r.ShopDaily.Count(),
+                r.ShopCallMetrics.Count(),
+                r.DailyGlobal.Select(g => new DailyGlobalRow
+                {
+                    Pod                 = g.Pod,
+                    Queued              = g.Queued,
+                    Handled             = g.Handled,
+                    MissedCalls         = g.MissedCalls,
+                    TransferredCalls    = g.TransferredCalls,
+                    PctQueued           = g.PctQueued,
+                    PctHandled          = g.PctHandled,
+                    PctMissed           = g.PctMissed,
+                    PctTransferred      = g.PctTransferred,
+                    ConvPct             = g.ConvPct,
+                    OrderCount          = g.OrderCount,
+                    RefundedOrders      = g.RefundedOrders,
+                    PctOrdersWithErrors = g.PctOrdersWithErrors,
+                }).ToList()))
             .ToListAsync();
-        return entities.Select(ToDomain).ToList();
     }
 
-    public async Task<IReadOnlyList<SliceReport>> GetByDateRangeAsync(DateOnly start, DateOnly end, string? podFilter = null)
+    public async Task<IReadOnlyList<ReportSummaryWithCounts>> GetByDateRangeSummaryAsync(DateOnly start, DateOnly end, string? podFilter, int limit, int offset)
     {
         var rangeStart = start.ToDateTime(TimeOnly.MinValue);
         var rangeEnd = end.AddDays(1).ToDateTime(TimeOnly.MinValue);
@@ -125,17 +149,39 @@ public sealed class EfReportRepository : IReportRepository
             var pod = podFilter.Trim();
             query = query.Where(r => r.DailyGlobal.Any(g => g.Pod == pod));
         }
-        var entities = await query
-            .Include(r => r.DailyGlobal)
-            .Include(r => r.DailyAgents)
-            .Include(r => r.ShopDaily)
-            .Include(r => r.ShopCallMetrics)
+        return await query
             .OrderByDescending(r => r.ReportDate)
+            .Skip(offset)
+            .Take(limit)
+            .Select(r => new ReportSummaryWithCounts(
+                r.Id,
+                r.ReportDate,
+                r.GeneratedAt,
+                r.GeneratedByEmail,
+                r.DailyGlobal.Select(g => g.Pod).Distinct().Count(),
+                r.DailyAgents.Count(),
+                r.ShopDaily.Count(),
+                r.ShopCallMetrics.Count(),
+                r.DailyGlobal.Select(g => new DailyGlobalRow
+                {
+                    Pod                 = g.Pod,
+                    Queued              = g.Queued,
+                    Handled             = g.Handled,
+                    MissedCalls         = g.MissedCalls,
+                    TransferredCalls    = g.TransferredCalls,
+                    PctQueued           = g.PctQueued,
+                    PctHandled          = g.PctHandled,
+                    PctMissed           = g.PctMissed,
+                    PctTransferred      = g.PctTransferred,
+                    ConvPct             = g.ConvPct,
+                    OrderCount          = g.OrderCount,
+                    RefundedOrders      = g.RefundedOrders,
+                    PctOrdersWithErrors = g.PctOrdersWithErrors,
+                }).ToList()))
             .ToListAsync();
-        return entities.Select(ToDomain).ToList();
     }
 
-    public async Task<IReadOnlyList<SliceReport>> GetByMonthAsync(int year, int month, string? podFilter = null)
+    public async Task<IReadOnlyList<ReportSummaryWithCounts>> GetByMonthSummaryAsync(int year, int month, string? podFilter, int limit, int offset)
     {
         var firstOfMonth = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
         var firstOfNext = firstOfMonth.AddMonths(1);
@@ -147,14 +193,71 @@ public sealed class EfReportRepository : IReportRepository
             var pod = podFilter.Trim();
             query = query.Where(r => r.DailyGlobal.Any(g => g.Pod == pod));
         }
-        var entities = await query
-            .Include(r => r.DailyGlobal)
-            .Include(r => r.DailyAgents)
-            .Include(r => r.ShopDaily)
-            .Include(r => r.ShopCallMetrics)
+        return await query
             .OrderByDescending(r => r.ReportDate)
+            .Skip(offset)
+            .Take(limit)
+            .Select(r => new ReportSummaryWithCounts(
+                r.Id,
+                r.ReportDate,
+                r.GeneratedAt,
+                r.GeneratedByEmail,
+                r.DailyGlobal.Select(g => g.Pod).Distinct().Count(),
+                r.DailyAgents.Count(),
+                r.ShopDaily.Count(),
+                r.ShopCallMetrics.Count(),
+                r.DailyGlobal.Select(g => new DailyGlobalRow
+                {
+                    Pod                 = g.Pod,
+                    Queued              = g.Queued,
+                    Handled             = g.Handled,
+                    MissedCalls         = g.MissedCalls,
+                    TransferredCalls    = g.TransferredCalls,
+                    PctQueued           = g.PctQueued,
+                    PctHandled          = g.PctHandled,
+                    PctMissed           = g.PctMissed,
+                    PctTransferred      = g.PctTransferred,
+                    ConvPct             = g.ConvPct,
+                    OrderCount          = g.OrderCount,
+                    RefundedOrders      = g.RefundedOrders,
+                    PctOrdersWithErrors = g.PctOrdersWithErrors,
+                }).ToList()))
             .ToListAsync();
-        return entities.Select(ToDomain).ToList();
+    }
+
+    public Task<int> CountByDateAsync(DateOnly date, string? podFilter = null)
+        => CountInternalAsync(r => r.ReportDate >= date.ToDateTime(TimeOnly.MinValue) && r.ReportDate < date.AddDays(1).ToDateTime(TimeOnly.MinValue), podFilter);
+
+    public Task<int> CountByDateRangeAsync(DateOnly start, DateOnly end, string? podFilter = null)
+        => CountInternalAsync(r => r.ReportDate >= start.ToDateTime(TimeOnly.MinValue) && r.ReportDate < end.AddDays(1).ToDateTime(TimeOnly.MinValue), podFilter);
+
+    public Task<int> CountByMonthAsync(int year, int month, string? podFilter = null)
+    {
+        var firstOfMonth = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var firstOfNext = firstOfMonth.AddMonths(1);
+        return CountInternalAsync(r => r.ReportDate >= firstOfMonth && r.ReportDate < firstOfNext, podFilter);
+    }
+
+    public Task<int> CountAllAsync(string? emailFilter = null)
+    {
+        var q = _db.Reports.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(emailFilter))
+        {
+            var email = emailFilter.Trim();
+            q = q.Where(r => r.GeneratedByEmail == email);
+        }
+        return q.CountAsync();
+    }
+
+    private Task<int> CountInternalAsync(System.Linq.Expressions.Expression<Func<SliceReportEntity, bool>> dateFilter, string? podFilter)
+    {
+        var q = _db.Reports.AsNoTracking().Where(dateFilter);
+        if (!string.IsNullOrWhiteSpace(podFilter))
+        {
+            var pod = podFilter.Trim();
+            q = q.Where(r => r.DailyGlobal.Any(g => g.Pod == pod));
+        }
+        return q.CountAsync();
     }
 
     // ── Mapping helpers ─────────────────────────────────────────────────────

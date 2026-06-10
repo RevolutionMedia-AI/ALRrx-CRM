@@ -4,7 +4,7 @@ import {
   getSliceReportsByDateRange,
   getSliceReportsByMonth,
 } from '../../services/sliceReportsApi';
-import type { SliceReport } from '../types';
+import type { SliceReportSummary } from '../types';
 
 type PeriodKind = 'daily' | 'weekly' | 'monthly' | 'custom';
 
@@ -40,7 +40,7 @@ export default function SliceReportsPeriodPage() {
   const [customEnd, setCustomEnd]   = useState<string>(initialRange.end);
   const [podFilter, setPodFilter]   = useState<string>('');
 
-  const [reports, setReports]   = useState<SliceReport[]>([]);
+  const [reports, setReports]   = useState<SliceReportSummary[]>([]);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
 
@@ -48,7 +48,7 @@ export default function SliceReportsPeriodPage() {
     setLoading(true);
     setError(null);
     try {
-      let result: SliceReport[] = [];
+      let result: SliceReportSummary[] = [];
       const pod = podFilter.trim() || undefined;
       if (period === 'daily') {
         result = await getSliceReportsByDate(dailyDate, pod);
@@ -278,17 +278,16 @@ export default function SliceReportsPeriodPage() {
                   </div>
                   <div className="flex gap-2 text-xs font-metadata-mono text-secondary">
                     <span className="bg-surface-container px-2 py-1 rounded">
-                      Global: {r.dailyGlobal?.length ?? 0}
+                      Global: {r.podCount}
                     </span>
                     <span className="bg-surface-container px-2 py-1 rounded">
-                      Agents: {r.dailyAgents?.length ?? 0}
+                      Agents: {r.agentCount}
                     </span>
                     <span className="bg-surface-container px-2 py-1 rounded">
-                      Shops: {r.shopDaily?.length ?? 0}
+                      Shops: {r.shopDailyCount}
                     </span>
                     <a
-                      href={`/slice/reports`}
-                      onClick={(e) => { e.preventDefault(); window.location.hash = `#/slice/pod?reportId=${r.id}`; }}
+                      href={`/slice/pod?reportId=${r.id}`}
                       className="text-electric-blue hover:underline px-2 py-1"
                     >
                       Open in Pod Overview →
