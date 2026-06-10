@@ -2,14 +2,15 @@
 # Bumping CACHE_BUST below forces Docker to invalidate every cache layer
 # downstream — use this when slice-backend changes are not being picked up by
 # the registry. The default of 1 is harmless; CI overrides it to the commit SHA.
-# 2026-06-09-bust-11: arreglar disposed DbContext en FileProcessingOrchestrator.
-# La version anterior lanzaba ProcessFilesInternalAsync como fire-and-forget
-# desde un servicio Scoped, lo que hacia que la DbContext se disposed junto
-# con el scope del request HTTP. Ahora el orchestrator inyecta
-# IServiceScopeFactory y crea su propio scope para el trabajo en background
-# (tanto para EnqueueAsync como para EnqueueZipAsync), de modo que la
-# DbContext permanece viva hasta que la tarea termina.
-ARG CACHE_BUST=2026-06-09-bust-11
+# 2026-06-09-bust-12: diagnosticar y robustecer la descarga del Excel
+# procesado. El handler del frontend se tragaba cualquier fallo (sin
+# try/catch, con if (!res.ok) return silencioso) y el endpoint del
+# backend no loggeaba nada, asi que era imposible saber por que el
+# click no disparaba ninguna animacion ni descarga. Ahora el
+# controller loggea cada paso (report not found, forbidden, path
+# null, file missing, streaming) y el frontend muestra el error
+# concreto en pantalla en vez de fallar en silencio.
+ARG CACHE_BUST=2026-06-09-bust-12
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

@@ -4,7 +4,6 @@ using Slice.Application.DTOs;
 using Slice.Domain.Entities;
 using Slice.Domain.Interfaces;
 using Slice.Infrastructure.Excel;
-
 namespace Slice.Api.Controllers;
 
 /// <summary>
@@ -17,11 +16,16 @@ public sealed class ReportsController : ControllerBase
 {
     private readonly IReportRepository _reports;
     private readonly TemplateGeneratorService _templateGenerator;
+    private readonly ILogger<ReportsController> _logger;
 
-    public ReportsController(IReportRepository reports, TemplateGeneratorService templateGenerator)
+    public ReportsController(
+        IReportRepository reports,
+        TemplateGeneratorService templateGenerator,
+        ILogger<ReportsController> logger)
     {
         _reports = reports;
         _templateGenerator = templateGenerator;
+        _logger = logger;
     }
 
     // ─── Read endpoints (all authenticated users) ─────────────────────────────
@@ -79,10 +83,17 @@ public sealed class ReportsController : ControllerBase
     public async Task<IActionResult> Export(string reportId, string format)
     {
         var report = await _reports.GetByIdAsync(reportId);
-        if (report == null) return NotFound();
+        if (report == null)
+        {
+            _logger.LogWarning("Export requested for unknown report {ReportId} by {User}", reportId, GetCurrentEmail());
+            return NotFound(new { error = $"Report {reportId} not found." });
+        }
 
         if (!User.IsInRole("Admin") && !report.GeneratedByEmail.Equals(GetCurrentEmail(), StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Export forbidden for report {ReportId}: user {User} is not the owner.", reportId, GetCurrentEmail());
             return Forbid();
+        }
 
         var (path, contentType, ext) = format.ToLowerInvariant() switch
         {
@@ -91,10 +102,20 @@ public sealed class ReportsController : ControllerBase
             _      => throw new InvalidOperationException($"Unsupported format '{format}'. Use 'xlsx' or 'csv'.")
         };
 
-        if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path))
-            return NotFound(new { error = "Export file not found. Re-process the report." });
+        if (string.IsNullOrEmpty(path))
+        {
+            _logger.LogError("Export path is null/empty for report {ReportId} format {Format}. Xlsx={X} Csv={C}",
+                reportId, format, report.MergedXlsxPath, report.MergedCsvPath);
+            return NotFound(new { error = "Export path missing. Re-process the report." });
+        }
+        if (!System.IO.File.Exists(path))
+        {
+            _logger.LogError("Export file missing on disk: {Path} (report {ReportId})", path, reportId);
+            return NotFound(new { error = "Export file not found on disk. Re-process the report." });
+        }
 
-        // PhysicalFile streams the file directamente to the response — avoids loading it into memory.
+        _logger.LogInformation("Streaming export {Format} for report {ReportId} from {Path}", format, reportId, path);
+        // PhysicalFile streams the file directamente a la respuesta — evita cargarlo en memoria.
         return PhysicalFile(path, contentType, $"Slice_Report_{report.ReportDate:yyyyMMdd}.{ext}");
     }
 

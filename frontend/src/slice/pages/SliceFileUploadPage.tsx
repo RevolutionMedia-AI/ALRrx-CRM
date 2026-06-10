@@ -93,38 +93,58 @@ export default function SliceFileUploadPage() {
     if (!job?.reportId) return;
     const token = localStorage.getItem('slice_token');
     if (!token) return;
-    const res = await fetch(sliceExportUrl(job.reportId, 'xlsx'), {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return;
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Slice_Report_${job.reportId.slice(0, 8)}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      const res = await fetch(sliceExportUrl(job.reportId, 'xlsx'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        console.error('Download failed', res.status, text);
+        setSubmitError(`Download failed (${res.status}): ${text || res.statusText}`);
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Slice_Report_${job.reportId.slice(0, 8)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Download exception', e);
+      setSubmitError(e instanceof Error ? e.message : 'Download failed unexpectedly');
+    }
   };
 
   const handleDownloadTemplate = async () => {
     const token = localStorage.getItem('slice_token');
     if (!token) return;
-    const url = job?.reportId ? sliceTemplateUrl(job.reportId) : sliceBlankTemplateUrl();
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return;
-    const blob = await res.blob();
-    const link = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = link;
-    a.download = job?.reportId
-      ? `Slice_Template_${job.reportId.slice(0, 8)}.xlsx`
-      : 'Slice_Template_Blank.xlsx';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(link);
+    try {
+      const url = job?.reportId ? sliceTemplateUrl(job.reportId) : sliceBlankTemplateUrl();
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        console.error('Template download failed', res.status, text);
+        setSubmitError(`Template download failed (${res.status}): ${text || res.statusText}`);
+        return;
+      }
+      const blob = await res.blob();
+      const link = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = link;
+      a.download = job?.reportId
+        ? `Slice_Template_${job.reportId.slice(0, 8)}.xlsx`
+        : 'Slice_Template_Blank.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(link);
+    } catch (e) {
+      console.error('Template download exception', e);
+      setSubmitError(e instanceof Error ? e.message : 'Template download failed unexpectedly');
+    }
   };
 
   const status: SliceJobStatus | 'Uploading' | 'Idle' = submitting
