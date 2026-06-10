@@ -2,17 +2,20 @@
 # Bumping CACHE_BUST below forces Docker to invalidate every cache layer
 # downstream — use this when slice-backend changes are not being picked up by
 # the registry. The default of 1 is harmless; CI overrides it to the commit SHA.
-# 2026-06-09-bust-13: arreglar el bug real de la descarga. La causa
-# raiz es que los exports se escriben a /tmp/slice/exports y al
-# reiniciarse el contenedor del slice-api (cosa que pasa en cada
-# redeploy, incluido el propio bust-12) el archivo en /tmp desaparece
-# pero la fila de la DB sigue apuntando a esa ruta, por lo que el
-# PhysicalFile devuelve 404 silencioso y el frontend se lo come.
-# Ahora los exports van a /data/slice/exports (volume persistente) con
-# fallback a /tmp en local dev. Ademas se agrega request logging
-# global en slice-api y console.info en el frontend para que el
-# proximo test deje un rastro claro.
-ARG CACHE_BUST=2026-06-09-bust-13
+# 2026-06-09-bust-14: el slice-api estaba siendo OOM-killed por el
+# kernel del contenedor (los logs de supervisord mostraban
+# 'terminated by SIGKILL; not expected'). Causa: GetByIdAsync cargaba
+# las 4 child collections de cada reporte en cada peticion, y el
+# controlador de export + el de 'get full report' hidrataban miles
+# de filas de ShopCallMetrics por reporte, reventando el heap del
+# contenedor. Ahora: 1) GetByIdAsync es shallow (solo columnas
+# escalares, sin Includes); 2) nuevo GetWithChildrenAsync para los
+# endpoints que realmente necesitan los hijos (GetById, chart,
+# edit endpoints); 3) el Export y el Template ahora son shallow
+# (solo necesitan MergedXlsxPath / MergedCsvPath); 4) variables de
+# entorno para que el GC de .NET se mantenga conservador y no
+# rebase el memory limit del contenedor.
+ARG CACHE_BUST=2026-06-09-bust-14
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend
@@ -65,6 +68,16 @@ ENV ALRRX__URLS=http://0.0.0.0:5000
 
 # Slice API on :5001
 COPY --from=slice-api /publish-slice /app/slice
+
+# .NET runtime tweaks to keep memory pressure low in small Northflank containers:
+# - gcServer=0: workstation GC, no separate background GC thread per core
+# - GCConserveMemory=9: be aggressive about reclaiming unused segments
+# - GCHeapHardLimit: cap the managed heap so the kernel OOM-kill is more
+#   predictable (the slice-api only needs ~120MB for its working set)
+ENV DOTNET_gcServer=0 \
+    DOTNET_GCConserveMemory=9 \
+    DOTNET_GCHeapHardLimit=0_C000000 \
+    DOTNET_GCRetainVM=0
 
 # nginx + supervisord
 COPY nginx-combined.conf /etc/nginx/sites-enabled/default

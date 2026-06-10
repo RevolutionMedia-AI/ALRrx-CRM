@@ -50,7 +50,7 @@ public sealed class ReportsController : ControllerBase
     [HttpGet("{reportId}")]
     public async Task<IActionResult> GetById(string reportId)
     {
-        var report = await _reports.GetByIdAsync(reportId);
+        var report = await _reports.GetWithChildrenAsync(reportId);
         if (report == null) return NotFound();
 
         if (!User.IsInRole("Admin") && !report.GeneratedByEmail.Equals(GetCurrentEmail(), StringComparison.OrdinalIgnoreCase))
@@ -66,7 +66,7 @@ public sealed class ReportsController : ControllerBase
     [HttpGet("{reportId}/charts/global")]
     public async Task<IActionResult> GetGlobalChart(string reportId)
     {
-        var report = await _reports.GetByIdAsync(reportId);
+        var report = await _reports.GetWithChildrenAsync(reportId);
         if (report == null) return NotFound();
 
         if (!User.IsInRole("Admin") && !report.GeneratedByEmail.Equals(GetCurrentEmail(), StringComparison.OrdinalIgnoreCase))
@@ -174,7 +174,7 @@ public sealed class ReportsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> EditGlobalRow(string reportId, string pod, [FromBody] DailyGlobalRowPatch patch)
     {
-        var report = await _reports.GetByIdAsync(reportId);
+        var report = await _reports.GetWithChildrenAsync(reportId);
         if (report == null) return NotFound();
 
         var row = report.DailyGlobal.FirstOrDefault(g => g.Pod.Equals(pod, StringComparison.OrdinalIgnoreCase));
@@ -192,7 +192,7 @@ public sealed class ReportsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> EditAgentRow(string reportId, string agentEmail, [FromBody] DailyAgentRowPatch patch)
     {
-        var report = await _reports.GetByIdAsync(reportId);
+        var report = await _reports.GetWithChildrenAsync(reportId);
         if (report == null) return NotFound();
 
         var row = report.DailyAgents.FirstOrDefault(a => a.AgentEmail.Equals(agentEmail, StringComparison.OrdinalIgnoreCase));
@@ -210,7 +210,7 @@ public sealed class ReportsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> EditShopRow(string reportId, string shopName, [FromBody] ShopDailyRowPatch patch)
     {
-        var report = await _reports.GetByIdAsync(reportId);
+        var report = await _reports.GetWithChildrenAsync(reportId);
         if (report == null) return NotFound();
 
         var row = report.ShopDaily.FirstOrDefault(s => s.ShopName.Equals(shopName, StringComparison.OrdinalIgnoreCase));

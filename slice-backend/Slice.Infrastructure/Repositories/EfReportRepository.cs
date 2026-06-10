@@ -18,6 +18,23 @@ public sealed class EfReportRepository : IReportRepository
 
     public async Task<SliceReport?> GetByIdAsync(string reportId)
     {
+        // Lightweight fetch: only the scalar columns, no child collections.
+        // The child collections are loaded lazily by callers that need them
+        // via the explicit GetWithChildrenAsync method below. This avoids
+        // hydrating thousands of ShopCallMetrics rows on every read.
+        var entity = await _db.Reports
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == reportId);
+        if (entity is null) return null;
+        return ToDomainShallow(entity);
+    }
+
+    /// <summary>
+    /// Loads the report with all 4 child collections populated. Use only from
+    /// code paths that actually need the data (charts, edits, full exports).
+    /// </summary>
+    public async Task<SliceReport?> GetWithChildrenAsync(string reportId)
+    {
         var entity = await _db.Reports
             .AsNoTracking()
             .Include(r => r.DailyGlobal)
@@ -141,6 +158,17 @@ public sealed class EfReportRepository : IReportRepository
     }
 
     // ── Mapping helpers ─────────────────────────────────────────────────────
+
+    private static SliceReport ToDomainShallow(SliceReportEntity e) => new()
+    {
+        Id               = e.Id,
+        JobId            = e.JobId,
+        ReportDate       = e.ReportDate,
+        GeneratedAt      = e.GeneratedAt,
+        GeneratedByEmail = e.GeneratedByEmail,
+        MergedCsvPath    = e.MergedCsvPath,
+        MergedXlsxPath   = e.MergedXlsxPath,
+    };
 
     private static SliceReport ToDomain(SliceReportEntity e) => new()
     {

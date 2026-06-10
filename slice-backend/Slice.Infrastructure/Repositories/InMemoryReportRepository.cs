@@ -21,6 +21,15 @@ public sealed class InMemoryReportRepository : IReportRepository
     }
 
     /// <inheritdoc/>
+    public Task<SliceReport?> GetWithChildrenAsync(string reportId)
+    {
+        // In-memory store already keeps the child lists populated by reference,
+        // so the shallow and deep variants return the same object.
+        _store.TryGetValue(reportId, out var report);
+        return Task.FromResult(report);
+    }
+
+    /// <inheritdoc/>
     public Task SaveAsync(SliceReport report)
     {
         _store[report.Id] = report;
