@@ -241,7 +241,9 @@ public sealed class ExcelParserService : IExcelParserService
             }
             if (rowText.Contains("Shop Daily", StringComparison.OrdinalIgnoreCase))
             {
-                ParseShopDailySection(grid, row + 2, report);
+                // Legacy: the header row IS the row that contains "Shop Daily"
+                // and the column labels. Data starts one row below.
+                ParseShopDailySection(grid, row + 1, report);
                 continue;
             }
 
@@ -268,7 +270,9 @@ public sealed class ExcelParserService : IExcelParserService
                 }
                 if (firstNonEmpty.Equals("Shop", StringComparison.OrdinalIgnoreCase))
                 {
-                    ParseShopDailySection(grid, row + 2, report);
+                    // Two-tier header: title row -> column-header row -> data rows.
+                    // Pass the column-header row; the parser will read from row+1.
+                    ParseShopDailySection(grid, row + 1, report);
                     continue;
                 }
             }
@@ -441,21 +445,112 @@ public sealed class ExcelParserService : IExcelParserService
     /// Reads the Shop Daily table starting at <paramref name="startRow"/> (0-indexed).
     /// Stops at the first blank shop-name row.
     /// </summary>
-    private static void ParseShopDailySection(IList<IList<string>> grid, int startRow, SliceReport report)
+    /// <summary>
+    /// Reads the Shop block starting at <paramref name="headerRow"/> (0-indexed).
+    /// The user's Excel uses a 18-column hybrid header that combines call
+    /// metrics (cols 3-13) and order metrics (cols 14-17) in the same row:
+    ///   0: Pod - Shops   1: Shop ID   2: Shop Name
+    ///   3: Total Calls  4: Overflow  5: Queued  6: Handle  7: Missed Calls
+    ///   8: Transferred Calls  9: %Overflow  10: %Queued  11: %Handled
+    ///  12: %missed  13: %Transferred
+    ///  14: Order Count  15: Conv %  16: Refunded Orders  17: % Orders with errors
+    /// We populate both <c>ShopCallMetrics</c> (call side) and <c>ShopDaily</c>
+    /// (orders side) for every data row so the export can show them separately
+    /// and the backfill can use ShopName as a bridge between the two collections.
+    /// </summary>
+    private static void ParseShopDailySection(IList<IList<string>> grid, int headerRow, SliceReport report)
     {
-        for (int r = startRow + 1; r < grid.Count; r++)
-        {
-            var shop = GetCell(grid, r, 0);
-            if (string.IsNullOrWhiteSpace(shop)) break;
+        if (headerRow < 0 || headerRow >= grid.Count) return;
+        var header = grid[headerRow];
+        // Sanity check: at least one of the expected Shop headers should be
+        // present in this row. If not, this is the wrong row.
+        bool looksLikeShopHeader = header.Any(c => c?.Trim().Equals("Pod - Shops", StringComparison.OrdinalIgnoreCase) == true
+                                                || c?.Trim().Equals("Shop ID", StringComparison.OrdinalIgnoreCase) == true);
+        if (!looksLikeShopHeader) return;
 
-            report.ShopDaily.Add(new ShopDailyRow
+        int dataStart = headerRow + 1;
+        for (int r = dataStart; r < grid.Count; r++)
+        {
+            var pod     = GetCell(grid, r, 0);
+            var shopId  = GetCell(grid, r, 1);
+            var shopName= GetCell(grid, r, 2);
+            if (string.IsNullOrWhiteSpace(shopId) && string.IsNullOrWhiteSpace(shopName)) break;
+            // The legacy "shop daily" layout used a single-column shop label in col 0
+            // and 4 metrics. If col 0 is a non-ES-X label (i.e. a shop name) and the
+            // other columns are empty, treat it as legacy and keep the old behavior.
+            if (!string.IsNullOrWhiteSpace(pod)
+                && !pod.StartsWith("ES-", StringComparison.OrdinalIgnoreCase)
+                && !pod.Equals("ALL", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(shopId)
+                && string.IsNullOrWhiteSpace(shopName))
             {
-                ShopName       = shop,
-                TotalOrders    = GetInt(grid, r, 1),
-                RefundedOrders = GetInt(grid, r, 2),
-                ErrorRate      = GetDouble(grid, r, 3),
-                ConversionRate = GetDouble(grid, r, 4),
-            });
+                report.ShopDaily.Add(new ShopDailyRow
+                {
+                    ShopName       = pod,
+                    TotalOrders    = GetInt(grid, r, 1),
+                    RefundedOrders = GetInt(grid, r, 2),
+                    ErrorRate      = GetDouble(grid, r, 3),
+                    ConversionRate = GetDouble(grid, r, 4),
+                });
+                continue;
+            }
+
+            // Hybrid 18-col layout: populate both collections.
+            int total     = GetInt(grid, r, 3);
+            int overflow  = GetInt(grid, r, 4);
+            int queued    = GetInt(grid, r, 5);
+            int handled   = GetInt(grid, r, 6);
+            int missed    = GetInt(grid, r, 7);
+            int transfer  = GetInt(grid, r, 8);
+            double pctOv  = GetDouble(grid, r, 9);
+            double pctQu  = GetDouble(grid, r, 10);
+            double pctHa  = GetDouble(grid, r, 11);
+            double pctMi  = GetDouble(grid, r, 12);
+            double pctTr  = GetDouble(grid, r, 13);
+            int orders    = GetInt(grid, r, 14);
+            double conv   = GetDouble(grid, r, 15);
+            int refunded  = GetInt(grid, r, 16);
+            double pctErr = GetDouble(grid, r, 17);
+
+            // The "ALL" pod + the EXTERNAL_OVERFLOW_DAILY virtual row are
+            // emitted by the CSV parser, so skip them when they appear in the
+            // Excel to avoid duplicating the same row in ShopCallMetrics.
+            bool isExternal = string.Equals(shopId, "EXTERNAL_OVERFLOW_DAILY", StringComparison.OrdinalIgnoreCase)
+                           || string.Equals(shopName, "EXTERNAL_OVERFLOW_DAILY", StringComparison.OrdinalIgnoreCase);
+            if (!isExternal && (total + overflow + queued + handled + missed + transfer > 0))
+            {
+                report.ShopCallMetrics.Add(new ShopCallMetricsRow
+                {
+                    WeekStart         = report.ReportDate,
+                    ShopId            = shopId,
+                    ShopName          = shopName,
+                    PodId             = pod,
+                    TotalCalls        = total,
+                    OverflowCalls     = overflow,
+                    QueueCalls        = queued,
+                    HandledCalls      = handled,
+                    MissedCalls       = missed,
+                    TransferredCalls  = transfer,
+                    PctOverflow       = pctOv,
+                    PctQueued         = pctQu,
+                    PctHandled        = pctHa,
+                    PctMissedOfQueued = pctMi,
+                    PctTransferred    = pctTr,
+                });
+            }
+
+            if (orders + refunded > 0 || pctErr > 0 || conv > 0)
+            {
+                report.ShopDaily.Add(new ShopDailyRow
+                {
+                    ShopName       = string.IsNullOrWhiteSpace(shopName) ? shopId : shopName,
+                    ShopId         = shopId,
+                    TotalOrders    = orders,
+                    RefundedOrders = refunded,
+                    ErrorRate      = pctErr,
+                    ConversionRate = conv,
+                });
+            }
         }
     }
 

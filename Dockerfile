@@ -2,21 +2,27 @@
 # Bumping CACHE_BUST below forces Docker to invalidate every cache layer
 # downstream — use this when slice-backend changes are not being picked up by
 # the registry. The default of 1 is harmless; CI overrides it to the commit SHA.
-# 2026-06-09-bust-15: arreglar dos bugs en el parser / merge del Excel.
-# (1) Las 4 metricas de orders del bloque Global (Conv %, Order Count,
-# Refunded Orders, % Orders with errors) siempre quedaban en 0 porque
-# ParseDailyGlobalSection las leia del Excel y devolvia ceros cuando
-# el archivo no las traia. Ahora Merge() llama a
-# BackfillOrderMetricsFromShopDaily, que cruza DailyGlobal.Pod con
-# ShopCallMetrics (puente Pod <-> ShopId) para derivar OrderCount,
-# RefundedOrders y PctOrdersWithErrors de ShopDaily.
-# (2) Desde el commit 2b64547 (offset del bloque Shop, columna A
-# como margen) el bloque Shop no se detectaba porque el parser buscaba
-# 'Shop Daily' solo en columna A. Ahora ParseRowGrid escanea todas
-# las celdas de cada fila y tambien acepta el formato corto donde el
-# titulo 'Shop' (o 'Global' / 'Agent') esta centrado en una sola
-# celda de la fila, sin tocar la columna A.
-ARG CACHE_BUST=2026-06-09-bust-15
+# 2026-06-09-bust-16: arreglar el join imposible entre los dos CSVs de shop.
+# El usuario subio un ZIP con 12 CSVs. shop_level_-_call_metrics.csv usa un
+# esquema de ShopId (e.g. 853=Papa Ray's, 73=Capri) y shop_level_-_orders_metrics.csv
+# usa OTRO esquema (e.g. 112770=Cj's Pizza, 112919=Capri's) — los rangos no
+# se solapan. El codigo hacia un join por ShopId entre ShopCallMetrics y
+# ShopDaily, asi que los 4 campos de orders del Global siempre quedaban en
+# 0 y el bloque Shop del export solo mostraba la fila virtual
+# EXTERNAL_OVERFLOW_DAILY. Cambios:
+# (1) BackfillOrderMetricsFromShopDaily ahora usa ShopName (normalizado,
+# case-insensitive, sin sufijos 'pizza'/'pizzeria'/'llc'/'inc'/'co'/
+# 'restaurant'/'kitchen') como puente entre DailyGlobal.Pod y ShopDaily
+# en lugar de ShopId.
+# (2) ParseShopDailySection reescrito: lee el header hibrido de 18 cols
+# del Excel del usuario (3 cols de shop + 11 de call metrics + 4 de orders)
+# y popula TANTO ShopCallMetrics como ShopDaily, descartando la fila virtual
+# EXTERNAL_OVERFLOW_DAILY para no duplicarla.
+# (3) El bloque Shop del XLSX/CSV export ahora se divide en dos sub-tablas
+# independientes: 'Shop Call Metrics (by shop, pod, week)' y
+# 'Shop Orders (by shop)'. Ya no intenta cruzar por ShopId.
+# Bump CACHE_BUST a 2026-06-09-bust-16.
+ARG CACHE_BUST=2026-06-09-bust-16
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

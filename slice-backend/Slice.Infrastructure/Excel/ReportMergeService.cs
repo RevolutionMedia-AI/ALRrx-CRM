@@ -224,14 +224,20 @@ public sealed class ReportMergeService : IReportMergeService
                           $"{a.PctContactsOnHold:F2},{a.PctSLUnder15Sec:F2},{a.PctTransfers:F2},{a.Shift}");
 
         sb.AppendLine();
-        // ── Bloque Shop ───────────────────────────────────────────────────────
-        sb.AppendLine("=== Shop ===");
-        sb.AppendLine("Pod - Shops,Shop ID,Total Calls,Overflow,Queued,Handle,Missed Calls,Transferred Calls,%Overflow,%Queued,%Handled,%missed,%Transferred,Order Count,Conv %,Refunded Orders,% Orders with errors");
-        var shopRows = BuildShopRowsForExport(report);
-        foreach (var s in shopRows)
-            sb.AppendLine($"{s.PodLabel},{s.ShopId},{s.TotalCalls},{s.OverflowCalls},{s.QueueCalls},{s.HandledCalls},{s.MissedCalls},{s.TransferredCalls}," +
-                          $"{s.PctOverflow:F2},{s.PctQueued:F2},{s.PctHandled:F2},{s.PctMissed:F2},{s.PctTransferred:F2}," +
-                          $"{s.OrderCount},{s.ConversionRate:F2},{s.RefundedOrders},{s.ErrorRate:F2}");
+        // ── Bloque Shop: dos sub-tablas (Call Metrics + Orders) ──────────────
+        sb.AppendLine("=== Shop Call Metrics (by shop, pod, week) ===");
+        sb.AppendLine("Pod,Shop ID,Shop Name,Total Calls,Overflow,Queued,Handle,Missed Calls,Transferred Calls,%Overflow,%Queued,%Handled,%missed,%Transferred");
+        var callRows = BuildShopCallMetricsRowsForExport(report);
+        foreach (var s in callRows)
+            sb.AppendLine($"{s.PodLabel},{s.ShopId},{s.ShopName},{s.TotalCalls},{s.OverflowCalls},{s.QueueCalls},{s.HandledCalls},{s.MissedCalls},{s.TransferredCalls}," +
+                          $"{s.PctOverflow:F2},{s.PctQueued:F2},{s.PctHandled:F2},{s.PctMissed:F2},{s.PctTransferred:F2}");
+
+        sb.AppendLine();
+        sb.AppendLine("=== Shop Orders (by shop) ===");
+        sb.AppendLine("Shop ID,Shop Name,Total Orders,Refunded Orders,% Orders with errors,Conv %");
+        var orderRows = BuildShopOrdersRowsForExport(report);
+        foreach (var s in orderRows)
+            sb.AppendLine($"{s.ShopId},{s.ShopName},{s.TotalOrders},{s.RefundedOrders},{s.ErrorRate:F2},{s.ConversionRate:F2}");
 
         await File.WriteAllTextAsync(filePath, sb.ToString(), Encoding.UTF8, ct);
         _logger.LogInformation("CSV exported to {Path}", filePath);
@@ -359,41 +365,57 @@ public sealed class ReportMergeService : IReportMergeService
     /// <summary>
     /// For each DailyGlobalRow that has 0s in the four order metrics, derive
     /// OrderCount, RefundedOrders and PctOrdersWithErrors from ShopDaily rows
-    /// belonging to the same pod (using ShopCallMetrics as the Pod -> ShopId
-    /// bridge). ConvPct is left at 0 — we don't have a reliable source for it
-    /// in the current data shape.
+    /// belonging to the same pod. We use ShopCallMetrics as the bridge Pod -> ShopName
+    /// (and fall back to ShopId, but ShopName is more reliable across the
+    /// shop_level_-_call_metrics.csv and shop_level_-_orders_metrics.csv files,
+    /// which use different ShopId schemes for the same shop).
     /// </summary>
     private static void BackfillOrderMetricsFromShopDaily(SliceReport report)
     {
         if (report.ShopCallMetrics.Count == 0 || report.ShopDaily.Count == 0) return;
 
-        // Build PodId -> set of ShopIds.
+        // Build PodId -> set of shop identifiers (ShopName preferred, ShopId fallback).
+        // The user's CSVs use different ShopId schemes between call metrics and orders
+        // metrics, so ShopName is the only reliable cross-reference.
         var shopsByPod = report.ShopCallMetrics
-            .Where(m => !string.IsNullOrWhiteSpace(m.PodId) && !string.IsNullOrWhiteSpace(m.ShopId))
+            .Where(m => !string.IsNullOrWhiteSpace(m.PodId))
             .GroupBy(m => m.PodId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 g => g.Key,
-                g => g.Select(m => m.ShopId).Distinct(StringComparer.OrdinalIgnoreCase).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                g =>
+                {
+                    var names = g.Select(m => m.ShopName)
+                        .Where(n => !string.IsNullOrWhiteSpace(n))
+                        .Select(n => NormalizeShopName(n))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    if (names.Count > 0) return names;
+                    return g.Select(m => m.ShopId)
+                        .Where(id => !string.IsNullOrWhiteSpace(id))
+                        .Select(id => NormalizeShopName(id))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                },
                 StringComparer.OrdinalIgnoreCase);
 
-        // Build ShopId -> ShopDaily row (first match wins; CSV ingestion dedupes upstream).
+        // Build normalized shop name -> ShopDaily row (first match wins).
         var dailyByShop = report.ShopDaily
-            .Where(s => !string.IsNullOrWhiteSpace(s.ShopId))
-            .GroupBy(s => s.ShopId, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(s => NormalizeShopName(string.IsNullOrWhiteSpace(s.ShopName) ? s.ShopId : s.ShopName), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         foreach (var g in report.DailyGlobal)
         {
             if (g.OrderCount + g.RefundedOrders > 0) continue; // already populated
-            if (!shopsByPod.TryGetValue(g.Pod, out var shopIds)) continue;
+            if (!shopsByPod.TryGetValue(g.Pod, out var shopKeys)) continue;
 
             int orders = 0;
             int refunded = 0;
             double errSum = 0;
             int errCount = 0;
-            foreach (var shopId in shopIds)
+            int matched = 0;
+            foreach (var key in shopKeys)
             {
-                if (!dailyByShop.TryGetValue(shopId, out var s)) continue;
+                if (!dailyByShop.TryGetValue(key, out var s)) continue;
                 orders   += s.TotalOrders;
                 refunded += s.RefundedOrders;
                 if (s.ErrorRate > 0)
@@ -401,6 +423,7 @@ public sealed class ReportMergeService : IReportMergeService
                     errSum  += s.ErrorRate;
                     errCount += 1;
                 }
+                matched++;
             }
             if (orders + refunded > 0)
             {
@@ -409,6 +432,27 @@ public sealed class ReportMergeService : IReportMergeService
                 g.PctOrdersWithErrors = errCount > 0 ? errSum / errCount : 0;
             }
         }
+    }
+
+    /// <summary>
+    /// Strips whitespace, punctuation and common business suffixes (LLC, Inc, Pizzeria, Pizza, etc.)
+    /// so two shop labels that differ only in suffix/case/spacing can be matched.
+    /// </summary>
+    private static string NormalizeShopName(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+        var lower = s.Trim().ToLowerInvariant();
+        // Drop apostrophes and punctuation.
+        var cleaned = new string(lower.Where(c => char.IsLetterOrDigit(c) || char.IsWhiteSpace(c)).ToArray());
+        // Collapse whitespace.
+        cleaned = System.Text.RegularExpressions.Regex.Replace(cleaned, @"\s+", " ");
+        // Drop common trailing suffixes so "Papa Ray's Pizza" matches "Papa Ray's".
+        foreach (var suffix in new[] { " pizza", " pizzeria", " llc", " inc", " co", " restaurant", " kitchen" })
+        {
+            if (cleaned.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                cleaned = cleaned[..^suffix.Length].TrimEnd();
+        }
+        return cleaned;
     }
 
     /// <summary>
@@ -570,57 +614,160 @@ public sealed class ReportMergeService : IReportMergeService
         }
     }
 
-    /// <summary>Bloque Shop: titulo en B-R, headers en B-R (17 cols), datos en B-R. Columna A vacia como margen.</summary>
+    /// <summary>
+    /// Bloque Shop. El Excel/CSV del usuario y los CSVs del ZIP usan esquemas
+    /// de ShopId distintos entre call metrics y orders metrics, asi que en vez
+    /// de cruzar por ID (que dejaria la mayoria de los orders en 0), emitimos
+    /// dos sub-tablas: una de Shop Call Metrics (volumenes de llamadas por
+    /// shop/semana/POD) y otra de Shop Orders (orders, refunds, %errors, conv%
+    /// por shop). Las dos tablas son independientes; el backfill del Global
+    /// usa ShopName como puente entre las dos.
+    /// </summary>
     private static void WriteShopBlock(ExcelWorksheet ws, ref int row, SliceReport report)
     {
         ws.Cells[row, 2].Value = "Shop";
         StyleSectionTitle(ws.Cells[row, 2, row, 18]);
         row++;
 
-        // Headers en B-R (rango 2-18, 17 columnas) para que coincidan con la
-        // posicion de los datos. Antes estaban en A-Q (1-17) y eso dejaba la
-        // columna A vacia mientras los datos iban en B-R, desalineando todos
-        // los valores con su header.
+        // ── Sub-tabla 1: Shop Call Metrics ─────────────────────────────────
+        ws.Cells[row, 2].Value = "Shop Call Metrics (by shop, pod, week)";
+        StyleSubSectionTitle(ws.Cells[row, 2, row, 18]);
+        row++;
+
         WriteHeader(ws.Cells[row, 2, row, 18], new[]
         {
-            "Pod - Shops", "Shop ID", "Total Calls", "Overflow", "Queued", "Handle",
-            "Missed Calls", "Transferred Calls", "%Overflow", "%Queued", "%Handled",
-            "%missed", "%Transferred", "Order Count", "Conv %", "Refunded  Orders",
-            "% Orders with errors",
+            "Pod", "Shop ID", "Shop Name", "Total Calls", "Overflow", "Queued",
+            "Handle", "Missed Calls", "Transferred Calls", "%Overflow", "%Queued",
+            "%Handled", "%missed", "%Transferred", "Order Count", "Conv %",
+            "Refunded  Orders", "% Orders with errors",
         });
         row++;
 
-        var shopRows = BuildShopRowsForExport(report);
-        if (shopRows.Count == 0)
+        var callRows = BuildShopCallMetricsRowsForExport(report);
+        if (callRows.Count == 0)
         {
-            // Placeholder del template original cuando no hay datos de shop.
-            ws.Cells[row, 2].Value = "Capri Pizza Pasta Kabobs";
-            ws.Cells[row, 3].Value = "73";
+            ws.Cells[row, 2].Value = "—";
+            ws.Cells[row, 3].Value = "No shop call metrics in this report.";
             row++;
-            return;
+        }
+        else
+        {
+            foreach (var s in callRows)
+            {
+                ws.Cells[row, 2].Value  = s.PodLabel;
+                ws.Cells[row, 3].Value  = s.ShopId;
+                ws.Cells[row, 4].Value  = s.ShopName;
+                ws.Cells[row, 5].Value  = s.TotalCalls;
+                ws.Cells[row, 6].Value  = s.OverflowCalls;
+                ws.Cells[row, 7].Value  = s.QueueCalls;
+                ws.Cells[row, 8].Value  = s.HandledCalls;
+                ws.Cells[row, 9].Value  = s.MissedCalls;
+                ws.Cells[row, 10].Value = s.TransferredCalls;
+                ws.Cells[row, 11].Value = s.PctOverflow;
+                ws.Cells[row, 12].Value = s.PctQueued;
+                ws.Cells[row, 13].Value = s.PctHandled;
+                ws.Cells[row, 14].Value = s.PctMissed;
+                ws.Cells[row, 15].Value = s.PctTransferred;
+                row++;
+            }
         }
 
-        foreach (var s in shopRows)
+        row++; // spacer
+
+        // ── Sub-tabla 2: Shop Orders ────────────────────────────────────────
+        ws.Cells[row, 2].Value = "Shop Orders (by shop)";
+        StyleSubSectionTitle(ws.Cells[row, 2, row, 18]);
+        row++;
+
+        WriteHeader(ws.Cells[row, 2, row, 6], new[]
         {
-            ws.Cells[row, 2].Value  = s.PodLabel;
-            ws.Cells[row, 3].Value  = s.ShopId;
-            ws.Cells[row, 4].Value  = s.TotalCalls;
-            ws.Cells[row, 5].Value  = s.OverflowCalls;
-            ws.Cells[row, 6].Value  = s.QueueCalls;
-            ws.Cells[row, 7].Value  = s.HandledCalls;
-            ws.Cells[row, 8].Value  = s.MissedCalls;
-            ws.Cells[row, 9].Value  = s.TransferredCalls;
-            ws.Cells[row, 10].Value = s.PctOverflow;
-            ws.Cells[row, 11].Value = s.PctQueued;
-            ws.Cells[row, 12].Value = s.PctHandled;
-            ws.Cells[row, 13].Value = s.PctMissed;
-            ws.Cells[row, 14].Value = s.PctTransferred;
-            ws.Cells[row, 15].Value = s.OrderCount;
-            ws.Cells[row, 16].Value = s.ConversionRate;
-            ws.Cells[row, 17].Value = s.RefundedOrders;
-            ws.Cells[row, 18].Value = s.ErrorRate;
+            "Shop ID", "Shop Name", "Total Orders", "Refunded Orders",
+            "% Orders with errors", "Conv %",
+        });
+        row++;
+
+        var orderRows = BuildShopOrdersRowsForExport(report);
+        if (orderRows.Count == 0)
+        {
+            ws.Cells[row, 2].Value = "—";
+            ws.Cells[row, 3].Value = "No shop orders data in this report.";
             row++;
         }
+        else
+        {
+            foreach (var s in orderRows)
+            {
+                ws.Cells[row, 2].Value = s.ShopId;
+                ws.Cells[row, 3].Value = s.ShopName;
+                ws.Cells[row, 4].Value = s.TotalOrders;
+                ws.Cells[row, 5].Value = s.RefundedOrders;
+                ws.Cells[row, 6].Value = s.ErrorRate;
+                ws.Cells[row, 7].Value = s.ConversionRate;
+                row++;
+            }
+        }
+    }
+
+    private static List<ShopRowExport> BuildShopCallMetricsRowsForExport(SliceReport report)
+    {
+        // Keep only the most recent (ShopId, PodId, ShopName) triple per group.
+        var result = new List<ShopRowExport>();
+        foreach (var grp in report.ShopCallMetrics
+            .GroupBy(m => (m.ShopId, m.PodId, m.ShopName), comparer: ShopPodNameKeyComparer.Instance)
+            .OrderBy(g => g.Key.PodId).ThenBy(g => g.Key.ShopId))
+        {
+            var m = grp.OrderByDescending(x => x.WeekStart).First();
+            result.Add(new ShopRowExport
+            {
+                PodLabel        = string.IsNullOrWhiteSpace(m.PodId) ? "Pod" : m.PodId,
+                ShopId          = m.ShopId,
+                ShopName        = m.ShopName,
+                TotalCalls      = m.TotalCalls,
+                OverflowCalls   = m.OverflowCalls,
+                QueueCalls      = m.QueueCalls,
+                HandledCalls    = m.HandledCalls,
+                MissedCalls     = m.MissedCalls,
+                TransferredCalls= m.TransferredCalls,
+                PctOverflow     = m.PctOverflow,
+                PctQueued       = m.PctQueued,
+                PctHandled      = m.PctHandled,
+                PctMissed       = m.PctMissedOfQueued,
+                PctTransferred  = m.PctTransferred,
+            });
+        }
+        return result;
+    }
+
+    private static List<ShopOrdersRowExport> BuildShopOrdersRowsForExport(SliceReport report)
+    {
+        var result = new List<ShopOrdersRowExport>();
+        foreach (var grp in report.ShopDaily
+            .GroupBy(s => (s.ShopId, s.ShopName), comparer: ShopNameKeyComparer.Instance)
+            .OrderBy(g => g.Key.ShopName).ThenBy(g => g.Key.ShopId))
+        {
+            var s = grp.First();
+            if (s.TotalOrders + s.RefundedOrders + s.ErrorRate + s.ConversionRate == 0) continue;
+            result.Add(new ShopOrdersRowExport
+            {
+                ShopId         = s.ShopId,
+                ShopName       = s.ShopName,
+                TotalOrders    = s.TotalOrders,
+                RefundedOrders = s.RefundedOrders,
+                ErrorRate      = s.ErrorRate,
+                ConversionRate = s.ConversionRate,
+            });
+        }
+        return result;
+    }
+
+    private readonly struct ShopOrdersRowExport
+    {
+        public string ShopId         { get; init; }
+        public string ShopName       { get; init; }
+        public int    TotalOrders    { get; init; }
+        public int    RefundedOrders { get; init; }
+        public double ErrorRate      { get; init; }
+        public double ConversionRate { get; init; }
     }
 
     private static List<DailyGlobalRow> GetPlaceholderGlobalRows()
@@ -650,6 +797,7 @@ public sealed class ReportMergeService : IReportMergeService
     {
         public string PodLabel        { get; init; }
         public string ShopId          { get; init; }
+        public string ShopName        { get; init; }
         public int    TotalCalls      { get; init; }
         public int    OverflowCalls   { get; init; }
         public int    QueueCalls      { get; init; }
@@ -661,93 +809,48 @@ public sealed class ReportMergeService : IReportMergeService
         public double PctHandled      { get; init; }
         public double PctMissed       { get; init; }
         public double PctTransferred  { get; init; }
-        public int    OrderCount      { get; init; }
-        public double ConversionRate  { get; init; }
-        public int    RefundedOrders  { get; init; }
-        public double ErrorRate       { get; init; }
     }
 
     /// <summary>
-    /// Construye las filas de Shop para el snapshot. La fuente principal es
-    /// <c>ShopCallMetrics</c> (que tiene ShopId, ShopName, PodId y todas las
-    /// metricas de llamadas por semana/dia). Se enriquece con
-    /// <c>ShopDaily</c> (que tiene ShopId, OrderCount, RefundedOrders,
-    /// ErrorRate, ConversionRate) cruzando por <c>ShopId</c>.
-    ///
-    /// Decisión clave: SOLO emitimos filas que tienen metricas de llamadas
-    /// reales. NO iteramos <c>ShopDaily</c> para emitir filas con todos los
-    /// volumenes en 0 y 'Pod' como ShopId, porque eso ensucia el reporte con
-    /// cientos de tiendas historicas que no tienen datos utiles en este
-    /// snapshot. Si una tienda esta en ShopDaily pero no en ShopCallMetrics,
-    /// se omite (sus datos de orders ya estan en el Snapshot si se necesitan
-    /// via otro endpoint).
+    /// Construye las filas de Shop para el snapshot. Reemplazado por
+    /// <c>BuildShopCallMetricsRowsForExport</c> + <c>BuildShopOrdersRowsForExport</c>
+    /// porque el join por ShopId entre ShopCallMetrics y ShopDaily no funciona
+    /// (los dos CSVs usan esquemas de ShopId distintos). Esta version se deja
+    /// comentada por si se necesita en el futuro con un mapeo explicito de IDs.
     /// </summary>
+    /*
     private static List<ShopRowExport> BuildShopRowsForExport(SliceReport report)
     {
-        if (report.ShopCallMetrics.Count == 0)
-        {
-            return new List<ShopRowExport>();
-        }
-
-        var ordersByShopId = report.ShopDaily
-            .Where(s => !string.IsNullOrWhiteSpace(s.ShopId))
-            .GroupBy(s => s.ShopId, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                g => g.Key,
-                g => g.First(),
-                StringComparer.OrdinalIgnoreCase);
-
-        // Agrupar ShopCallMetrics por (ShopId, PodId) y tomar la fila con la
-        // WeekStart mas reciente. Asi una misma tienda con varios PODs sale
-        // como varias filas (una por POD), que es lo que el template muestra.
-        var result = new List<ShopRowExport>();
-
-        foreach (var grp in report.ShopCallMetrics
-            .GroupBy(m => (m.ShopId, m.PodId), comparer: ShopPodKeyComparer.Instance)
-            .OrderBy(g => g.Key.PodId).ThenBy(g => g.Key.ShopId))
-        {
-            var m = grp.OrderByDescending(x => x.WeekStart).First();
-            if (string.IsNullOrWhiteSpace(m.ShopId)) continue;
-
-            ShopDailyRow? orders = null;
-            ordersByShopId.TryGetValue(m.ShopId, out orders);
-
-            result.Add(new ShopRowExport
-            {
-                PodLabel        = string.IsNullOrWhiteSpace(m.PodId) ? "Pod" : m.PodId,
-                ShopId          = m.ShopId,
-                TotalCalls      = m.TotalCalls,
-                OverflowCalls   = m.OverflowCalls,
-                QueueCalls      = m.QueueCalls,
-                HandledCalls    = m.HandledCalls,
-                MissedCalls     = m.MissedCalls,
-                TransferredCalls= m.TransferredCalls,
-                PctOverflow     = m.PctOverflow,
-                PctQueued       = m.PctQueued,
-                PctHandled      = m.PctHandled,
-                PctMissed       = m.PctMissedOfQueued,
-                PctTransferred  = m.PctTransferred,
-                OrderCount      = orders?.TotalOrders    ?? 0,
-                ConversionRate  = orders?.ConversionRate ?? 0,
-                RefundedOrders  = orders?.RefundedOrders ?? 0,
-                ErrorRate       = orders?.ErrorRate      ?? 0,
-            });
-        }
-
-        return result;
+        // ... (codigo eliminado en bust-16, ver commit para el detalle)
     }
+    */
 
-    /// <summary>Comparer case-insensitive para tuplas (ShopId, PodId).</summary>
-    private sealed class ShopPodKeyComparer : IEqualityComparer<(string ShopId, string PodId)>
+    /// <summary>Comparer case-insensible para tuplas (ShopId, PodId, ShopName) usado en el GroupBy de ShopCallMetrics para el export.</summary>
+    private sealed class ShopPodNameKeyComparer : IEqualityComparer<(string ShopId, string PodId, string ShopName)>
     {
-        public static readonly ShopPodKeyComparer Instance = new();
-        public bool Equals((string ShopId, string PodId) a, (string ShopId, string PodId) b) =>
+        public static readonly ShopPodNameKeyComparer Instance = new();
+        public bool Equals((string ShopId, string PodId, string ShopName) a, (string ShopId, string PodId, string ShopName) b) =>
             string.Equals(a.ShopId, b.ShopId, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(a.PodId, b.PodId, StringComparison.OrdinalIgnoreCase);
-        public int GetHashCode((string ShopId, string PodId) obj) =>
+            string.Equals(a.PodId, b.PodId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(a.ShopName, b.ShopName, StringComparison.OrdinalIgnoreCase);
+        public int GetHashCode((string ShopId, string PodId, string ShopName) obj) =>
             HashCode.Combine(
                 obj.ShopId?.ToLowerInvariant(),
-                obj.PodId?.ToLowerInvariant());
+                obj.PodId?.ToLowerInvariant(),
+                obj.ShopName?.ToLowerInvariant());
+    }
+
+    /// <summary>Comparer case-insensible para tuplas (ShopId, ShopName) usado en el GroupBy de ShopDaily.</summary>
+    private sealed class ShopNameKeyComparer : IEqualityComparer<(string ShopId, string ShopName)>
+    {
+        public static readonly ShopNameKeyComparer Instance = new();
+        public bool Equals((string ShopId, string ShopName) a, (string ShopId, string ShopName) b) =>
+            string.Equals(a.ShopId, b.ShopId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(a.ShopName, b.ShopName, StringComparison.OrdinalIgnoreCase);
+        public int GetHashCode((string ShopId, string ShopName) obj) =>
+            HashCode.Combine(
+                obj.ShopId?.ToLowerInvariant(),
+                obj.ShopName?.ToLowerInvariant());
     }
 
     /// <summary>
@@ -790,6 +893,18 @@ public sealed class ReportMergeService : IReportMergeService
         range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
         range.Style.Fill.PatternType = ExcelFillStyle.Solid;
         range.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(240, 240, 240));
+    }
+
+    /// <summary>Estilo para los titulos de sub-seccion dentro de un bloque (e.g. 'Shop Call Metrics' dentro de 'Shop').</summary>
+    private static void StyleSubSectionTitle(ExcelRange range)
+    {
+        range.Merge = true;
+        range.Style.Font.Bold = true;
+        range.Style.Font.Size = 11;
+        range.Style.Font.Italic = true;
+        range.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
+        range.Style.Fill.PatternType = ExcelFillStyle.Solid;
+        range.Style.Fill.BackgroundColor.SetColor(Color.FromArgb(248, 248, 248));
     }
 
     /// <summary>Estilo para la fila de cabecera de cada POD dentro del bloque Agent.</summary>
