@@ -6,6 +6,7 @@ import {
   sliceLogin,
 } from '../../services/sliceAuthApi';
 import { getGoogleAccessToken, setGoogleAccessToken } from '../../utils/googleTokenStore';
+import { readSharedToken, writeSharedToken, clearSharedToken } from '../../utils/sharedToken';
 import type { SliceUserInfo } from '../types';
 
 interface SliceAuthContextType {
@@ -21,15 +22,16 @@ interface SliceAuthContextType {
 
 const SliceAuthContext = createContext<SliceAuthContextType | null>(null);
 
-const SLICE_TOKEN_KEY = 'slice_token';
-
 export function SliceAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SliceUserInfo | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem(SLICE_TOKEN_KEY);
+    // We share the auth token with the alrrx AuthContext (see utils/sharedToken).
+    // If the user is already signed in on the alrrx side, this context picks
+    // up the same token without forcing a re-login.
+    const stored = readSharedToken();
     if (stored) {
       setSliceAuthToken(stored);
       setToken(stored);
@@ -40,7 +42,7 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
             ? (err as { response?: { status?: number } }).response?.status
             : undefined;
           if (status === 401) {
-            localStorage.removeItem(SLICE_TOKEN_KEY);
+            clearSharedToken();
             setSliceAuthToken(null);
             setToken(null);
           } else {
@@ -54,7 +56,7 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
     if (googleToken) {
       sliceGoogleLogin(googleToken)
         .then((res) => {
-          localStorage.setItem(SLICE_TOKEN_KEY, res.token);
+          writeSharedToken(res.token);
           setSliceAuthToken(res.token);
           setToken(res.token);
           setUser({
@@ -70,9 +72,7 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
             ? (err as { response?: { status?: number } }).response?.status
             : undefined;
           if (status === 401 || status === 403) {
-            localStorage.removeItem(SLICE_TOKEN_KEY);
-            setSliceAuthToken(null);
-            setToken(null);
+            setGoogleAccessToken(null);
           } else {
             console.warn('slice google rehydrate failed (transient):', err);
           }
@@ -85,7 +85,7 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res = await sliceLogin(email, password);
-    localStorage.setItem(SLICE_TOKEN_KEY, res.token);
+    writeSharedToken(res.token);
     setSliceAuthToken(res.token);
     setToken(res.token);
     setUser({
@@ -100,7 +100,7 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = async (accessToken: string) => {
     setGoogleAccessToken(accessToken);
     const res = await sliceGoogleLogin(accessToken);
-    localStorage.setItem(SLICE_TOKEN_KEY, res.token);
+    writeSharedToken(res.token);
     setSliceAuthToken(res.token);
     setToken(res.token);
     setUser({
@@ -117,7 +117,7 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
     if (!googleToken) return false;
     try {
       const res = await sliceGoogleLogin(googleToken);
-      localStorage.setItem(SLICE_TOKEN_KEY, res.token);
+      writeSharedToken(res.token);
       setSliceAuthToken(res.token);
       setToken(res.token);
       setUser({
@@ -135,7 +135,8 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = () => {
-    localStorage.removeItem(SLICE_TOKEN_KEY);
+    // Clear the shared token so the alrrx AuthContext also signs out.
+    clearSharedToken();
     setSliceAuthToken(null);
     setToken(null);
     setUser(null);

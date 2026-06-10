@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import type { SliceJobStatus, SliceJobStatusDto } from '../types';
 import { sliceExportUrl } from '../../services/sliceReportsApi';
 import { normalizeJobStatus } from '../utils/jobStatus';
+import { readSharedToken } from '../../utils/sharedToken';
 
 interface AuditLedgerTableProps {
   jobs: SliceJobStatusDto[];
@@ -41,7 +42,7 @@ export default function AuditLedgerTable({ jobs, loading }: AuditLedgerTableProp
   const navigate = useNavigate();
 
   const handleDownload = async (reportId: string) => {
-    const token = localStorage.getItem('slice_token');
+    const token = readSharedToken();
     if (!token) return;
     const res = await fetch(sliceExportUrl(reportId, 'xlsx'), {
       headers: { Authorization: `Bearer ${token}` },

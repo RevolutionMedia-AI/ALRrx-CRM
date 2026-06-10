@@ -13,6 +13,7 @@ import type {
   SliceDailyAgentRowPatch,
 } from '../types';
 import { secondsToMmSs, initialsFromEmail, nameFromEmail, formatInt } from '../utils/formatSlice';
+import { readSharedToken } from '../../utils/sharedToken';
 
 type SortKey =
   | 'agentEmail'
@@ -204,7 +205,7 @@ export default function SliceAgentOverviewPage() {
 
   const handleExport = (format: 'xlsx' | 'csv') => {
     if (!selectedReportId || !report) return;
-    const token = localStorage.getItem('slice_token');
+    const token = readSharedToken();
     if (!token) return;
     fetch(sliceExportUrl(selectedReportId, format), {
       headers: { Authorization: `Bearer ${token}` },

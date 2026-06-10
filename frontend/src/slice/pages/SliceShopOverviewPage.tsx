@@ -13,6 +13,7 @@ import type {
   SliceShopDailyRow,
   SliceShopCallMetricsRow,
 } from '../types';
+import { readSharedToken } from '../../utils/sharedToken';
 
 type Period = 'Diaria' | 'Semanal' | 'Mensual';
 type Tab = 'orders' | 'calls';
@@ -189,7 +190,7 @@ export default function SliceShopOverviewPage() {
 
   const handleExport = (format: 'xlsx' | 'csv') => {
     if (!selectedReportId || !report) return;
-    const token = localStorage.getItem('slice_token');
+    const token = readSharedToken();
     if (!token) return;
     fetch(sliceExportUrl(selectedReportId, format), {
       headers: { Authorization: `Bearer ${token}` },

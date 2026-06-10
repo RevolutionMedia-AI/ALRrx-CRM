@@ -12,6 +12,7 @@ import Dropzone from '../components/Dropzone';
 import JobStatusCard from '../components/JobStatusCard';
 import AuditLedgerTable from '../components/AuditLedgerTable';
 import type { SliceJobStatusDto, SliceJobStatus } from '../types';
+import { readSharedToken } from '../../utils/sharedToken';
 
 type Mode = 'zip' | 'excel';
 
@@ -95,10 +96,10 @@ export default function SliceFileUploadPage() {
       setSubmitError('Report is not ready yet.');
       return;
     }
-    const token = localStorage.getItem('slice_token');
+    const token = readSharedToken();
     if (!token) {
-      console.warn('handleDownload: no slice_token in localStorage');
-      setSubmitError('You are not signed in to Slice.');
+      console.warn('handleDownload: no auth token in localStorage');
+      setSubmitError('You are not signed in.');
       return;
     }
     const url = sliceExportUrl(job.reportId, 'xlsx');
@@ -129,7 +130,7 @@ export default function SliceFileUploadPage() {
   };
 
   const handleDownloadTemplate = async () => {
-    const token = localStorage.getItem('slice_token');
+    const token = readSharedToken();
     if (!token) return;
     try {
       const url = job?.reportId ? sliceTemplateUrl(job.reportId) : sliceBlankTemplateUrl();

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, type UserInfo } from '../services/authApi';
 import { getGoogleAccessToken, setGoogleAccessToken } from '../utils/googleTokenStore';
+import { SHARED_TOKEN_KEY, readSharedToken, writeSharedToken, clearSharedToken } from '../utils/sharedToken';
 
 // ─── DEV BYPASS ────────────────────────────────────────────────────────────────
 // Set VITE_DEV_BYPASS=true in frontend/.env.local to skip login locally.
@@ -33,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .then((r) => r.json())
         .then((data) => {
           if (data?.token) {
-            localStorage.setItem('alrrx_token', data.token);
+            writeSharedToken(data.token);
             setAuthToken(data.token);
             setToken(data.token);
             setUser(data.user);
@@ -44,7 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     // ── Flujo normal ──
-    const stored = localStorage.getItem('alrrx_token');
+    // We use a single shared token key (`auth_token`) that both AuthContext
+    // (alrrx) and SliceAuthContext (slice) read/write. That way a login on
+    // either side is enough to access both backends (the backends now share
+    // the same JWT key/issuer/audience). For backwards compatibility we also
+    // fall back to the old per-context keys if a user still has them around.
+    const stored = readSharedToken();
     if (stored) {
       setAuthToken(stored);
       setToken(stored);
@@ -53,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? (err as { response?: { status?: number } }).response?.status
           : undefined;
         if (status === 401) {
-          localStorage.removeItem('alrrx_token');
+          clearSharedToken();
           setAuthToken(null);
           setToken(null);
         } else {
@@ -67,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (googleToken) {
       apiGoogleLogin(googleToken)
         .then((res) => {
-          localStorage.setItem('alrrx_token', res.token);
+          writeSharedToken(res.token);
           setAuthToken(res.token);
           setToken(res.token);
           setUser(res.user);
@@ -90,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res = await apiLogin({ email, password });
-    localStorage.setItem('alrrx_token', res.token);
+    writeSharedToken(res.token);
     setAuthToken(res.token);
     setToken(res.token);
     setUser(res.user);
@@ -99,14 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = async (credential: string) => {
     setGoogleAccessToken(credential);
     const res = await apiGoogleLogin(credential);
-    localStorage.setItem('alrrx_token', res.token);
+    writeSharedToken(res.token);
     setAuthToken(res.token);
     setToken(res.token);
     setUser(res.user);
   };
 
   const logout = () => {
-    localStorage.removeItem('alrrx_token');
+    clearSharedToken();
     setGoogleAccessToken(null);
     setAuthToken(null);
     setToken(null);

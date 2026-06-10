@@ -2,27 +2,28 @@
 # Bumping CACHE_BUST below forces Docker to invalidate every cache layer
 # downstream — use this when slice-backend changes are not being picked up by
 # the registry. The default of 1 is harmless; CI overrides it to the commit SHA.
-# 2026-06-09-bust-16: arreglar el join imposible entre los dos CSVs de shop.
-# El usuario subio un ZIP con 12 CSVs. shop_level_-_call_metrics.csv usa un
-# esquema de ShopId (e.g. 853=Papa Ray's, 73=Capri) y shop_level_-_orders_metrics.csv
-# usa OTRO esquema (e.g. 112770=Cj's Pizza, 112919=Capri's) — los rangos no
-# se solapan. El codigo hacia un join por ShopId entre ShopCallMetrics y
-# ShopDaily, asi que los 4 campos de orders del Global siempre quedaban en
-# 0 y el bloque Shop del export solo mostraba la fila virtual
-# EXTERNAL_OVERFLOW_DAILY. Cambios:
-# (1) BackfillOrderMetricsFromShopDaily ahora usa ShopName (normalizado,
-# case-insensitive, sin sufijos 'pizza'/'pizzeria'/'llc'/'inc'/'co'/
-# 'restaurant'/'kitchen') como puente entre DailyGlobal.Pod y ShopDaily
-# en lugar de ShopId.
-# (2) ParseShopDailySection reescrito: lee el header hibrido de 18 cols
-# del Excel del usuario (3 cols de shop + 11 de call metrics + 4 de orders)
-# y popula TANTO ShopCallMetrics como ShopDaily, descartando la fila virtual
-# EXTERNAL_OVERFLOW_DAILY para no duplicarla.
-# (3) El bloque Shop del XLSX/CSV export ahora se divide en dos sub-tablas
-# independientes: 'Shop Call Metrics (by shop, pod, week)' y
-# 'Shop Orders (by shop)'. Ya no intenta cruzar por ShopId.
-# Bump CACHE_BUST a 2026-06-09-bust-16.
-ARG CACHE_BUST=2026-06-09-bust-16
+# 2026-06-09-bust-17: unificar el JWT entre alrrx y slice para que un solo
+# login sirva en ambos backends. Antes cada backend firmaba con su propio
+# Key/Issuer/Audience, asi que un token de slice era invalido en alrrx y
+# viceversa, causando el bucle infinito 'login slice -> navegar a alrrx ->
+# 401 -> redirect a login' para los 4 admins. Cambios:
+# (1) slice-backend/Slice.Api/appsettings.json: Jwt.Key, Jwt.Issuer y
+#     Jwt.Audience ahora coinciden con backend/ALRrx.Api/appsettings.json.
+# (2) frontend/src/utils/sharedToken.ts (nuevo): expone readSharedToken /
+#     writeSharedToken / clearSharedToken que leen y escriben una sola
+#     key 'auth_token' y la espejean en 'alrrx_token' y 'slice_token' para
+#     compatibilidad hacia atras. Cualquier login en cualquiera de los dos
+#     backends popula el mismo token.
+# (3) AuthContext y SliceAuthContext: ambos leen de readSharedToken y
+#     escriben via writeSharedToken. Asi si slice ya hizo login, el
+#     AuthContext de alrrx ve el mismo token y no fuerza re-login.
+# (4) httpClient.ts y sliceHttpClient.ts: ya no hacen hard-redirect a
+#     /login en 401. Solo limpian el Authorization header y el token
+#     compartido; el AuthContext decide si mostrar el login.
+# (5) Componentes que leian localStorage.getItem('slice_token') ahora
+#     usan readSharedToken().
+# Bump CACHE_BUST a 2026-06-09-bust-17.
+ARG CACHE_BUST=2026-06-09-bust-17
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend
