@@ -90,13 +90,22 @@ export default function SliceFileUploadPage() {
   };
 
   const handleDownload = async () => {
-    if (!job?.reportId) return;
+    if (!job?.reportId) {
+      console.warn('handleDownload: no reportId on current job', job);
+      setSubmitError('Report is not ready yet.');
+      return;
+    }
     const token = localStorage.getItem('slice_token');
-    if (!token) return;
+    if (!token) {
+      console.warn('handleDownload: no slice_token in localStorage');
+      setSubmitError('You are not signed in to Slice.');
+      return;
+    }
+    const url = sliceExportUrl(job.reportId, 'xlsx');
+    console.info('handleDownload: starting', { reportId: job.reportId, url });
     try {
-      const res = await fetch(sliceExportUrl(job.reportId, 'xlsx'), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      console.info('handleDownload: response', res.status, res.statusText, res.headers.get('content-type'));
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         console.error('Download failed', res.status, text);
@@ -104,14 +113,15 @@ export default function SliceFileUploadPage() {
         return;
       }
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      console.info('handleDownload: blob received', blob.size, blob.type);
+      const objUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = objUrl;
       a.download = `Slice_Report_${job.reportId.slice(0, 8)}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(objUrl);
     } catch (e) {
       console.error('Download exception', e);
       setSubmitError(e instanceof Error ? e.message : 'Download failed unexpectedly');

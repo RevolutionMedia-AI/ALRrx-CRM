@@ -24,6 +24,36 @@ public sealed class ReportMergeService : IReportMergeService
 
     public ReportMergeService(ILogger<ReportMergeService> logger) => _logger = logger;
 
+    /// <summary>
+    /// Resolves the directory used to write the merged XLSX/CSV exports.
+    /// Prefers <c>/data/slice/exports</c> so the files survive container restarts
+    /// (Northflank mounts a persistent volume there). Falls back to <c>$TMPDIR/slice/exports</c>
+    /// when the persistent volume is not writable (e.g. local dev on Windows / macOS).
+    /// </summary>
+    private string ResolveExportDir()
+    {
+        var persistent = "/data/slice/exports";
+        try
+        {
+            Directory.CreateDirectory(persistent);
+            // Probe write access with a throwaway file — creating the dir alone
+            // is not enough; a read-only mount would still let CreateDirectory succeed.
+            var probe = Path.Combine(persistent, $".probe-{Guid.NewGuid():N}");
+            File.WriteAllText(probe, "ok");
+            File.Delete(probe);
+            return persistent;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Persistent export dir {Dir} is not writable; falling back to {Tmp}.",
+                persistent, Path.GetTempPath());
+            var fallback = Path.Combine(Path.GetTempPath(), "slice", "exports");
+            Directory.CreateDirectory(fallback);
+            return fallback;
+        }
+    }
+
     /// <inheritdoc/>
     public SliceReport Merge(IEnumerable<SliceReport> reports)
     {
@@ -140,8 +170,7 @@ public sealed class ReportMergeService : IReportMergeService
     /// <inheritdoc/>
     public async Task<string> ExportXlsxAsync(SliceReport report, CancellationToken ct = default)
     {
-        var outDir   = Path.Combine(Path.GetTempPath(), "slice", "exports");
-        Directory.CreateDirectory(outDir);
+        var outDir   = ResolveExportDir();
         var filePath = Path.Combine(outDir, $"Slice_Report_{report.Id}.xlsx");
 
         using var package = new ExcelPackage();
@@ -154,15 +183,14 @@ public sealed class ReportMergeService : IReportMergeService
         BuildSnapshotSheet(package, report);
 
         await package.SaveAsAsync(new FileInfo(filePath), ct);
-        _logger.LogInformation("XLSX exported to {Path}", filePath);
+        _logger.LogInformation("XLSX exported to {Path} ({Bytes} bytes)", filePath, new FileInfo(filePath).Length);
         return filePath;
     }
 
     /// <inheritdoc/>
     public async Task<string> ExportCsvAsync(SliceReport report, CancellationToken ct = default)
     {
-        var outDir   = Path.Combine(Path.GetTempPath(), "slice", "exports");
-        Directory.CreateDirectory(outDir);
+        var outDir   = ResolveExportDir();
         var filePath = Path.Combine(outDir, $"Slice_Report_{report.Id}.csv");
 
         var sb = new StringBuilder();

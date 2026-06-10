@@ -142,6 +142,29 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
+// Global request log so we can confirm export / template / debug requests
+// actually reach the slice-api when nginx forwards them. Logs method, path,
+// user-agent, status, elapsed ms.
+app.Use(async (ctx, next) =>
+{
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    try
+    {
+        await next();
+        sw.Stop();
+        var user = ctx.User?.Identity?.Name ?? "-";
+        Console.WriteLine(
+            $"[slice-api] {ctx.Request.Method} {ctx.Request.Path} -> {ctx.Response.StatusCode} ({sw.ElapsedMilliseconds}ms) user={user} ua={ctx.Request.Headers.UserAgent}");
+    }
+    catch (Exception ex)
+    {
+        sw.Stop();
+        Console.WriteLine(
+            $"[slice-api] {ctx.Request.Method} {ctx.Request.Path} -> EX ({sw.ElapsedMilliseconds}ms) {ex.GetType().Name}: {ex.Message}");
+        throw;
+    }
+});
+
 app.MapControllers();
 
 // ─── DB initialization ────────────────────────────────────────────────────────
