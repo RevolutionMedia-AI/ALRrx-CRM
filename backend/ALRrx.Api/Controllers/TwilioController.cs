@@ -26,9 +26,12 @@ public class TwilioController : ControllerBase
         [FromQuery] DateTime? endDate = null,
         CancellationToken ct = default)
     {
+        _logger.LogInformation("[Twilio] GetSummary called: period='{Period}' startDate={Start} endDate={End}", period, startDate, endDate);
         try
         {
             var summary = await _twilio.GetSummaryAsync(period, startDate, endDate, ct);
+            _logger.LogInformation("[Twilio] GetSummary result: totalCost={Cost} calls={Calls} inbound={In} outbound={Out} periodStart={Start} periodEnd={End}",
+                summary.TotalCost, summary.TotalCalls, summary.InboundCalls, summary.OutboundCalls, summary.PeriodStart, summary.PeriodEnd);
             return Ok(summary);
         }
         catch (Exception ex)

@@ -30,6 +30,7 @@ public class TwilioService : ITwilioService
     public async Task<TwilioSummaryDto> GetSummaryAsync(string period, DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
         var (start, end) = ResolvePeriod(period, startDate, endDate);
+        _logger.LogInformation("[Twilio] GetSummaryAsync period='{Period}' resolved start={Start} (Kind={StartKind}) end={End} (Kind={EndKind})", period, start, start.Kind, end, end.Kind);
 
         // Twilio: startTime is an EXACT match. For a range, use startTimeAfter + startTimeBefore.
         var calls = await CallResource.ReadAsync(
@@ -40,6 +41,7 @@ public class TwilioService : ITwilioService
         );
 
         var callList = calls.ToList();
+        _logger.LogInformation("[Twilio] GetSummaryAsync returned {Count} calls for period '{Period}'", callList.Count, period);
         var inbound = callList.Where(c => IsInbound(c.Direction)).ToList();
         var outbound = callList.Where(c => !IsInbound(c.Direction)).ToList();
 
