@@ -22,15 +22,15 @@
 #     compartido; el AuthContext decide si mostrar el login.
 # (5) Componentes que leian localStorage.getItem('slice_token') ahora
 #     usan readSharedToken().
-# 2026-06-11-bust-28: Fix CRITICO bug de Twilio - el SDK
-#     CallResource.ReadAsync IGNORA los filtros de fecha y devuelve
-#     las primeras 1000 calls sin importar el periodo (por eso
-#     today/week/month devolvian el mismo totalCost=10.6875). Reescrito
-#     FetchAllCallsAsync usando HttpClient directo con query params
-#     StartTime= y EndTime= (formato ISO 8601 UTC) + paginacion manual
-#     via next_page_uri. Parseo manual del JSON a TwilioCallDto.
-# Bump CACHE_BUST a 2026-06-11-bust-28.
-ARG CACHE_BUST=2026-06-11-bust-28
+# 2026-06-11-bust-29: Fix React error #31 (object con keys {title, detail}
+#     no se puede renderizar). El ExceptionHandlingMiddleware del backend
+#     retorna { error: { title, detail } } para 500 errors, y el frontend
+#     hacia err.response.data.error (que ahora es un objeto). Agregada
+#     funcion extractTwilioError() que navega safely: data.error si es
+#     string, sino data.error.title/detail, sino data.title, sino
+#     data.message, sino err.message. NUNCA devuelve un objeto.
+# Bump CACHE_BUST a 2026-06-11-bust-29.
+ARG CACHE_BUST=2026-06-11-bust-29
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

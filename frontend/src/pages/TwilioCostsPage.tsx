@@ -46,6 +46,29 @@ function fmtDate(iso: string): string {
   } catch { return iso; }
 }
 
+// Safely extract an error message string from an unknown axios error.
+// The backend may return a ProblemDetails-style { title, detail } object
+// (via ExceptionHandlingMiddleware), or { error, detail }, or just a string.
+// We must NEVER return an object, since React will throw #31 when trying
+// to render an object as a child.
+function extractTwilioError(err: any, fallback: string): string {
+  if (!err) return fallback;
+  const data = err?.response?.data;
+  if (typeof data === 'string') return data;
+  if (data && typeof data === 'object') {
+    if (typeof data.error === 'string') return data.error;
+    if (data.error && typeof data.error === 'object') {
+      if (typeof data.error.title === 'string') return data.error.title;
+      if (typeof data.error.detail === 'string') return data.error.detail;
+    }
+    if (typeof data.title === 'string') return data.title;
+    if (typeof data.detail === 'string') return data.detail;
+    if (typeof data.message === 'string') return data.message;
+  }
+  if (typeof err.message === 'string') return err.message;
+  return fallback;
+}
+
 // â”€â”€â”€ DarkTooltip (mismo que Dashboard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function DarkTooltip({ active, payload, label }: {
   active?: boolean;
@@ -98,8 +121,7 @@ export default function TwilioCostsPage() {
       setDaily(dailyData);
       setLastRefresh(new Date());
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Error loading Twilio data';
-      setError(msg);
+      setError(extractTwilioError(err, 'Error loading Twilio data'));
     } finally {
       setLoading(false);
     }
