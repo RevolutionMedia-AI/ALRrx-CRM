@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { twilioApi, type TwilioSummary, type TwilioCall, type TwilioDailyCost } from '../services/twilioApi';
 import {
@@ -9,10 +9,10 @@ import {
   Call02Icon,
   Money01Icon,
   Clock01Icon,
-  Analytics01Icon,
   Refresh01Icon,
   PauseIcon,
   PlayIcon,
+  ChartLineData01Icon,
 } from 'hugeicons-react';
 
 type Period = 'Today' | 'Week' | 'Month';
@@ -48,15 +48,33 @@ function fmtDate(iso: string): string {
   } catch { return iso; }
 }
 
-// ─── Empty state ───────────────────────────────────────────────────────────
+// ─── DarkTooltip (mismo estilo que Dashboard) ─────────────────────────────
+function DarkTooltip({ active, payload, label }: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; color: string }>;
+  label?: string;
+}) {
+  if (!active || !payload) return null;
+  return (
+    <div className="bg-pure-surface dark:bg-gray-800 border border-whisper-border dark:border-gray-600 rounded-lg px-3 py-2 shadow-lg text-sm">
+      {label && <p className="font-medium text-primary dark:text-gray-100 mb-1">{label}</p>}
+      {payload.map((p, i) => (
+        <p key={i} className="flex items-center gap-2 text-primary dark:text-gray-200">
+          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+          <span className="font-medium">{p.name}:</span>
+          <span className="font-metadata-mono">{typeof p.value === 'number' ? p.value.toLocaleString('en-US') : p.value}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+// ─── Empty state (mismo estilo que Dashboard) ─────────────────────────────
 function ChartEmpty({ label }: { label: string }) {
   return (
-    <div className="h-[280px] flex flex-col items-center justify-center text-secondary dark:text-gray-500">
-      <div className="w-12 h-12 mb-3 bg-card-icon-bg dark:bg-gray-800 rounded-lg flex items-center justify-center">
-        <Analytics01Icon size={22} className="text-muted-slate" />
-      </div>
-      <p className="font-body-md text-sm font-medium text-primary dark:text-gray-300">{label}</p>
-      <p className="font-body-md text-xs text-secondary dark:text-gray-500 mt-1">No activity recorded in this window</p>
+    <div className="w-full h-full rounded-lg border border-dashed border-whisper-border bg-surface-container-low flex flex-col items-center justify-center text-muted-slate text-sm gap-1">
+      <ChartLineData01Icon size={32} className="text-muted-slate/50" />
+      <p>{label}</p>
     </div>
   );
 }
@@ -204,7 +222,7 @@ export default function TwilioCostsPage() {
           loading={loading}
         />
         <KpiCard
-          icon={<Analytics01Icon size={20} className="text-muted-slate" />}
+          icon={<Money01Icon size={20} className="text-muted-slate" />}
           iconBg="bg-muted-slate/10"
           label="Cost / Minute"
           value={summary && summary.totalMinutes > 0 ? fmtCost(summary.totalCost / summary.totalMinutes) : null}
@@ -213,123 +231,117 @@ export default function TwilioCostsPage() {
         />
       </div>
 
-      {/* ─── Charts ─────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 p-6 lg:col-span-2">
-          <div className="flex items-baseline justify-between mb-4">
-            <h2 className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400">
-              Daily Spend · last 30 days
-            </h2>
-            {hasDailyData && (
-              <span className="font-metadata-mono text-xs text-secondary dark:text-gray-500">
-                {fmtCost(daily.reduce((a, b) => a + b.cost, 0))} total
-              </span>
+      {/* ─── Daily Cost Trend (mismo estilo que Dashboard's Agent Performance Trend) */}
+      <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card">
+        <div className="p-6 border-b border-whisper-border dark:border-gray-700 flex justify-between items-center">
+          <div>
+            <h3 className="font-bold text-lg text-primary dark:text-white">Daily Cost Trend</h3>
+            <p className="text-[11px] text-secondary dark:text-gray-400 mt-0.5 font-metadata-mono uppercase tracking-wider">
+              Twilio spend over the last 30 days
+            </p>
+          </div>
+          <Money01Icon size={24} className="text-electric-blue" />
+        </div>
+        <div className="p-8 flex flex-col gap-6">
+          <div className="w-full h-80">
+            {hasDailyData ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={daily}>
+                  <defs>
+                    <linearGradient id="twilioCostGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11, fill: '#94A3B8' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(d) => fmtDate(d)}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#94A3B8' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => '$' + v.toFixed(2)}
+                    width={56}
+                  />
+                  <Tooltip content={<DarkTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="cost"
+                    name="Cost"
+                    stroke="#3B82F6"
+                    fill="url(#twilioCostGrad)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <ChartEmpty label="No cost data yet" />
             )}
           </div>
-          {hasDailyData ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="twilioCostGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'JetBrains Mono, monospace' }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(d) => fmtDate(d)}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'JetBrains Mono, monospace' }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => '$' + v.toFixed(2)}
-                  width={56}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: '#FFFFFF',
-                    border: '1px solid rgba(226,232,240,0.5)',
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontFamily: 'JetBrains Mono, monospace',
-                  }}
-                  labelStyle={{ color: '#1c1b1c', fontWeight: 600 }}
-                  itemStyle={{ color: '#475569' }}
-                  formatter={(value: number) => [`$${value.toFixed(4)}`, 'Cost']}
-                  labelFormatter={(label) => fmtDate(String(label))}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="cost"
-                  name="Cost"
-                  stroke="#3B82F6"
-                  strokeWidth={2}
-                  fill="url(#twilioCostGrad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <ChartEmpty label="No spend recorded in the last 30 days" />
-          )}
         </div>
+      </section>
 
-        <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 p-6">
-          <div className="flex items-baseline justify-between mb-4">
-            <h2 className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400">
-              Volume · 30 days
-            </h2>
-            {hasDailyData && (
-              <span className="font-metadata-mono text-xs text-secondary dark:text-gray-500">
-                {daily.reduce((a, b) => a + b.callCount, 0)} calls
-              </span>
+      {/* ─── Call Volume Trend (mismo estilo) ───────────── */}
+      <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card">
+        <div className="p-6 border-b border-whisper-border dark:border-gray-700 flex justify-between items-center">
+          <div>
+            <h3 className="font-bold text-lg text-primary dark:text-white">Call Volume Trend</h3>
+            <p className="text-[11px] text-secondary dark:text-gray-400 mt-0.5 font-metadata-mono uppercase tracking-wider">
+              Number of calls over the last 30 days
+            </p>
+          </div>
+          <Call02Icon size={24} className="text-emerald-signal" />
+        </div>
+        <div className="p-8 flex flex-col gap-6">
+          <div className="w-full h-80">
+            {hasDailyData ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={daily}>
+                  <defs>
+                    <linearGradient id="twilioCallsGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11, fill: '#94A3B8' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(d) => fmtDate(d)}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#94A3B8' }}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    width={32}
+                  />
+                  <Tooltip content={<DarkTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="callCount"
+                    name="Calls"
+                    stroke="#10B981"
+                    fill="url(#twilioCallsGrad)"
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <ChartEmpty label="No call activity yet" />
             )}
           </div>
-          {hasDailyData ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'JetBrains Mono, monospace' }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(d) => fmtDate(d)}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'JetBrains Mono, monospace' }}
-                  tickLine={false}
-                  axisLine={false}
-                  allowDecimals={false}
-                  width={32}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: '#FFFFFF',
-                    border: '1px solid rgba(226,232,240,0.5)',
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontFamily: 'JetBrains Mono, monospace',
-                  }}
-                  labelStyle={{ color: '#1c1b1c', fontWeight: 600 }}
-                  itemStyle={{ color: '#475569' }}
-                  formatter={(value: number) => [value.toLocaleString('en-US'), 'Calls']}
-                  labelFormatter={(label) => fmtDate(String(label))}
-                />
-                <Bar dataKey="callCount" name="Calls" fill="#10B981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <ChartEmpty label="No recent activity" />
-          )}
         </div>
-      </div>
+      </section>
 
       {/* ─── Recent calls table ─────────────────────────── */}
       <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 overflow-hidden">
