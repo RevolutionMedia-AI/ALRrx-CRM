@@ -16,7 +16,7 @@ import {
 type Period = 'Today' | 'Week' | 'Month';
 const PERIOD_API: Record<Period, string> = { Today: 'today', Week: 'week', Month: 'month' };
 
-// â”€â”€â”€ Formatters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Formatters
 function fmtCost(n: number): string {
   if (!isFinite(n) || isNaN(n)) return '$0.0000000';
   const abs = Math.abs(n);
@@ -37,19 +37,13 @@ function fmtTime(iso: string): string {
     return new Date(iso).toLocaleString('en-US', {
       hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short',
     });
-  } catch { return 'â€”'; }
-}
-
-function fmtDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
-  } catch { return iso; }
+  } catch { return '-'; }
 }
 
 // Safely extract an error message string from an unknown axios error.
 // The backend may return a ProblemDetails-style { title, detail } object
 // (via ExceptionHandlingMiddleware), or { error, detail }, or just a string.
-// We must NEVER return an object, since React will throw #31 when trying
+// We must never return an object, since React will throw #31 when trying
 // to render an object as a child.
 function extractTwilioError(err: any, fallback: string): string {
   if (!err) return fallback;
@@ -69,38 +63,17 @@ function extractTwilioError(err: any, fallback: string): string {
   return fallback;
 }
 
-// â”€â”€â”€ DarkTooltip (mismo que Dashboard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function DarkTooltip({ active, payload, label }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string }>;
-  label?: string;
-}) {
-  if (!active || !payload) return null;
-  return (
-    <div className="bg-pure-surface dark:bg-gray-800 border border-whisper-border dark:border-gray-600 rounded-lg px-3 py-2 shadow-lg text-sm">
-      {label && <p className="font-medium text-primary dark:text-gray-100 mb-1">{label}</p>}
-      {payload.map((p, i) => (
-        <p key={i} className="flex items-center gap-2 text-primary dark:text-gray-200">
-          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-          <span className="font-medium">{p.name}:</span>
-          <span className="font-metadata-mono">{typeof p.value === 'number' ? p.value.toLocaleString('en-US') : p.value}</span>
-        </p>
-      ))}
-    </div>
-  );
-}
-
-// â”€â”€â”€ Skeleton row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Skeleton row
 function SkeletonLine({ width = 'w-full' }: { width?: string }) {
   return <div className={`${width} h-3 bg-card-icon-bg dark:bg-gray-800 rounded animate-pulse`} />;
 }
 
-// â”€â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Page
 export default function TwilioCostsPage() {
   const [period, setPeriod] = useState<Period>('Today');
   const [summary, setSummary] = useState<TwilioSummary | null>(null);
   const [calls, setCalls] = useState<TwilioCall[]>([]);
-  const [daily, setDaily] = useState<TwilioDailyCost[]>([]);
+  const [, setDaily] = useState<TwilioDailyCost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -128,6 +101,7 @@ export default function TwilioCostsPage() {
   }, [period]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
   useEffect(() => {
     if (!autoRefresh) return;
     const id = setInterval(loadData, 30_000);
@@ -176,7 +150,6 @@ export default function TwilioCostsPage() {
 
   return (
     <div className="space-y-6">
-      {/* â”€â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display-hero text-display-hero text-primary dark:text-white">
@@ -198,7 +171,7 @@ export default function TwilioCostsPage() {
             className="h-10 px-3 rounded-lg border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
           >
             <GoogleSheetIcon size={16} className="text-emerald-signal" />
-            <span className="hidden sm:inline">{exportingExcel ? 'Generatingâ€¦' : 'Excel'}</span>
+            <span className="hidden sm:inline">{exportingExcel ? 'Generating...' : 'Excel'}</span>
           </button>
           <button
             onClick={handleExportPdf}
@@ -207,7 +180,7 @@ export default function TwilioCostsPage() {
             className="h-10 px-3 rounded-lg border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
           >
             <Pdf01Icon size={16} className="text-deep-rose" />
-            <span className="hidden sm:inline">{exportingPdf ? 'Generatingâ€¦' : 'PDF'}</span>
+            <span className="hidden sm:inline">{exportingPdf ? 'Generating...' : 'PDF'}</span>
           </button>
           <div className="w-px h-6 bg-whisper-border dark:bg-gray-700 mx-1" />
           <button
@@ -227,7 +200,6 @@ export default function TwilioCostsPage() {
         </div>
       </div>
 
-      {/* â”€â”€â”€ Period selector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex items-center gap-2 flex-wrap">
         {(['Today', 'Week', 'Month'] as Period[]).map((p) => {
           const isActive = period === p;
@@ -261,7 +233,6 @@ export default function TwilioCostsPage() {
         </div>
       )}
 
-      {/* â”€â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           icon={<Money01Icon size={20} className="text-electric-blue" />}
@@ -276,7 +247,7 @@ export default function TwilioCostsPage() {
           iconBg="bg-emerald-signal/10"
           label="Calls"
           value={summary ? summary.totalCalls.toLocaleString('en-US') : null}
-          sub={summary ? `${summary.inboundCalls} in Â· ${summary.outboundCalls} out` : 'â€”'}
+          sub={summary ? `${summary.inboundCalls} in - ${summary.outboundCalls} out` : '-'}
           loading={loading}
         />
         <KpiCard
@@ -286,7 +257,7 @@ export default function TwilioCostsPage() {
           value={summary ? summary.totalMinutes.toLocaleString('en-US') : null}
           sub={summary && summary.totalCalls > 0
             ? `~${Math.round(summary.totalMinutes / summary.totalCalls)} min/call`
-            : 'â€”'}
+            : '-'}
           loading={loading}
         />
         <KpiCard
@@ -299,15 +270,13 @@ export default function TwilioCostsPage() {
         />
       </div>
 
-
-      {/* â”€â”€â”€ Recent calls table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 overflow-hidden">
         <div className="flex items-baseline justify-between px-6 py-4 border-b border-whisper-border dark:border-gray-800">
           <h2 className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400">
             Recent Calls
           </h2>
           <span className="font-metadata-mono text-xs text-secondary dark:text-gray-500">
-            Last 20 Â· {hasCalls ? `${calls.length}` : 'â€”'}
+            Last 20 - {hasCalls ? `${calls.length}` : '-'}
           </span>
         </div>
 
@@ -400,13 +369,12 @@ export default function TwilioCostsPage() {
       </div>
 
       <p className="text-xs text-muted-slate dark:text-gray-500 font-metadata-mono text-center pt-2">
-        Twilio Â· ALRrx SIP trunk Â· auto-refresh 30s Â· admin only
+        Twilio - ALRrx SIP trunk - auto-refresh 30s - admin only
       </p>
     </div>
   );
 }
 
-// â”€â”€â”€ KPI Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function KpiCard({
   icon, iconBg, label, value, sub, loading,
 }: {

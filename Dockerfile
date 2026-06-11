@@ -22,13 +22,13 @@
 #     compartido; el AuthContext decide si mostrar el login.
 # (5) Componentes que leian localStorage.getItem('slice_token') ahora
 #     usan readSharedToken().
-# 2026-06-11-bust-32: Agregar log del body completo (primeros 500
-#     chars) de la respuesta de Twilio en FetchAllCallsAsync. Esto
-#     permite ver exactamente que responde Twilio cuando el filtro
-#     de fecha no matchea - es la unica forma de diagnosticar si
-#     Twilio realmente no tiene calls o el filtro esta mal.
-# Bump CACHE_BUST a 2026-06-11-bust-32.
-ARG CACHE_BUST=2026-06-11-bust-32
+# 2026-06-11-bust-33: Reescribir TwilioCostsPage.tsx con encoding UTF-8
+#     correcto. El archivo en git tenia mojibake (Â·, â€", â”€) por uso
+#     de PowerShell Set-Content con encoding incorrecto. Reemplazados
+#     todos los caracteres especiales (—, ·) con ASCII simple (-) para
+#     evitar futuros problemas de encoding entre Windows y Linux.
+# Bump CACHE_BUST a 2026-06-11-bust-33.
+ARG CACHE_BUST=2026-06-11-bust-33
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend
