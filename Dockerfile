@@ -22,13 +22,15 @@
 #     compartido; el AuthContext decide si mostrar el login.
 # (5) Componentes que leian localStorage.getItem('slice_token') ahora
 #     usan readSharedToken().
-# 2026-06-11-bust-18: agregar página /twilio-costs solo para admins (ALRrx).
-#     Backend: nuevo TwilioService + TwilioController con [Authorize(Roles=Admin)]
-#     en /api/twilio/*, paquete Twilio NuGet en ALRrx.Infrastructure.
-#     Frontend: TwilioCostsPage con auto-refresh 30s, link visible solo
-#     para isAdmin (4 correos), ruta protegida con AdminRoute.
-# Bump CACHE_BUST a 2026-06-11-bust-18.
-ARG CACHE_BUST=2026-06-11-bust-18
+# 2026-06-11-bust-19: TwilioCostsPage rediseñada al estilo ALRrx (español,
+#     HugeIcons, KPI cards con rounded-lg, hugeicons, paleta del theme,
+#     status badges con opacity /8 /10). Fix bug de costo: Twilio devuelve
+#     precios negativos para llamadas salientes, ahora se toma Math.Abs()
+#     en TwilioService.ParseCost. Fix TS: payload de recharts incompatible
+#     con DarkTooltip custom → simplificado a contentStyle + formatter
+#     inline. Fix TS: PERIOD_API casteado al union de getSummary.
+# Bump CACHE_BUST a 2026-06-11-bust-19.
+ARG CACHE_BUST=2026-06-11-bust-19
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

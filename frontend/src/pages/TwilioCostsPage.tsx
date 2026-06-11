@@ -46,28 +46,6 @@ function fmtDate(iso: string): string {
   } catch { return iso; }
 }
 
-// ─── DarkTooltip (mismo estilo que el resto de ALRrx) ─────────────────────
-function DarkTooltip({ active, payload, label, valuePrefix = '' }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string }>;
-  label?: string;
-  valuePrefix?: string;
-}) {
-  if (!active || !payload) return null;
-  return (
-    <div className="bg-pure-surface dark:bg-gray-800 border border-whisper-border dark:border-gray-600 rounded-lg px-3 py-2 shadow-lg text-sm">
-      {label && <p className="font-medium text-primary dark:text-gray-100 mb-1">{label}</p>}
-      {payload.map((p, i) => (
-        <p key={i} className="flex items-center gap-2 text-primary dark:text-gray-200">
-          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-          <span className="font-medium">{p.name}:</span>
-          <span className="font-metadata-mono">{valuePrefix}{typeof p.value === 'number' ? p.value.toLocaleString('en-US') : p.value}</span>
-        </p>
-      ))}
-    </div>
-  );
-}
-
 // ─── Empty state ───────────────────────────────────────────────────────────
 function ChartEmpty({ label }: { label: string }) {
   return (
@@ -100,11 +78,11 @@ export default function TwilioCostsPage() {
   const loadData = useCallback(async () => {
     try {
       setError(null);
-      const [sum, recent, dailyData] = await Promise.all([
-        twilioApi.getSummary(PERIOD_API[period]),
-        twilioApi.getRecentCalls(20),
-        twilioApi.getDailyCosts(30),
-      ]);
+    const [sum, recent, dailyData] = await Promise.all([
+      twilioApi.getSummary(PERIOD_API[period] as 'today' | 'week' | 'month'),
+      twilioApi.getRecentCalls(20),
+      twilioApi.getDailyCosts(30),
+    ]);
       setSummary(sum);
       setCalls(recent);
       setDaily(dailyData);
@@ -272,9 +250,17 @@ export default function TwilioCostsPage() {
                   width={56}
                 />
                 <Tooltip
-                  content={({ active, payload, label }) => (
-                    <DarkTooltip active={active} payload={payload?.map((p) => ({ ...p, name: 'Costo' }))} label={label ? fmtDate(String(label)) : undefined} valuePrefix="$" />
-                  )}
+                  contentStyle={{
+                    background: '#FFFFFF',
+                    border: '1px solid rgba(226,232,240,0.5)',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontFamily: 'JetBrains Mono, monospace',
+                  }}
+                  labelStyle={{ color: '#1c1b1c', fontWeight: 600 }}
+                  itemStyle={{ color: '#475569' }}
+                  formatter={(value: number) => [`$${value.toFixed(4)}`, 'Costo']}
+                  labelFormatter={(label) => fmtDate(String(label))}
                 />
                 <Area
                   type="monotone"
@@ -322,9 +308,17 @@ export default function TwilioCostsPage() {
                   width={32}
                 />
                 <Tooltip
-                  content={({ active, payload, label }) => (
-                    <DarkTooltip active={active} payload={payload?.map((p) => ({ ...p, name: 'Llamadas' }))} label={label ? fmtDate(String(label)) : undefined} />
-                  )}
+                  contentStyle={{
+                    background: '#FFFFFF',
+                    border: '1px solid rgba(226,232,240,0.5)',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontFamily: 'JetBrains Mono, monospace',
+                  }}
+                  labelStyle={{ color: '#1c1b1c', fontWeight: 600 }}
+                  itemStyle={{ color: '#475569' }}
+                  formatter={(value: number) => [value.toLocaleString('en-US'), 'Llamadas']}
+                  labelFormatter={(label) => fmtDate(String(label))}
                 />
                 <Bar dataKey="callCount" name="Llamadas" fill="#10B981" radius={[4, 4, 0, 0]} />
               </BarChart>
