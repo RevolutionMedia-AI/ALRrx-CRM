@@ -15,7 +15,7 @@ import {
   ChartLineData01Icon,
   Download01Icon,
   Pdf01Icon,
-  MicrosoftExcelIcon,
+  GoogleSheetIcon,
 } from 'hugeicons-react';
 
 type Period = 'Today' | 'Week' | 'Month';
@@ -181,7 +181,7 @@ export default function TwilioCostsPage() {
             title="Export Excel"
             className="h-10 px-3 rounded-lg border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
           >
-            <MicrosoftExcelIcon size={16} className="text-emerald-signal" />
+            <GoogleSheetIcon size={16} className="text-emerald-signal" />
             <span className="hidden sm:inline">{exportingExcel ? 'Generating…' : 'Excel'}</span>
           </button>
           <button
