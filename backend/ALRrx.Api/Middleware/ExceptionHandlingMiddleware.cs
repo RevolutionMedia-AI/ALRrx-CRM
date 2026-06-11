@@ -53,7 +53,9 @@ public sealed class ExceptionHandlingMiddleware
     private static async Task WriteErrorResponse(HttpContext context, string title, string detail)
     {
         context.Response.ContentType = "application/json";
-        var response = new { error = new { title, detail } };
+        // Return a flat string for `error` (not a nested object) so that
+        // frontends that do `err.response.data.error` always get a string.
+        var response = new { error = title, detail = detail };
         await context.Response.WriteAsync(JsonSerializer.Serialize(response));
     }
 }
