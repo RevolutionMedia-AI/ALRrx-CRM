@@ -77,6 +77,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
 
 var cfg = builder.Configuration;
 var connectionConfig = new ConnectionConfig

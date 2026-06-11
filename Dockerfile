@@ -22,15 +22,13 @@
 #     compartido; el AuthContext decide si mostrar el login.
 # (5) Componentes que leian localStorage.getItem('slice_token') ahora
 #     usan readSharedToken().
-# 2026-06-11-bust-29: Fix React error #31 (object con keys {title, detail}
-#     no se puede renderizar). El ExceptionHandlingMiddleware del backend
-#     retorna { error: { title, detail } } para 500 errors, y el frontend
-#     hacia err.response.data.error (que ahora es un objeto). Agregada
-#     funcion extractTwilioError() que navega safely: data.error si es
-#     string, sino data.error.title/detail, sino data.title, sino
-#     data.message, sino err.message. NUNCA devuelve un objeto.
-# Bump CACHE_BUST a 2026-06-11-bust-29.
-ARG CACHE_BUST=2026-06-11-bust-29
+# 2026-06-11-bust-30: Registrar IHttpClientFactory en Program.cs
+#     con AddHttpClient(). El TwilioService reescrito ahora lo requiere
+#     para hacer las llamadas HTTP directas a api.twilio.com. Sin
+#     este registro, .NET tira InvalidOperationException al intentar
+#     activar TwilioService.
+# Bump CACHE_BUST a 2026-06-11-bust-30.
+ARG CACHE_BUST=2026-06-11-bust-30
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend
