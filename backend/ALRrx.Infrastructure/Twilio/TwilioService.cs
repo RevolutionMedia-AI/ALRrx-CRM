@@ -144,6 +144,10 @@ public class TwilioService : ITwilioService
             var response = await _httpClient.SendAsync(request, ct);
             var body = await response.Content.ReadAsStringAsync(ct);
 
+            // Log first 500 chars of body for debugging
+            var bodyPreview = body.Length > 500 ? body.Substring(0, 500) + "..." : body;
+            _logger.LogInformation("[Twilio] HTTP response body (page {Page}): {Body}", page, bodyPreview);
+
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogError("[Twilio] HTTP {Status}: {Body}", response.StatusCode, body);
