@@ -126,7 +126,7 @@ public class TwilioService : ITwilioService
 
     private static decimal ParseCost(string? price)
     {
-        return decimal.TryParse(price, System.Globalization.CultureInfo.InvariantCulture, out var p) ? p : 0m;
+        return decimal.TryParse(price, System.Globalization.CultureInfo.InvariantCulture, out var p) ? Math.Abs(p) : 0m;
     }
 
     private static int ParseDuration(string? duration)

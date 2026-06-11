@@ -1,32 +1,28 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { twilioApi, type TwilioSummary, type TwilioCall, type TwilioDailyCost } from '../services/twilioApi';
+import {
+  CallOutgoing01Icon,
+  CallReceived02Icon,
+  Call02Icon,
+  Money01Icon,
+  Clock01Icon,
+  Analytics01Icon,
+} from 'hugeicons-react';
 
-type Period = 'today' | 'week' | 'month';
+type Period = 'Hoy' | 'Semana' | 'Mes';
+const PERIOD_API: Record<Period, string> = { Hoy: 'today', Semana: 'week', Mes: 'month' };
 
 // ─── Formatters ────────────────────────────────────────────────────────────
-// Smart currency formatter: shows enough precision so that small costs
-// (e.g. $0.0000142) are still readable. Minimum 7 decimal places
-// when value is < 1, otherwise standard 2-4 decimals.
+// Mínimo 7 decimales para valores < 1 USD, sino 2-4 decimales según magnitud.
 function fmtCost(n: number): string {
-  if (!isFinite(n)) return '$0.00';
-  if (n === 0) return '$0.0000000';
-  if (Math.abs(n) < 1) {
-    return '$' + n.toFixed(7);
-  }
-  if (Math.abs(n) < 100) {
-    return '$' + n.toFixed(4);
-  }
+  if (!isFinite(n) || isNaN(n)) return '$0.0000000';
+  const abs = Math.abs(n);
+  if (abs === 0) return '$0.0000000';
+  if (abs < 1) return '$' + n.toFixed(7);
+  if (abs < 100) return '$' + n.toFixed(4);
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -38,51 +34,61 @@ function fmtDuration(s: number): string {
 
 function fmtTime(iso: string): string {
   try {
-    return new Date(iso).toLocaleString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      day: '2-digit',
-      month: 'short',
+    return new Date(iso).toLocaleString('es-MX', {
+      hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short',
     });
-  } catch {
-    return '—';
-  }
+  } catch { return '—'; }
 }
 
 function fmtDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: 'short',
-    });
-  } catch {
-    return iso;
-  }
+    return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+  } catch { return iso; }
 }
 
-// ─── Skeleton block (used during initial load) ────────────────────────────
-function SkeletonLine({ width = 'w-full' }: { width?: string }) {
+// ─── DarkTooltip (mismo estilo que el resto de ALRrx) ─────────────────────
+function DarkTooltip({ active, payload, label, valuePrefix = '' }: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; color: string }>;
+  label?: string;
+  valuePrefix?: string;
+}) {
+  if (!active || !payload) return null;
   return (
-    <div className={`${width} h-3 bg-surface-container-high dark:bg-gray-800 rounded-sm animate-pulse`} />
-  );
-}
-
-// ─── Empty state for charts ───────────────────────────────────────────────
-function ChartEmpty({ label }: { label: string }) {
-  return (
-    <div className="h-[280px] flex flex-col items-center justify-center text-on-surface-variant dark:text-gray-500">
-      <div className="w-12 h-12 mb-3 border border-outline-variant/40 rounded-full flex items-center justify-center font-metadata-mono text-xs">
-        0
-      </div>
-      <p className="font-body-md text-sm">{label}</p>
-      <p className="font-body-md text-xs opacity-60 mt-1">No activity recorded in this window</p>
+    <div className="bg-pure-surface dark:bg-gray-800 border border-whisper-border dark:border-gray-600 rounded-lg px-3 py-2 shadow-lg text-sm">
+      {label && <p className="font-medium text-primary dark:text-gray-100 mb-1">{label}</p>}
+      {payload.map((p, i) => (
+        <p key={i} className="flex items-center gap-2 text-primary dark:text-gray-200">
+          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+          <span className="font-medium">{p.name}:</span>
+          <span className="font-metadata-mono">{valuePrefix}{typeof p.value === 'number' ? p.value.toLocaleString('en-US') : p.value}</span>
+        </p>
+      ))}
     </div>
   );
 }
 
+// ─── Empty state ───────────────────────────────────────────────────────────
+function ChartEmpty({ label }: { label: string }) {
+  return (
+    <div className="h-[280px] flex flex-col items-center justify-center text-secondary dark:text-gray-500">
+      <div className="w-12 h-12 mb-3 bg-card-icon-bg dark:bg-gray-800 rounded-lg flex items-center justify-center">
+        <Analytics01Icon size={22} className="text-muted-slate" />
+      </div>
+      <p className="font-body-md text-sm font-medium text-primary dark:text-gray-300">{label}</p>
+      <p className="font-body-md text-xs text-secondary dark:text-gray-500 mt-1">No hay actividad registrada en este período</p>
+    </div>
+  );
+}
+
+// ─── Skeleton row ──────────────────────────────────────────────────────────
+function SkeletonLine({ width = 'w-full' }: { width?: string }) {
+  return <div className={`${width} h-3 bg-card-icon-bg dark:bg-gray-800 rounded animate-pulse`} />;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────
 export default function TwilioCostsPage() {
-  const [period, setPeriod] = useState<Period>('today');
+  const [period, setPeriod] = useState<Period>('Hoy');
   const [summary, setSummary] = useState<TwilioSummary | null>(null);
   const [calls, setCalls] = useState<TwilioCall[]>([]);
   const [daily, setDaily] = useState<TwilioDailyCost[]>([]);
@@ -90,13 +96,12 @@ export default function TwilioCostsPage() {
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const loadData = useCallback(async () => {
     try {
       setError(null);
       const [sum, recent, dailyData] = await Promise.all([
-        twilioApi.getSummary(period),
+        twilioApi.getSummary(PERIOD_API[period]),
         twilioApi.getRecentCalls(20),
         twilioApi.getDailyCosts(30),
       ]);
@@ -105,145 +110,138 @@ export default function TwilioCostsPage() {
       setDaily(dailyData);
       setLastRefresh(new Date());
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Error loading Twilio data';
+      const msg = err?.response?.data?.error || err?.message || 'Error cargando datos de Twilio';
       setError(msg);
     } finally {
       setLoading(false);
     }
   }, [period]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
+  useEffect(() => { loadData(); }, [loadData]);
   useEffect(() => {
     if (!autoRefresh) return;
     const id = setInterval(loadData, 30_000);
     return () => clearInterval(id);
   }, [autoRefresh, loadData]);
 
-  const hasDailyData = daily.length > 0 && daily.some((d) => d.cost > 0 || d.callCount > 0);
+  const hasDailyData = daily.some((d) => d.cost > 0 || d.callCount > 0);
   const hasCalls = calls.length > 0;
 
   return (
-    <div ref={containerRef} className="max-w-[1400px] mx-auto px-gutter-mobile md:px-gutter-tablet lg:px-gutter-desktop py-12">
-      {/* ─── Header ─────────────────────────────────────────── */}
-      <header className="border-b border-outline-variant/40 dark:border-gray-800 pb-8 mb-10">
-        <div className="flex items-start justify-between flex-wrap gap-6">
-          <div>
-            <p className="font-metadata-mono text-xs uppercase tracking-[0.14em] text-on-surface-variant dark:text-gray-500 mb-3">
-              Telephony · Twilio · Operational
-            </p>
-            <h1 className="text-headline-lg md:text-display-hero text-on-surface dark:text-white tracking-tight">
-              Call cost ledger
-            </h1>
-            <p className="font-body-md text-on-surface-variant dark:text-gray-400 mt-3 max-w-xl">
-              Real-time spend tracking across inbound and outbound voice. Last refreshed{' '}
-              <span className="font-metadata-mono text-on-surface dark:text-gray-300">
-                {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </span>
-              .
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              className="font-metadata-mono text-xs uppercase tracking-[0.1em] px-4 py-2 border border-outline-variant/60 dark:border-gray-700 hover:border-on-surface dark:hover:border-gray-400 transition-colors text-on-surface dark:text-gray-200"
-            >
-              {autoRefresh ? 'Pause stream' : 'Resume stream'}
-            </button>
-            <button
-              onClick={loadData}
-              className="font-metadata-mono text-xs uppercase tracking-[0.1em] px-4 py-2 bg-on-surface text-pure-surface dark:bg-white dark:text-gray-900 hover:bg-secondary dark:hover:bg-gray-200 transition-colors"
-            >
-              Refresh
-            </button>
-          </div>
+    <div className="space-y-6">
+      {/* ─── Header ─────────────────────────────────────── */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="font-display-hero text-display-hero text-primary dark:text-white">
+            Costos Twilio
+          </h1>
+          <p className="font-body-md text-secondary dark:text-gray-400 mt-1">
+            Monitoreo en tiempo real del gasto en llamadas de la troncal SIP
+            {' · '}Última actualización:{' '}
+            <span className="font-metadata-mono text-primary dark:text-gray-200">
+              {lastRefresh.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+          </p>
         </div>
 
-        {/* Period selector — underline style */}
-        <nav className="mt-8 flex items-center gap-8 border-b border-outline-variant/30">
-          {(['today', 'week', 'month'] as const).map((p) => {
-            const labels: Record<typeof p, string> = {
-              today: 'Today',
-              week: 'This week',
-              month: 'This month',
-            };
-            const isActive = period === p;
-            return (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`relative font-metadata-mono text-xs uppercase tracking-[0.12em] pb-3 -mb-px transition-colors ${
-                  isActive
-                    ? 'text-on-surface dark:text-white border-b-2 border-on-surface dark:border-white'
-                    : 'text-on-surface-variant dark:text-gray-500 hover:text-on-surface dark:hover:text-gray-300'
-                }`}
-              >
-                {labels[p]}
-              </button>
-            );
-          })}
-          <div className="ml-auto font-metadata-mono text-xs text-on-surface-variant dark:text-gray-500 pb-3">
-            {autoRefresh && (
-              <span className="inline-flex items-center gap-1.5">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-signal opacity-60 animate-ping" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-signal" />
-                </span>
-                live · 30s
+        <div className="flex items-center gap-2">
+          {autoRefresh && (
+            <span className="inline-flex items-center gap-1.5 font-metadata-mono text-xs text-emerald-signal">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-signal opacity-60 animate-ping" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-signal" />
               </span>
-            )}
-          </div>
-        </nav>
-      </header>
+              en vivo · 30s
+            </span>
+          )}
+          <button
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className="font-body-md text-sm px-4 py-2 rounded-lg border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors"
+          >
+            {autoRefresh ? 'Pausar' : 'Reanudar'}
+          </button>
+          <button
+            onClick={loadData}
+            className="font-body-md text-sm px-4 py-2 rounded-lg bg-electric-blue text-white hover:scale-[0.98] transition-transform shadow-sm"
+          >
+            Refrescar
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Period selector ───────────────────────────── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {(['Hoy', 'Semana', 'Mes'] as Period[]).map((p) => {
+          const isActive = period === p;
+          return (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={
+                isActive
+                  ? 'px-5 py-2 rounded-lg bg-electric-blue text-white font-medium shadow-sm transition-all text-sm'
+                  : 'px-5 py-2 rounded-lg bg-canvas-white dark:bg-gray-800 text-secondary dark:text-gray-300 hover:bg-card-icon-bg dark:hover:bg-gray-700 font-medium transition-all text-sm border border-whisper-border dark:border-gray-700'
+              }
+            >
+              {p}
+            </button>
+          );
+        })}
+      </div>
 
       {error && (
-        <div className="mb-8 px-5 py-4 border border-error/40 bg-error-container/30 text-error font-metadata-mono text-sm">
+        <div className="px-5 py-4 rounded-lg border border-deep-rose/40 bg-deep-rose/10 text-deep-rose font-body-md text-sm">
           {error}
         </div>
       )}
 
-      {/* ─── KPIs ───────────────────────────────────────────── */}
-      <section className="grid grid-cols-2 md:grid-cols-4 divide-x divide-outline-variant/40 border-y border-outline-variant/40 dark:divide-gray-800 dark:border-gray-800 mb-12">
-        <MetricCell
-          label="Total spend"
+      {/* ─── KPI Cards ──────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          icon={<Money01Icon size={20} className="text-electric-blue" />}
+          iconBg="bg-electric-blue/10"
+          label="Costo total"
           value={summary ? fmtCost(summary.totalCost) : null}
           sub={summary?.currency || 'USD'}
           loading={loading}
         />
-        <MetricCell
-          label="Calls"
-          value={summary ? summary.totalCalls.toString() : null}
-          sub={summary ? `${summary.inboundCalls} in · ${summary.outboundCalls} out` : '—'}
+        <KpiCard
+          icon={<Call02Icon size={20} className="text-emerald-signal" />}
+          iconBg="bg-emerald-signal/10"
+          label="Llamadas"
+          value={summary ? summary.totalCalls.toLocaleString('en-US') : null}
+          sub={summary ? `${summary.inboundCalls} ent. · ${summary.outboundCalls} sal.` : '—'}
           loading={loading}
         />
-        <MetricCell
-          label="Minutes"
-          value={summary ? summary.totalMinutes.toString() : null}
+        <KpiCard
+          icon={<Clock01Icon size={20} className="text-amber-warmth" />}
+          iconBg="bg-amber-warmth/10"
+          label="Minutos"
+          value={summary ? summary.totalMinutes.toLocaleString('en-US') : null}
           sub={summary && summary.totalCalls > 0
-            ? `${Math.round(summary.totalMinutes / summary.totalCalls)} avg / call`
+            ? `~${Math.round(summary.totalMinutes / summary.totalCalls)} min/llamada`
             : '—'}
           loading={loading}
         />
-        <MetricCell
-          label="Cost / minute"
+        <KpiCard
+          icon={<Analytics01Icon size={20} className="text-muted-slate" />}
+          iconBg="bg-muted-slate/10"
+          label="Costo por minuto"
           value={summary && summary.totalMinutes > 0 ? fmtCost(summary.totalCost / summary.totalMinutes) : null}
-          sub="blended average"
+          sub="promedio combinado"
           loading={loading}
         />
-      </section>
+      </div>
 
-      {/* ─── Charts ─────────────────────────────────────────── */}
-      <section className="grid grid-cols-1 lg:grid-cols-5 gap-px bg-outline-variant/40 border border-outline-variant/40 dark:bg-gray-800 dark:border-gray-800 mb-12">
-        <div className="bg-pure-surface dark:bg-gray-900 p-8 lg:col-span-3">
-          <div className="flex items-baseline justify-between mb-6">
-            <h2 className="font-metadata-mono text-xs uppercase tracking-[0.14em] text-on-surface-variant dark:text-gray-500">
-              Daily spend · last 30 days
+      {/* ─── Charts ─────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 p-6 lg:col-span-2">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400">
+              Costo diario · últimos 30 días
             </h2>
             {hasDailyData && (
-              <span className="font-metadata-mono text-xs text-on-surface-variant dark:text-gray-500">
+              <span className="font-metadata-mono text-xs text-secondary dark:text-gray-500">
                 {fmtCost(daily.reduce((a, b) => a + b.cost, 0))} total
               </span>
             )}
@@ -252,225 +250,231 @@ export default function TwilioCostsPage() {
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="twilioCostGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#1c1b1c" stopOpacity={0.18} />
-                    <stop offset="100%" stopColor="#1c1b1c" stopOpacity={0} />
+                  <linearGradient id="twilioCostGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3B82F6" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#3B82F6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#EAEAEA" strokeDasharray="2 4" vertical={false} />
+                <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 10, fill: '#787774', fontFamily: 'JetBrains Mono, monospace' }}
+                  tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'JetBrains Mono, monospace' }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(d) => fmtDate(d)}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: '#787774', fontFamily: 'JetBrains Mono, monospace' }}
+                  tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'JetBrains Mono, monospace' }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v) => '$' + v.toFixed(2)}
-                  width={50}
+                  width={56}
                 />
                 <Tooltip
-                  contentStyle={{
-                    background: '#FFFFFF',
-                    border: '1px solid #EAEAEA',
-                    borderRadius: 0,
-                    fontSize: 12,
-                    fontFamily: 'JetBrains Mono, monospace',
-                  }}
-                  formatter={(v: number) => [fmtCost(v), 'Cost']}
-                  labelFormatter={(d) => fmtDate(String(d))}
+                  content={({ active, payload, label }) => (
+                    <DarkTooltip active={active} payload={payload?.map((p) => ({ ...p, name: 'Costo' }))} label={label ? fmtDate(String(label)) : undefined} valuePrefix="$" />
+                  )}
                 />
                 <Area
                   type="monotone"
                   dataKey="cost"
-                  stroke="#1c1b1c"
-                  strokeWidth={1.5}
-                  fill="url(#twilioCostGradient)"
+                  name="Costo"
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  fill="url(#twilioCostGrad)"
                 />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <ChartEmpty label="No spend recorded in the last 30 days" />
+            <ChartEmpty label="Sin gasto registrado en los últimos 30 días" />
           )}
         </div>
 
-        <div className="bg-pure-surface dark:bg-gray-900 p-8 lg:col-span-2">
-          <div className="flex items-baseline justify-between mb-6">
-            <h2 className="font-metadata-mono text-xs uppercase tracking-[0.14em] text-on-surface-variant dark:text-gray-500">
-              Volume · last 30 days
+        <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 p-6">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400">
+              Volumen · 30 días
             </h2>
             {hasDailyData && (
-              <span className="font-metadata-mono text-xs text-on-surface-variant dark:text-gray-500">
-                {daily.reduce((a, b) => a + b.callCount, 0)} calls
+              <span className="font-metadata-mono text-xs text-secondary dark:text-gray-500">
+                {daily.reduce((a, b) => a + b.callCount, 0)} llamadas
               </span>
             )}
           </div>
           {hasDailyData ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#EAEAEA" strokeDasharray="2 4" vertical={false} />
+                <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 10, fill: '#787774', fontFamily: 'JetBrains Mono, monospace' }}
+                  tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'JetBrains Mono, monospace' }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(d) => fmtDate(d)}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: '#787774', fontFamily: 'JetBrains Mono, monospace' }}
+                  tick={{ fontSize: 11, fill: '#64748B', fontFamily: 'JetBrains Mono, monospace' }}
                   tickLine={false}
                   axisLine={false}
                   allowDecimals={false}
                   width={32}
                 />
                 <Tooltip
-                  contentStyle={{
-                    background: '#FFFFFF',
-                    border: '1px solid #EAEAEA',
-                    borderRadius: 0,
-                    fontSize: 12,
-                    fontFamily: 'JetBrains Mono, monospace',
-                  }}
-                  formatter={(v: number) => [v, 'Calls']}
-                  labelFormatter={(d) => fmtDate(String(d))}
+                  content={({ active, payload, label }) => (
+                    <DarkTooltip active={active} payload={payload?.map((p) => ({ ...p, name: 'Llamadas' }))} label={label ? fmtDate(String(label)) : undefined} />
+                  )}
                 />
-                <Bar dataKey="callCount" fill="#1c1b1c" radius={0} />
+                <Bar dataKey="callCount" name="Llamadas" fill="#10B981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <ChartEmpty label="No call activity in the last 30 days" />
+            <ChartEmpty label="Sin actividad reciente" />
           )}
         </div>
-      </section>
+      </div>
 
-      {/* ─── Recent calls table ────────────────────────────── */}
-      <section>
-        <div className="flex items-baseline justify-between mb-6">
-          <h2 className="font-metadata-mono text-xs uppercase tracking-[0.14em] text-on-surface-variant dark:text-gray-500">
-            Recent calls
+      {/* ─── Recent calls table ─────────────────────────── */}
+      <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 overflow-hidden">
+        <div className="flex items-baseline justify-between px-6 py-4 border-b border-whisper-border dark:border-gray-800">
+          <h2 className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400">
+            Llamadas recientes
           </h2>
-          <span className="font-metadata-mono text-xs text-on-surface-variant dark:text-gray-500">
-            Last 20 · {hasCalls ? `${calls.length} entries` : '—'}
+          <span className="font-metadata-mono text-xs text-secondary dark:text-gray-500">
+            Últimas 20 · {hasCalls ? `${calls.length}` : '—'}
           </span>
         </div>
 
-        <div className="border border-outline-variant/40 dark:border-gray-800">
-          {/* Header row */}
-          <div className="hidden md:grid grid-cols-[1.2fr_0.8fr_1.1fr_1.1fr_0.9fr_0.6fr_0.8fr] gap-4 px-6 py-3 border-b border-outline-variant/40 dark:border-gray-800 bg-surface-container-lowest/50 dark:bg-gray-900/50">
-            {['Timestamp', 'Direction', 'From', 'To', 'Status', 'Duration', 'Cost'].map((h) => (
-              <span
-                key={h}
-                className="font-metadata-mono text-[10px] uppercase tracking-[0.14em] text-on-surface-variant dark:text-gray-500"
-              >
-                {h}
-              </span>
+        {/* Header row */}
+        <div className="hidden md:grid grid-cols-[1.1fr_0.8fr_1.1fr_1.1fr_0.8fr_0.5fr_0.8fr] gap-3 px-6 py-3 bg-card-icon-bg/50 dark:bg-gray-800/50 border-b border-whisper-border dark:border-gray-800">
+          {['Hora', 'Dirección', 'Origen', 'Destino', 'Estado', 'Dur.', 'Costo'].map((h) => (
+            <span key={h} className="font-metadata-mono text-[10px] uppercase tracking-wider text-secondary dark:text-gray-500 font-semibold">
+              {h}
+            </span>
+          ))}
+        </div>
+
+        {/* Body */}
+        {loading && !summary ? (
+          <div className="divide-y divide-whisper-border dark:divide-gray-800">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="grid grid-cols-[1.1fr_0.8fr_1.1fr_1.1fr_0.8fr_0.5fr_0.8fr] gap-3 px-6 py-4">
+                <SkeletonLine width="w-24" />
+                <SkeletonLine width="w-16" />
+                <SkeletonLine width="w-32" />
+                <SkeletonLine width="w-28" />
+                <SkeletonLine width="w-20" />
+                <SkeletonLine width="w-10" />
+                <SkeletonLine width="w-24" />
+              </div>
             ))}
           </div>
-
-          {/* Body */}
-          {loading && !summary ? (
-            <div className="divide-y divide-outline-variant/30 dark:divide-gray-800">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="grid grid-cols-[1.2fr_0.8fr_1.1fr_1.1fr_0.9fr_0.6fr_0.8fr] gap-4 px-6 py-4">
-                  <SkeletonLine width="w-24" />
-                  <SkeletonLine width="w-12" />
-                  <SkeletonLine width="w-28" />
-                  <SkeletonLine width="w-28" />
-                  <SkeletonLine width="w-16" />
-                  <SkeletonLine width="w-8" />
-                  <SkeletonLine width="w-20" />
-                </div>
-              ))}
-            </div>
-          ) : !hasCalls ? (
-            <div className="px-6 py-16 text-center">
-              <p className="font-metadata-mono text-xs uppercase tracking-[0.14em] text-on-surface-variant dark:text-gray-500">
-                No recent calls
-              </p>
-              <p className="font-body-md text-sm text-on-surface-variant dark:text-gray-500 mt-2 max-w-md mx-auto">
-                Once Twilio records call activity it will appear here in reverse chronological order.
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-outline-variant/30 dark:divide-gray-800">
-              {calls.map((c) => (
+        ) : !hasCalls ? (
+          <div className="px-6 py-16 text-center">
+            <p className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-500">
+              Sin llamadas recientes
+            </p>
+            <p className="font-body-md text-sm text-secondary dark:text-gray-500 mt-2 max-w-md mx-auto">
+              Cuando Twilio registre actividad aparecerá aquí en orden cronológico inverso.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-whisper-border dark:divide-gray-800">
+            {calls.map((c) => {
+              const isIn = c.direction === 'inbound';
+              return (
                 <div
                   key={c.sid}
-                  className="grid grid-cols-2 md:grid-cols-[1.2fr_0.8fr_1.1fr_1.1fr_0.9fr_0.6fr_0.8fr] gap-4 px-6 py-4 items-center hover:bg-surface-container-lowest/40 dark:hover:bg-gray-900/40 transition-colors"
+                  className="grid grid-cols-2 md:grid-cols-[1.1fr_0.8fr_1.1fr_1.1fr_0.8fr_0.5fr_0.8fr] gap-3 px-6 py-4 items-center hover:bg-card-icon-bg/30 dark:hover:bg-gray-800/30 transition-colors"
                 >
-                  <span className="font-metadata-mono text-xs text-on-surface dark:text-gray-300">
+                  <span className="font-metadata-mono text-xs text-primary dark:text-gray-200">
                     {fmtTime(c.startTime)}
                   </span>
-                  <span className="font-metadata-mono text-[10px] uppercase tracking-[0.12em] text-on-surface-variant dark:text-gray-500">
-                    {c.direction === 'inbound' ? '↙ inbound' : '↗ outbound'}
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-metadata-mono uppercase tracking-wider w-fit ${
+                    isIn
+                      ? 'bg-electric-blue/8 text-electric-blue'
+                      : 'bg-emerald-signal/8 text-emerald-signal'
+                  }`}>
+                    {isIn
+                      ? <CallReceived02Icon size={12} />
+                      : <CallOutgoing01Icon size={12} />
+                    }
+                    {isIn ? 'ent.' : 'sal.'}
                   </span>
-                  <span className="font-metadata-mono text-xs text-on-surface-variant dark:text-gray-400 truncate">
+                  <span className="font-metadata-mono text-xs text-secondary dark:text-gray-400 truncate">
                     {c.from}
                   </span>
-                  <span className="font-metadata-mono text-xs text-on-surface-variant dark:text-gray-400 truncate">
+                  <span className="font-metadata-mono text-xs text-secondary dark:text-gray-400 truncate">
                     {c.to}
                   </span>
-                  <span className="font-metadata-mono text-[10px] uppercase tracking-[0.12em] text-on-surface-variant dark:text-gray-500">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-metadata-mono uppercase tracking-wider w-fit ${
+                    c.status === 'completed'
+                      ? 'bg-emerald-signal/10 text-emerald-signal'
+                      : c.status === 'no-answer' || c.status === 'busy'
+                      ? 'bg-amber-warmth/10 text-amber-warmth'
+                      : 'bg-muted-slate/10 text-muted-slate'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      c.status === 'completed' ? 'bg-emerald-signal'
+                      : c.status === 'no-answer' || c.status === 'busy' ? 'bg-amber-warmth'
+                      : 'bg-muted-slate'
+                    }`} />
                     {c.status}
                   </span>
-                  <span className="font-metadata-mono text-xs text-on-surface dark:text-gray-300 md:text-right">
+                  <span className="font-metadata-mono text-xs text-primary dark:text-gray-300 md:text-right">
                     {fmtDuration(c.durationSeconds)}
                   </span>
-                  <span className="font-metadata-mono text-xs text-on-surface dark:text-white md:text-right font-medium">
+                  <span className="font-metadata-mono text-xs text-primary dark:text-white md:text-right font-semibold">
                     {fmtCost(c.cost)}
-                    <span className="text-on-surface-variant dark:text-gray-500 ml-1 text-[10px]">
-                      {c.currency}
-                    </span>
+                    <span className="text-muted-slate ml-1 text-[10px] font-normal">{c.currency}</span>
                   </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* Footer / metadata */}
-      <footer className="mt-16 pt-8 border-t border-outline-variant/30 dark:border-gray-800 flex items-center justify-between font-metadata-mono text-[10px] uppercase tracking-[0.14em] text-on-surface-variant dark:text-gray-500">
-        <span>Twilio · cost ledger v1</span>
-        <span>Auto-refresh 30s · ALRrx only</span>
-      </footer>
+      <p className="text-xs text-muted-slate dark:text-gray-500 font-metadata-mono text-center pt-2">
+        Twilio · troncal SIP ALRrx · auto-refresh 30s · solo visible para administradores
+      </p>
     </div>
   );
 }
 
-// ─── Metric cell (logic-grouped, no card overuse) ─────────────────────────
-function MetricCell({
-  label,
-  value,
-  sub,
-  loading,
+// ─── KPI Card (estilo consistente con el resto de ALRrx) ──────────────────
+function KpiCard({
+  icon, iconBg, label, value, sub, loading,
 }: {
+  icon: React.ReactNode;
+  iconBg: string;
   label: string;
   value: string | null;
   sub: string;
   loading: boolean;
 }) {
   return (
-    <div className="px-6 py-7 md:px-8 md:py-8 bg-pure-surface dark:bg-gray-900">
-      <p className="font-metadata-mono text-[10px] uppercase tracking-[0.14em] text-on-surface-variant dark:text-gray-500 mb-3">
-        {label}
-      </p>
+    <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 p-6">
+      <div className="flex items-start justify-between mb-3">
+        <p className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400 font-semibold">
+          {label}
+        </p>
+        <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center`}>
+          {icon}
+        </div>
+      </div>
       {loading && !value ? (
         <>
-          <div className="h-9 w-32 bg-surface-container-high dark:bg-gray-800 animate-pulse mb-2" />
-          <div className="h-3 w-20 bg-surface-container-high dark:bg-gray-800 animate-pulse" />
+          <div className="h-9 w-32 bg-card-icon-bg dark:bg-gray-800 animate-pulse rounded mb-2" />
+          <div className="h-3 w-20 bg-card-icon-bg dark:bg-gray-800 animate-pulse rounded" />
         </>
       ) : (
         <>
-          <p className="font-metadata-mono text-2xl md:text-3xl tracking-tight text-on-surface dark:text-white tabular-nums">
+          <p className="font-metadata-mono text-2xl md:text-3xl tracking-tight text-primary dark:text-white tabular-nums">
             {value}
           </p>
-          <p className="font-metadata-mono text-[10px] uppercase tracking-[0.12em] text-on-surface-variant dark:text-gray-500 mt-2">
+          <p className="font-metadata-mono text-[10px] uppercase tracking-wider text-secondary dark:text-gray-500 mt-2">
             {sub}
           </p>
         </>
