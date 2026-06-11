@@ -117,10 +117,11 @@ public class TwilioService : ITwilioService
         };
     }
 
-    private static bool IsInbound(CallResource.DirectionEnum? dir)
+    private static bool IsInbound(string? direction)
     {
-        var s = dir?.ToString() ?? "";
-        return s == "InboundApi" || s == "Inbound" || s == "InboundCall";
+        if (string.IsNullOrEmpty(direction)) return false;
+        var d = direction.ToLowerInvariant();
+        return d.Contains("inbound");
     }
 
     private static decimal ParseCost(string? price)
