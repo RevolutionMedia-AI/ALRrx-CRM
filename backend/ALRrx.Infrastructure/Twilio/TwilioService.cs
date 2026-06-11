@@ -2,6 +2,7 @@ using ALRrx.Application.DTOs;
 using ALRrx.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 
 namespace ALRrx.Infrastructure.Twilio;
