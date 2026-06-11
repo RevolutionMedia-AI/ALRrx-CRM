@@ -1,3 +1,4 @@
+using ALRrx.Application.Helpers;
 using OfficeOpenXml;
 using OfficeOpenXml.Drawing.Chart;
 
@@ -36,7 +37,7 @@ public sealed class PeriodComparisonExcelService : IPeriodComparisonExcelService
         ws.Cells[1, 1].Style.Font.Size = 14;
         ws.Cells[2, 1].Value = $"Period 1: {data.Period1Label}";
         ws.Cells[2, 2].Value = $"Period 2: {data.Period2Label}";
-        ws.Cells[3, 1].Value = $"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
+        ws.Cells[3, 1].Value = $"Generated: {TimeZoneHelper.NowPstString()} {TimeZoneHelper.Label}";
         ws.Cells[3, 1].Style.Font.Color.SetColor(System.Drawing.Color.Gray);
 
         var kpiStartRow = 5;

@@ -70,4 +70,18 @@ export const twilioApi = {
     const { data } = await http.get('/twilio/costs/daily', { params: { days } });
     return data;
   },
+
+  exportPdf: async (period: 'today' | 'week' | 'month' | 'custom' = 'today'): Promise<Blob> => {
+    const { data } = await http.post('/twilio-export/pdf', { period }, {
+      responseType: 'blob',
+    });
+    return data;
+  },
+
+  exportExcel: async (period: 'today' | 'week' | 'month' | 'custom' = 'today'): Promise<Blob> => {
+    const { data } = await http.post('/twilio-export/excel', { period }, {
+      responseType: 'blob',
+    });
+    return data;
+  },
 };

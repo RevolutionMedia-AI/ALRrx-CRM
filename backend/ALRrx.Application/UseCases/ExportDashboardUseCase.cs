@@ -178,7 +178,7 @@ public sealed class ExportDashboardUseCase
 public sealed class DashboardPdfData
 {
     public string Period { get; init; } = "Today";
-    public string GeneratedAt { get; init; } = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+    public string GeneratedAt { get; init; } = TimeZoneHelper.NowPstString();
     public List<KpiRow> Kpis { get; init; } = [];
     public List<AgentRow> Agents { get; init; } = [];
     public List<DispositionRow> Dispositions { get; init; } = [];

@@ -1,3 +1,4 @@
+using ALRrx.Application.Helpers;
 using ALRrx.Application.UseCases;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -84,7 +85,7 @@ internal sealed class DashboardReportDocument : IDocument
                 row.RelativeItem().AlignRight().Column(c =>
                 {
                     c.Item().Text("RevolutionMedia Reports").FontSize(10).Bold().FontColor(Colors.Grey.Darken2);
-                    c.Item().Text($"Generated: {_data.GeneratedAt} UTC").FontSize(8).FontColor(Colors.Grey.Lighten1);
+                    c.Item().Text($"Generated: {_data.GeneratedAt} {TimeZoneHelper.Label}").FontSize(8).FontColor(Colors.Grey.Lighten1);
                 });
             });
             col.Item().PaddingTop(6).LineHorizontal(1.5f).LineColor(Colors.Blue.Lighten3);
@@ -275,7 +276,7 @@ internal sealed class DashboardReportDocument : IDocument
                     {
                         c.Item().Text($"${vs.LastSale.Amount:F0}").FontSize(20).Bold().FontColor("#F59E0B");
                         c.Item().Text($"Last Sale: {vs.LastSale.SellerName}").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
-                        c.Item().Text(vs.LastSale.Timestamp.ToString("yyyy-MM-dd HH:mm")).FontSize(7).FontColor(Colors.Grey.Darken1);
+                        c.Item().Text(TimeZoneHelper.ToPstString(vs.LastSale.Timestamp, "yyyy-MM-dd HH:mm")).FontSize(7).FontColor(Colors.Grey.Darken1);
                     });
                 }
             });
@@ -307,7 +308,7 @@ internal sealed class DashboardReportDocument : IDocument
                     {
                         var sale = topSales[i];
                         var bg = i % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
-                        table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).Text(sale.Timestamp.ToString("yyyy-MM-dd HH:mm")).FontSize(7.5f).FontColor(Colors.Grey.Darken1);
+                        table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).Text(TimeZoneHelper.ToPstString(sale.Timestamp, "yyyy-MM-dd HH:mm")).FontSize(7.5f).FontColor(Colors.Grey.Darken1);
                         table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).Text(sale.SellerName).FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken1);
                         table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).Text(sale.CustomerEmail).FontSize(7).FontColor(Colors.Grey.Darken1);
                         table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).Text(sale.Package).FontSize(7.5f).FontColor(Colors.Grey.Darken1);

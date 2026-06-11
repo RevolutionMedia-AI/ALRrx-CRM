@@ -1,3 +1,4 @@
+using ALRrx.Application.Helpers;
 using ALRrx.Application.UseCases;
 using OfficeOpenXml;
 using OfficeOpenXml.Drawing.Chart;
@@ -43,7 +44,7 @@ public sealed class DashboardExcelService : IDashboardExcelService
         ws.Cells[1, 1].Style.Font.Size = 14;
         ws.Cells[2, 1].Value = $"Period: {data.Period}";
         ws.Cells[2, 1].Style.Font.Italic = true;
-        ws.Cells[3, 1].Value = $"Generated: {data.GeneratedAt} UTC";
+        ws.Cells[3, 1].Value = $"Generated: {data.GeneratedAt} {TimeZoneHelper.Label}";
         ws.Cells[3, 1].Style.Font.Color.SetColor(System.Drawing.Color.Gray);
 
         ws.Cells[5, 1].Value = "KPI";
@@ -200,7 +201,7 @@ public sealed class DashboardExcelService : IDashboardExcelService
         ws.Cells[1, 1].Value = "ALTRX — Vicidial Form Sales Report";
         ws.Cells[1, 1].Style.Font.Bold = true;
         ws.Cells[1, 1].Style.Font.Size = 14;
-        ws.Cells[2, 1].Value = $"Period: {data.Period} | Generated: {data.GeneratedAt} UTC";
+        ws.Cells[2, 1].Value = $"Period: {data.Period} | Generated: {data.GeneratedAt} {TimeZoneHelper.Label}";
         ws.Cells[2, 1].Style.Font.Italic = true;
         ws.Cells[2, 1].Style.Font.Color.SetColor(System.Drawing.Color.Gray);
 
@@ -230,7 +231,7 @@ public sealed class DashboardExcelService : IDashboardExcelService
             ws.Cells[8, 2].Value = vs.LastSale.SellerName;
 
             ws.Cells[9, 1].Value = "Last Sale Date";
-            ws.Cells[9, 2].Value = vs.LastSale.Timestamp;
+            ws.Cells[9, 2].Value = TimeZoneHelper.ToPst(vs.LastSale.Timestamp);
             ws.Cells[9, 2].Style.Numberformat.Format = "yyyy-mm-dd hh:mm:ss";
         }
 
@@ -257,7 +258,7 @@ public sealed class DashboardExcelService : IDashboardExcelService
         {
             var sale = vs.Sales[i];
             var row = headerRow + 1 + i;
-            ws.Cells[row, 1].Value = sale.Timestamp;
+            ws.Cells[row, 1].Value = TimeZoneHelper.ToPst(sale.Timestamp);
             ws.Cells[row, 1].Style.Numberformat.Format = "yyyy-mm-dd hh:mm:ss";
             ws.Cells[row, 2].Value = sale.SellerName;
             ws.Cells[row, 3].Value = sale.SaleDate;

@@ -28,6 +28,8 @@ public static class InfrastructureServiceRegistration
         services.AddSingleton<IDashboardPdfService, DashboardPdfService>();
         services.AddSingleton<IDashboardExcelService, DashboardExcelService>();
         services.AddSingleton<IPeriodComparisonExcelService, PeriodComparisonExcelService>();
+        services.AddSingleton<ITwilioPdfService, TwilioPdfService>();
+        services.AddSingleton<ITwilioExcelService, TwilioExcelService>();
         services.AddSingleton<IVicidialSalesRepository, VicidialSalesRepository>();
         services.AddSingleton<IActiveAgentsRepository, ActiveAgentsRepository>();
         services.AddSingleton<IVicidialLeadRepository, VicidialLeadRepository>();

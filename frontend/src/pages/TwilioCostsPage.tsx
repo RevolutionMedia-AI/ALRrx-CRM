@@ -13,6 +13,9 @@ import {
   PauseIcon,
   PlayIcon,
   ChartLineData01Icon,
+  Download01Icon,
+  Pdf01Icon,
+  MicrosoftExcelIcon,
 } from 'hugeicons-react';
 
 type Period = 'Today' | 'Week' | 'Month';
@@ -48,7 +51,7 @@ function fmtDate(iso: string): string {
   } catch { return iso; }
 }
 
-// ─── DarkTooltip (mismo estilo que Dashboard) ─────────────────────────────
+// ─── DarkTooltip (mismo que Dashboard) ────────────────────────────────────
 function DarkTooltip({ active, payload, label }: {
   active?: boolean;
   payload?: Array<{ name: string; value: number; color: string }>;
@@ -69,16 +72,6 @@ function DarkTooltip({ active, payload, label }: {
   );
 }
 
-// ─── Empty state (mismo estilo que Dashboard) ─────────────────────────────
-function ChartEmpty({ label }: { label: string }) {
-  return (
-    <div className="w-full h-full rounded-lg border border-dashed border-whisper-border bg-surface-container-low flex flex-col items-center justify-center text-muted-slate text-sm gap-1">
-      <ChartLineData01Icon size={32} className="text-muted-slate/50" />
-      <p>{label}</p>
-    </div>
-  );
-}
-
 // ─── Skeleton row ──────────────────────────────────────────────────────────
 function SkeletonLine({ width = 'w-full' }: { width?: string }) {
   return <div className={`${width} h-3 bg-card-icon-bg dark:bg-gray-800 rounded animate-pulse`} />;
@@ -94,6 +87,8 @@ export default function TwilioCostsPage() {
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -122,6 +117,44 @@ export default function TwilioCostsPage() {
     return () => clearInterval(id);
   }, [autoRefresh, loadData]);
 
+  const handleExportPdf = useCallback(async () => {
+    setExportingPdf(true);
+    try {
+      const blob = await twilioApi.exportPdf(PERIOD_API[period] as 'today' | 'week' | 'month');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ALRrx_TwilioCosts_${PERIOD_API[period]}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF export failed', err);
+    } finally {
+      setExportingPdf(false);
+    }
+  }, [period]);
+
+  const handleExportExcel = useCallback(async () => {
+    setExportingExcel(true);
+    try {
+      const blob = await twilioApi.exportExcel(PERIOD_API[period] as 'today' | 'week' | 'month');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ALRrx_TwilioCosts_${PERIOD_API[period]}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Excel export failed', err);
+    } finally {
+      setExportingExcel(false);
+    }
+  }, [period]);
+
   const hasDailyData = daily.some((d) => d.cost > 0 || d.callCount > 0);
   const hasCalls = calls.length > 0;
 
@@ -142,6 +175,25 @@ export default function TwilioCostsPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            disabled={exportingExcel || loading}
+            title="Export Excel"
+            className="h-10 px-3 rounded-lg border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
+          >
+            <MicrosoftExcelIcon size={16} className="text-emerald-signal" />
+            <span className="hidden sm:inline">{exportingExcel ? 'Generating…' : 'Excel'}</span>
+          </button>
+          <button
+            onClick={handleExportPdf}
+            disabled={exportingPdf || loading}
+            title="Export PDF"
+            className="h-10 px-3 rounded-lg border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
+          >
+            <Pdf01Icon size={16} className="text-deep-rose" />
+            <span className="hidden sm:inline">{exportingPdf ? 'Generating…' : 'PDF'}</span>
+          </button>
+          <div className="w-px h-6 bg-whisper-border dark:bg-gray-700 mx-1" />
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
             title={autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'}
@@ -231,7 +283,7 @@ export default function TwilioCostsPage() {
         />
       </div>
 
-      {/* ─── Daily Cost Trend (mismo estilo que Dashboard's Agent Performance Trend) */}
+      {/* ─── Daily Cost Trend (EXACT Dashboard style) ────── */}
       <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card">
         <div className="p-6 border-b border-whisper-border dark:border-gray-700 flex justify-between items-center">
           <div>
@@ -240,7 +292,7 @@ export default function TwilioCostsPage() {
               Twilio spend over the last 30 days
             </p>
           </div>
-          <Money01Icon size={24} className="text-electric-blue" />
+          <ChartLineData01Icon size={24} className="text-electric-blue" />
         </div>
         <div className="p-8 flex flex-col gap-6">
           <div className="w-full h-80">
@@ -257,17 +309,15 @@ export default function TwilioCostsPage() {
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 11, fill: '#94A3B8' }}
-                    tickLine={false}
-                    axisLine={false}
+                    interval={0}
+                    angle={-30}
+                    textAnchor="end"
+                    height={50}
                     tickFormatter={(d) => fmtDate(d)}
-                    interval="preserveStartEnd"
                   />
                   <YAxis
                     tick={{ fontSize: 11, fill: '#94A3B8' }}
-                    tickLine={false}
-                    axisLine={false}
                     tickFormatter={(v) => '$' + v.toFixed(2)}
-                    width={56}
                   />
                   <Tooltip content={<DarkTooltip />} />
                   <Area
@@ -281,13 +331,16 @@ export default function TwilioCostsPage() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <ChartEmpty label="No cost data yet" />
+              <div className="w-full h-full rounded-lg border border-dashed border-whisper-border bg-surface-container-low flex flex-col items-center justify-center text-muted-slate text-sm gap-1">
+                <ChartLineData01Icon size={32} className="text-muted-slate/50" />
+                <p>No cost data yet</p>
+              </div>
             )}
           </div>
         </div>
       </section>
 
-      {/* ─── Call Volume Trend (mismo estilo) ───────────── */}
+      {/* ─── Call Volume Trend (EXACT Dashboard style) ────── */}
       <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card">
         <div className="p-6 border-b border-whisper-border dark:border-gray-700 flex justify-between items-center">
           <div>
@@ -313,17 +366,15 @@ export default function TwilioCostsPage() {
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 11, fill: '#94A3B8' }}
-                    tickLine={false}
-                    axisLine={false}
+                    interval={0}
+                    angle={-30}
+                    textAnchor="end"
+                    height={50}
                     tickFormatter={(d) => fmtDate(d)}
-                    interval="preserveStartEnd"
                   />
                   <YAxis
                     tick={{ fontSize: 11, fill: '#94A3B8' }}
-                    tickLine={false}
-                    axisLine={false}
                     allowDecimals={false}
-                    width={32}
                   />
                   <Tooltip content={<DarkTooltip />} />
                   <Area
@@ -337,7 +388,10 @@ export default function TwilioCostsPage() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <ChartEmpty label="No call activity yet" />
+              <div className="w-full h-full rounded-lg border border-dashed border-whisper-border bg-surface-container-low flex flex-col items-center justify-center text-muted-slate text-sm gap-1">
+                <ChartLineData01Icon size={32} className="text-muted-slate/50" />
+                <p>No call activity yet</p>
+              </div>
             )}
           </div>
         </div>

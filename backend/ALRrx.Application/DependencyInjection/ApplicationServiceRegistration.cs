@@ -27,6 +27,7 @@ public static class ApplicationServiceRegistration
         services.AddScoped<GetVicidialLeadByIdUseCase>();
         services.AddScoped<GetEnrichedSalesUseCase>();
         services.AddScoped<GetAgentPerformanceWithSalesUseCase>();
+        services.AddScoped<TwilioExportUseCase>();
 
         return services;
     }

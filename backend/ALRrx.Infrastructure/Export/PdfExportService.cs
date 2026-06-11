@@ -1,3 +1,4 @@
+using ALRrx.Application.Helpers;
 using ALRrx.Application.Interfaces;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -47,7 +48,7 @@ public sealed class PdfExportService : IReportExportService
                 page.Header().Row(row =>
                 {
                     row.RelativeItem().Text(_title).FontSize(16).Bold().FontColor(Colors.Blue.Darken2);
-                    row.RelativeItem().AlignRight().Text($"Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}").FontSize(8).FontColor(Colors.Grey.Darken1);
+                    row.RelativeItem().AlignRight().Text($"Generated: {TimeZoneHelper.NowPstString()} {TimeZoneHelper.Label}").FontSize(8).FontColor(Colors.Grey.Darken1);
                 });
 
                 page.Content().PaddingTop(10).Table(table =>

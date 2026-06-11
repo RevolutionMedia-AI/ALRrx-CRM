@@ -1,4 +1,5 @@
 using ALRrx.Application.DTOs;
+using ALRrx.Application.Helpers;
 using ALRrx.Application.UseCases;
 using ALRrx.Infrastructure.Export;
 using Microsoft.AspNetCore.Authorization;
@@ -28,7 +29,7 @@ public sealed class DashboardExportController : ControllerBase
         try
         {
             var pdfBytes = await _exportDashboard.ExecuteAsync(filter, ct);
-            var fileName = $"ALTRX_Dashboard_{DateTime.UtcNow:yyyyMMdd_HHmmss}.pdf";
+            var fileName = $"ALTRX_Dashboard_{TimeZoneHelper.NowPstString("yyyyMMdd_HHmmss")}_PST.pdf";
             return File(pdfBytes, "application/pdf", fileName);
         }
         catch (Exception ex)
@@ -45,7 +46,7 @@ public sealed class DashboardExportController : ControllerBase
         {
             var data = await _exportDashboard.BuildDataAsync(filter, ct);
             var excelBytes = _exportExcel.GenerateDashboardExcel(data);
-            var fileName = $"ALTRX_Dashboard_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"ALTRX_Dashboard_{TimeZoneHelper.NowPstString("yyyyMMdd_HHmmss")}_PST.xlsx";
             return File(excelBytes, _exportExcel.ContentType, fileName);
         }
         catch (Exception ex)
