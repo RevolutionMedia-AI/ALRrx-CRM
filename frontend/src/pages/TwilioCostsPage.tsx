@@ -10,13 +10,15 @@ import {
   Money01Icon,
   Clock01Icon,
   Analytics01Icon,
+  Refresh01Icon,
+  PauseIcon,
+  PlayIcon,
 } from 'hugeicons-react';
 
-type Period = 'Hoy' | 'Semana' | 'Mes';
-const PERIOD_API: Record<Period, string> = { Hoy: 'today', Semana: 'week', Mes: 'month' };
+type Period = 'Today' | 'Week' | 'Month';
+const PERIOD_API: Record<Period, string> = { Today: 'today', Week: 'week', Month: 'month' };
 
 // ─── Formatters ────────────────────────────────────────────────────────────
-// Mínimo 7 decimales para valores < 1 USD, sino 2-4 decimales según magnitud.
 function fmtCost(n: number): string {
   if (!isFinite(n) || isNaN(n)) return '$0.0000000';
   const abs = Math.abs(n);
@@ -34,7 +36,7 @@ function fmtDuration(s: number): string {
 
 function fmtTime(iso: string): string {
   try {
-    return new Date(iso).toLocaleString('es-MX', {
+    return new Date(iso).toLocaleString('en-US', {
       hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short',
     });
   } catch { return '—'; }
@@ -42,7 +44,7 @@ function fmtTime(iso: string): string {
 
 function fmtDate(iso: string): string {
   try {
-    return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+    return new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short' });
   } catch { return iso; }
 }
 
@@ -54,7 +56,7 @@ function ChartEmpty({ label }: { label: string }) {
         <Analytics01Icon size={22} className="text-muted-slate" />
       </div>
       <p className="font-body-md text-sm font-medium text-primary dark:text-gray-300">{label}</p>
-      <p className="font-body-md text-xs text-secondary dark:text-gray-500 mt-1">No hay actividad registrada en este período</p>
+      <p className="font-body-md text-xs text-secondary dark:text-gray-500 mt-1">No activity recorded in this window</p>
     </div>
   );
 }
@@ -66,7 +68,7 @@ function SkeletonLine({ width = 'w-full' }: { width?: string }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────
 export default function TwilioCostsPage() {
-  const [period, setPeriod] = useState<Period>('Hoy');
+  const [period, setPeriod] = useState<Period>('Today');
   const [summary, setSummary] = useState<TwilioSummary | null>(null);
   const [calls, setCalls] = useState<TwilioCall[]>([]);
   const [daily, setDaily] = useState<TwilioDailyCost[]>([]);
@@ -78,17 +80,17 @@ export default function TwilioCostsPage() {
   const loadData = useCallback(async () => {
     try {
       setError(null);
-    const [sum, recent, dailyData] = await Promise.all([
-      twilioApi.getSummary(PERIOD_API[period] as 'today' | 'week' | 'month'),
-      twilioApi.getRecentCalls(20),
-      twilioApi.getDailyCosts(30),
-    ]);
+      const [sum, recent, dailyData] = await Promise.all([
+        twilioApi.getSummary(PERIOD_API[period] as 'today' | 'week' | 'month'),
+        twilioApi.getRecentCalls(20),
+        twilioApi.getDailyCosts(30),
+      ]);
       setSummary(sum);
       setCalls(recent);
       setDaily(dailyData);
       setLastRefresh(new Date());
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Error cargando datos de Twilio';
+      const msg = err?.response?.data?.error || err?.message || 'Error loading Twilio data';
       setError(msg);
     } finally {
       setLoading(false);
@@ -111,45 +113,37 @@ export default function TwilioCostsPage() {
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display-hero text-display-hero text-primary dark:text-white">
-            Costos Twilio
+            Twilio Costs
           </h1>
           <p className="font-body-md text-secondary dark:text-gray-400 mt-1">
-            Monitoreo en tiempo real del gasto en llamadas de la troncal SIP
-            {' · '}Última actualización:{' '}
-            <span className="font-metadata-mono text-primary dark:text-gray-200">
-              {lastRefresh.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            Real-time spend tracking across inbound and outbound voice.{' '}
+            <span className="font-metadata-mono text-primary dark:text-gray-300">
+              {lastRefresh.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {autoRefresh && (
-            <span className="inline-flex items-center gap-1.5 font-metadata-mono text-xs text-emerald-signal">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-signal opacity-60 animate-ping" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-signal" />
-              </span>
-              en vivo · 30s
-            </span>
-          )}
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
-            className="font-body-md text-sm px-4 py-2 rounded-lg border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors"
+            title={autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'}
+            className="w-10 h-10 rounded-lg border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors flex items-center justify-center"
           >
-            {autoRefresh ? 'Pausar' : 'Reanudar'}
+            {autoRefresh ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
           </button>
           <button
             onClick={loadData}
-            className="font-body-md text-sm px-4 py-2 rounded-lg bg-electric-blue text-white hover:scale-[0.98] transition-transform shadow-sm"
+            title="Refresh now"
+            className="w-10 h-10 rounded-lg bg-electric-blue text-white hover:scale-[0.98] transition-transform shadow-sm flex items-center justify-center"
           >
-            Refrescar
+            <Refresh01Icon size={16} />
           </button>
         </div>
       </div>
 
       {/* ─── Period selector ───────────────────────────── */}
       <div className="flex items-center gap-2 flex-wrap">
-        {(['Hoy', 'Semana', 'Mes'] as Period[]).map((p) => {
+        {(['Today', 'Week', 'Month'] as Period[]).map((p) => {
           const isActive = period === p;
           return (
             <button
@@ -165,6 +159,14 @@ export default function TwilioCostsPage() {
             </button>
           );
         })}
+        {autoRefresh && (
+          <span className="ml-2 inline-flex items-center gap-1.5 font-metadata-mono text-xs text-emerald-signal">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-signal opacity-60 animate-ping" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-signal" />
+            </span>
+          </span>
+        )}
       </div>
 
       {error && (
@@ -178,7 +180,7 @@ export default function TwilioCostsPage() {
         <KpiCard
           icon={<Money01Icon size={20} className="text-electric-blue" />}
           iconBg="bg-electric-blue/10"
-          label="Costo total"
+          label="Total Spend"
           value={summary ? fmtCost(summary.totalCost) : null}
           sub={summary?.currency || 'USD'}
           loading={loading}
@@ -186,27 +188,27 @@ export default function TwilioCostsPage() {
         <KpiCard
           icon={<Call02Icon size={20} className="text-emerald-signal" />}
           iconBg="bg-emerald-signal/10"
-          label="Llamadas"
+          label="Calls"
           value={summary ? summary.totalCalls.toLocaleString('en-US') : null}
-          sub={summary ? `${summary.inboundCalls} ent. · ${summary.outboundCalls} sal.` : '—'}
+          sub={summary ? `${summary.inboundCalls} in · ${summary.outboundCalls} out` : '—'}
           loading={loading}
         />
         <KpiCard
           icon={<Clock01Icon size={20} className="text-amber-warmth" />}
           iconBg="bg-amber-warmth/10"
-          label="Minutos"
+          label="Minutes"
           value={summary ? summary.totalMinutes.toLocaleString('en-US') : null}
           sub={summary && summary.totalCalls > 0
-            ? `~${Math.round(summary.totalMinutes / summary.totalCalls)} min/llamada`
+            ? `~${Math.round(summary.totalMinutes / summary.totalCalls)} min/call`
             : '—'}
           loading={loading}
         />
         <KpiCard
           icon={<Analytics01Icon size={20} className="text-muted-slate" />}
           iconBg="bg-muted-slate/10"
-          label="Costo por minuto"
+          label="Cost / Minute"
           value={summary && summary.totalMinutes > 0 ? fmtCost(summary.totalCost / summary.totalMinutes) : null}
-          sub="promedio combinado"
+          sub="blended average"
           loading={loading}
         />
       </div>
@@ -216,7 +218,7 @@ export default function TwilioCostsPage() {
         <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 p-6 lg:col-span-2">
           <div className="flex items-baseline justify-between mb-4">
             <h2 className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400">
-              Costo diario · últimos 30 días
+              Daily Spend · last 30 days
             </h2>
             {hasDailyData && (
               <span className="font-metadata-mono text-xs text-secondary dark:text-gray-500">
@@ -259,13 +261,13 @@ export default function TwilioCostsPage() {
                   }}
                   labelStyle={{ color: '#1c1b1c', fontWeight: 600 }}
                   itemStyle={{ color: '#475569' }}
-                  formatter={(value: number) => [`$${value.toFixed(4)}`, 'Costo']}
+                  formatter={(value: number) => [`$${value.toFixed(4)}`, 'Cost']}
                   labelFormatter={(label) => fmtDate(String(label))}
                 />
                 <Area
                   type="monotone"
                   dataKey="cost"
-                  name="Costo"
+                  name="Cost"
                   stroke="#3B82F6"
                   strokeWidth={2}
                   fill="url(#twilioCostGrad)"
@@ -273,18 +275,18 @@ export default function TwilioCostsPage() {
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <ChartEmpty label="Sin gasto registrado en los últimos 30 días" />
+            <ChartEmpty label="No spend recorded in the last 30 days" />
           )}
         </div>
 
         <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 p-6">
           <div className="flex items-baseline justify-between mb-4">
             <h2 className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400">
-              Volumen · 30 días
+              Volume · 30 days
             </h2>
             {hasDailyData && (
               <span className="font-metadata-mono text-xs text-secondary dark:text-gray-500">
-                {daily.reduce((a, b) => a + b.callCount, 0)} llamadas
+                {daily.reduce((a, b) => a + b.callCount, 0)} calls
               </span>
             )}
           </div>
@@ -317,14 +319,14 @@ export default function TwilioCostsPage() {
                   }}
                   labelStyle={{ color: '#1c1b1c', fontWeight: 600 }}
                   itemStyle={{ color: '#475569' }}
-                  formatter={(value: number) => [value.toLocaleString('en-US'), 'Llamadas']}
+                  formatter={(value: number) => [value.toLocaleString('en-US'), 'Calls']}
                   labelFormatter={(label) => fmtDate(String(label))}
                 />
-                <Bar dataKey="callCount" name="Llamadas" fill="#10B981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="callCount" name="Calls" fill="#10B981" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <ChartEmpty label="Sin actividad reciente" />
+            <ChartEmpty label="No recent activity" />
           )}
         </div>
       </div>
@@ -333,29 +335,27 @@ export default function TwilioCostsPage() {
       <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 overflow-hidden">
         <div className="flex items-baseline justify-between px-6 py-4 border-b border-whisper-border dark:border-gray-800">
           <h2 className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400">
-            Llamadas recientes
+            Recent Calls
           </h2>
           <span className="font-metadata-mono text-xs text-secondary dark:text-gray-500">
-            Últimas 20 · {hasCalls ? `${calls.length}` : '—'}
+            Last 20 · {hasCalls ? `${calls.length}` : '—'}
           </span>
         </div>
 
-        {/* Header row */}
-        <div className="hidden md:grid grid-cols-[1.1fr_0.8fr_1.1fr_1.1fr_0.8fr_0.5fr_0.8fr] gap-3 px-6 py-3 bg-card-icon-bg/50 dark:bg-gray-800/50 border-b border-whisper-border dark:border-gray-800">
-          {['Hora', 'Dirección', 'Origen', 'Destino', 'Estado', 'Dur.', 'Costo'].map((h) => (
+        <div className="hidden md:grid grid-cols-[1.1fr_0.7fr_1.1fr_1.1fr_0.8fr_0.5fr_0.8fr] gap-3 px-6 py-3 bg-card-icon-bg/50 dark:bg-gray-800/50 border-b border-whisper-border dark:border-gray-800">
+          {['Time', 'Dir.', 'From', 'To', 'Status', 'Dur.', 'Cost'].map((h) => (
             <span key={h} className="font-metadata-mono text-[10px] uppercase tracking-wider text-secondary dark:text-gray-500 font-semibold">
               {h}
             </span>
           ))}
         </div>
 
-        {/* Body */}
         {loading && !summary ? (
           <div className="divide-y divide-whisper-border dark:divide-gray-800">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-[1.1fr_0.8fr_1.1fr_1.1fr_0.8fr_0.5fr_0.8fr] gap-3 px-6 py-4">
+              <div key={i} className="grid grid-cols-[1.1fr_0.7fr_1.1fr_1.1fr_0.8fr_0.5fr_0.8fr] gap-3 px-6 py-4">
                 <SkeletonLine width="w-24" />
-                <SkeletonLine width="w-16" />
+                <SkeletonLine width="w-12" />
                 <SkeletonLine width="w-32" />
                 <SkeletonLine width="w-28" />
                 <SkeletonLine width="w-20" />
@@ -367,10 +367,10 @@ export default function TwilioCostsPage() {
         ) : !hasCalls ? (
           <div className="px-6 py-16 text-center">
             <p className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-500">
-              Sin llamadas recientes
+              No recent calls
             </p>
             <p className="font-body-md text-sm text-secondary dark:text-gray-500 mt-2 max-w-md mx-auto">
-              Cuando Twilio registre actividad aparecerá aquí en orden cronológico inverso.
+              Once Twilio records call activity it will appear here in reverse chronological order.
             </p>
           </div>
         ) : (
@@ -380,7 +380,7 @@ export default function TwilioCostsPage() {
               return (
                 <div
                   key={c.sid}
-                  className="grid grid-cols-2 md:grid-cols-[1.1fr_0.8fr_1.1fr_1.1fr_0.8fr_0.5fr_0.8fr] gap-3 px-6 py-4 items-center hover:bg-card-icon-bg/30 dark:hover:bg-gray-800/30 transition-colors"
+                  className="grid grid-cols-2 md:grid-cols-[1.1fr_0.7fr_1.1fr_1.1fr_0.8fr_0.5fr_0.8fr] gap-3 px-6 py-4 items-center hover:bg-card-icon-bg/30 dark:hover:bg-gray-800/30 transition-colors"
                 >
                   <span className="font-metadata-mono text-xs text-primary dark:text-gray-200">
                     {fmtTime(c.startTime)}
@@ -394,7 +394,7 @@ export default function TwilioCostsPage() {
                       ? <CallReceived02Icon size={12} />
                       : <CallOutgoing01Icon size={12} />
                     }
-                    {isIn ? 'ent.' : 'sal.'}
+                    {isIn ? 'in' : 'out'}
                   </span>
                   <span className="font-metadata-mono text-xs text-secondary dark:text-gray-400 truncate">
                     {c.from}
@@ -431,13 +431,13 @@ export default function TwilioCostsPage() {
       </div>
 
       <p className="text-xs text-muted-slate dark:text-gray-500 font-metadata-mono text-center pt-2">
-        Twilio · troncal SIP ALRrx · auto-refresh 30s · solo visible para administradores
+        Twilio · ALRrx SIP trunk · auto-refresh 30s · admin only
       </p>
     </div>
   );
 }
 
-// ─── KPI Card (estilo consistente con el resto de ALRrx) ──────────────────
+// ─── KPI Card ─────────────────────────────────────────────────────────────
 function KpiCard({
   icon, iconBg, label, value, sub, loading,
 }: {

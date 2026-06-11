@@ -22,15 +22,14 @@
 #     compartido; el AuthContext decide si mostrar el login.
 # (5) Componentes que leian localStorage.getItem('slice_token') ahora
 #     usan readSharedToken().
-# 2026-06-11-bust-19: TwilioCostsPage rediseñada al estilo ALRrx (español,
-#     HugeIcons, KPI cards con rounded-lg, hugeicons, paleta del theme,
-#     status badges con opacity /8 /10). Fix bug de costo: Twilio devuelve
-#     precios negativos para llamadas salientes, ahora se toma Math.Abs()
-#     en TwilioService.ParseCost. Fix TS: payload de recharts incompatible
-#     con DarkTooltip custom → simplificado a contentStyle + formatter
-#     inline. Fix TS: PERIOD_API casteado al union de getSummary.
-# Bump CACHE_BUST a 2026-06-11-bust-19.
-ARG CACHE_BUST=2026-06-11-bust-19
+# 2026-06-11-bust-20: Fix CRITICO bug de costo en summary - en Twilio SDK
+#     startTime es EXACT MATCH, no range. Cambiado a startTimeAfter +
+#     startTimeBefore en GetSummaryAsync y GetDailyCostsAsync (antes solo
+#     devolvía 1 llamada del día). TwilioCostsPage cambiada a inglés +
+#     refresh/pause como iconos HugeIcons (PauseIcon/PlayIcon/Refresh01Icon),
+#     quitado texto "en vivo", columna direction "in/out".
+# Bump CACHE_BUST a 2026-06-11-bust-20.
+ARG CACHE_BUST=2026-06-11-bust-20
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

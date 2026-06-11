@@ -31,9 +31,10 @@ public class TwilioService : ITwilioService
     {
         var (start, end) = ResolvePeriod(period, startDate, endDate);
 
+        // Twilio: startTime is an EXACT match. For a range, use startTimeAfter + startTimeBefore.
         var calls = await CallResource.ReadAsync(
-            startTime: start,
-            endTime: end,
+            startTimeAfter: start,
+            startTimeBefore: end,
             pageSize: 1000,
             limit: 1000
         );
@@ -83,9 +84,10 @@ public class TwilioService : ITwilioService
         var start = DateTime.UtcNow.AddDays(-days);
         var end = DateTime.UtcNow;
 
+        // Twilio: startTime is EXACT match. For range use startTimeAfter + startTimeBefore.
         var calls = await CallResource.ReadAsync(
-            startTime: start,
-            endTime: end,
+            startTimeAfter: start,
+            startTimeBefore: end,
             pageSize: 1000,
             limit: 1000
         );
