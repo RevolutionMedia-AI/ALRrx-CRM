@@ -22,8 +22,13 @@
 #     compartido; el AuthContext decide si mostrar el login.
 # (5) Componentes que leian localStorage.getItem('slice_token') ahora
 #     usan readSharedToken().
-# Bump CACHE_BUST a 2026-06-09-bust-17.
-ARG CACHE_BUST=2026-06-09-bust-17
+# 2026-06-11-bust-18: agregar página /twilio-costs solo para admins (ALRrx).
+#     Backend: nuevo TwilioService + TwilioController con [Authorize(Roles=Admin)]
+#     en /api/twilio/*, paquete Twilio NuGet en ALRrx.Infrastructure.
+#     Frontend: TwilioCostsPage con auto-refresh 30s, link visible solo
+#     para isAdmin (4 correos), ruta protegida con AdminRoute.
+# Bump CACHE_BUST a 2026-06-11-bust-18.
+ARG CACHE_BUST=2026-06-11-bust-18
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

@@ -109,6 +109,7 @@ builder.Services.AddInfrastructure(connectionConfig, formConnectionConfig);
 builder.Services.AddApplication();
 
 builder.Services.AddSingleton<IAuthService, ALRrx.Infrastructure.Auth.AuthService>();
+builder.Services.AddScoped<ALRrx.Application.Interfaces.ITwilioService, ALRrx.Infrastructure.Twilio.TwilioService>();
 
 var app = builder.Build();
 

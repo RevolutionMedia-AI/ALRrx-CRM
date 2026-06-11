@@ -8,6 +8,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import RealTimePage from './pages/RealTimePage';
 import UsersPage from './pages/UsersPage';
 import VicidialFormPage from './pages/VicidialFormPage';
+import TwilioCostsPage from './pages/TwilioCostsPage';
 import AppLayout from './components/Layout/AppLayout';
 import PlatformPickerModal from './components/PlatformPickerModal';
 import { resolveAccess, ROUTES } from './utils/accessControl';
@@ -211,6 +212,14 @@ function AppRoutes() {
         element={
           <AdminRoute>
             <UsersPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/twilio-costs"
+        element={
+          <AdminRoute>
+            <TwilioCostsPage />
           </AdminRoute>
         }
       />
