@@ -72,12 +72,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 onClick={() => navigate(item.path)}
                 className={
                   location.pathname === item.path
-                    ? 'text-amber-600 dark:text-amber-400 border-b-2 border-amber-500 pb-1 h-full flex items-center pt-1 text-sm font-semibold'
-                    : 'text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors h-full flex items-center text-sm font-medium'
+                    ? 'text-primary dark:text-gray-100 border-b-2 border-primary dark:border-gray-100 pb-1 h-full flex items-center pt-1 text-sm font-semibold'
+                    : 'text-secondary dark:text-gray-400 hover:text-primary dark:hover:text-gray-200 transition-colors h-full flex items-center text-sm font-medium'
                 }
                 title="Solo visible para administradores"
               >
-                💰 {item.label}
+                {item.label}
               </button>
             ))}
           </div>
