@@ -22,13 +22,13 @@
 #     compartido; el AuthContext decide si mostrar el login.
 # (5) Componentes que leian localStorage.getItem('slice_token') ahora
 #     usan readSharedToken().
-# 2026-06-11-bust-24: Fix CS8130 en TwilioExportUseCase.BuildDataAsync -
-#     Task.WhenAll con tipos mixtos (TwilioSummaryDto, List<TwilioCallDto>,
-#     List<TwilioDailyCostDto>) devolvia void[], no se podia deconstruir.
-#     Cambiado a 3 tasks separadas con await Task.WhenAll y luego await
-#     cada task individualmente.
-# Bump CACHE_BUST a 2026-06-11-bust-24.
-ARG CACHE_BUST=2026-06-11-bust-24
+# 2026-06-11-bust-25: Fix CS1503 en TwilioPdfService - los helpers
+#     HeaderCell/BodyCell recibian TableDescriptor pero el callback
+#     de table.Header() pasa TableCellDescriptor. Inlineadas todas
+#     las celdas directamente usando el patron de DashboardPdfService
+#     (header.Cell() / table.Cell() con .Background().Padding().Align*().Text()).
+# Bump CACHE_BUST a 2026-06-11-bust-25.
+ARG CACHE_BUST=2026-06-11-bust-25
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

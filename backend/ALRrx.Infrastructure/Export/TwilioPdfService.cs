@@ -130,20 +130,28 @@ internal sealed class TwilioReportDocument : IDocument
 
                 table.Header(header =>
                 {
-                    HeaderCell(header, "Date");
-                    HeaderCell(header, "Cost (USD)", alignRight: true);
-                    HeaderCell(header, "Calls", alignCenter: true);
-                    HeaderCell(header, "Minutes", alignRight: true);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6)
+                        .Text("Date").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).AlignRight()
+                        .Text("Cost (USD)").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).AlignCenter()
+                        .Text("Calls").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).AlignRight()
+                        .Text("Minutes").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
                 });
 
                 for (var i = 0; i < _data.Daily.Count; i++)
                 {
                     var d = _data.Daily[i];
                     var bg = i % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
-                    BodyCell(table, bg, TimeZoneHelper.ToPstString(d.Date, "yyyy-MM-dd"));
-                    BodyCell(table, bg, FormatCost(d.Cost), alignRight: true, bold: true);
-                    BodyCell(table, bg, d.CallCount.ToString("N0"), alignCenter: true);
-                    BodyCell(table, bg, d.Minutes.ToString("N0"), alignRight: true);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6)
+                        .Text(TimeZoneHelper.ToPstString(d.Date, "yyyy-MM-dd")).FontSize(8).FontColor(Colors.Grey.Darken1);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignRight()
+                        .Text(FormatCost(d.Cost)).FontSize(8).SemiBold().FontColor(Colors.Grey.Darken1);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignCenter()
+                        .Text(d.CallCount.ToString("N0")).FontSize(8).FontColor(Colors.Grey.Darken1);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignRight()
+                        .Text(d.Minutes.ToString("N0")).FontSize(8).FontColor(Colors.Grey.Darken1);
                 }
             });
         });
@@ -169,13 +177,20 @@ internal sealed class TwilioReportDocument : IDocument
 
                 table.Header(header =>
                 {
-                    HeaderCell(header, "Time (PST)");
-                    HeaderCell(header, "Dir.");
-                    HeaderCell(header, "From");
-                    HeaderCell(header, "To");
-                    HeaderCell(header, "Status", alignCenter: true);
-                    HeaderCell(header, "Dur.", alignRight: true);
-                    HeaderCell(header, "Cost", alignRight: true);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6)
+                        .Text("Time (PST)").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).AlignCenter()
+                        .Text("Dir.").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6)
+                        .Text("From").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6)
+                        .Text("To").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).AlignCenter()
+                        .Text("Status").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).AlignRight()
+                        .Text("Dur.").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
+                    header.Cell().Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6).AlignRight()
+                        .Text("Cost").FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
                 });
 
                 var limit = Math.Min(20, _data.RecentCalls.Count);
@@ -183,33 +198,23 @@ internal sealed class TwilioReportDocument : IDocument
                 {
                     var c = _data.RecentCalls[i];
                     var bg = i % 2 == 0 ? Colors.White : Colors.Grey.Lighten4;
-                    BodyCell(table, bg, TimeZoneHelper.ToPstString(c.StartTime, "MM-dd HH:mm"));
-                    BodyCell(table, bg, c.Direction == "inbound" ? "IN" : "OUT", alignCenter: true);
-                    BodyCell(table, bg, c.From);
-                    BodyCell(table, bg, c.To);
-                    BodyCell(table, bg, c.Status, alignCenter: true);
-                    BodyCell(table, bg, FormatDuration(c.DurationSeconds), alignRight: true);
-                    BodyCell(table, bg, FormatCost(c.Cost), alignRight: true, bold: true);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6)
+                        .Text(TimeZoneHelper.ToPstString(c.StartTime, "MM-dd HH:mm")).FontSize(8).FontColor(Colors.Grey.Darken1);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignCenter()
+                        .Text(c.Direction == "inbound" ? "IN" : "OUT").FontSize(8).FontColor(Colors.Grey.Darken1);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6)
+                        .Text(c.From).FontSize(8).FontColor(Colors.Grey.Darken1);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6)
+                        .Text(c.To).FontSize(8).FontColor(Colors.Grey.Darken1);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignCenter()
+                        .Text(c.Status).FontSize(8).FontColor(Colors.Grey.Darken1);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignRight()
+                        .Text(FormatDuration(c.DurationSeconds)).FontSize(8).FontColor(Colors.Grey.Darken1);
+                    table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignRight()
+                        .Text(FormatCost(c.Cost)).FontSize(8).SemiBold().FontColor(Colors.Grey.Darken1);
                 }
             });
         });
-    }
-
-    private static void HeaderCell(QuestPDF.Infrastructure.ITableCellDescriptor cell, string text, bool alignCenter = false, bool alignRight = false)
-    {
-        cell.Background(Colors.Grey.Lighten3).PaddingVertical(4).PaddingHorizontal(6)
-            .Text(text).FontSize(7.5f).SemiBold().FontColor(Colors.Grey.Darken2);
-        if (alignCenter) cell.AlignCenter();
-        if (alignRight) cell.AlignRight();
-    }
-
-    private static void BodyCell(QuestPDF.Fluent.TableDescriptor table, string bg, string text, bool alignCenter = false, bool alignRight = false, bool bold = false)
-    {
-        var cell = table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6)
-            .Text(text).FontSize(8).FontColor(Colors.Grey.Darken1);
-        if (bold) cell.SemiBold();
-        if (alignCenter) cell.AlignCenter();
-        if (alignRight) cell.AlignRight();
     }
 
     private static string FormatCost(decimal n)
