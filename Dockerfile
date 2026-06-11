@@ -22,13 +22,12 @@
 #     compartido; el AuthContext decide si mostrar el login.
 # (5) Componentes que leian localStorage.getItem('slice_token') ahora
 #     usan readSharedToken().
-# 2026-06-11-bust-25: Fix CS1503 en TwilioPdfService - los helpers
-#     HeaderCell/BodyCell recibian TableDescriptor pero el callback
-#     de table.Header() pasa TableCellDescriptor. Inlineadas todas
-#     las celdas directamente usando el patron de DashboardPdfService
-#     (header.Cell() / table.Cell() con .Background().Padding().Align*().Text()).
-# Bump CACHE_BUST a 2026-06-11-bust-25.
-ARG CACHE_BUST=2026-06-11-bust-25
+# 2026-06-11-bust-26: Quitar las 2 charts de Twilio Costs (Daily Cost Trend
+#     y Call Volume Trend) - con 1 solo data point no aportan valor
+#     visual. Limpiar imports no usados de recharts, hasDailyData,
+#     daily, fmtDate, setDaily. Frontend compila OK.
+# Bump CACHE_BUST a 2026-06-11-bust-26.
+ARG CACHE_BUST=2026-06-11-bust-26
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend

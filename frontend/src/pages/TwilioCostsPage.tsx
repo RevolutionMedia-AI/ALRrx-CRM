@@ -1,7 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-} from 'recharts';
+﻿import { useEffect, useState, useCallback } from 'react';
 import { twilioApi, type TwilioSummary, type TwilioCall, type TwilioDailyCost } from '../services/twilioApi';
 import {
   CallOutgoing01Icon,
@@ -12,8 +9,6 @@ import {
   Refresh01Icon,
   PauseIcon,
   PlayIcon,
-  ChartLineData01Icon,
-  Download01Icon,
   Pdf01Icon,
   GoogleSheetIcon,
 } from 'hugeicons-react';
@@ -21,7 +16,7 @@ import {
 type Period = 'Today' | 'Week' | 'Month';
 const PERIOD_API: Record<Period, string> = { Today: 'today', Week: 'week', Month: 'month' };
 
-// ─── Formatters ────────────────────────────────────────────────────────────
+// â”€â”€â”€ Formatters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function fmtCost(n: number): string {
   if (!isFinite(n) || isNaN(n)) return '$0.0000000';
   const abs = Math.abs(n);
@@ -42,7 +37,7 @@ function fmtTime(iso: string): string {
     return new Date(iso).toLocaleString('en-US', {
       hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short',
     });
-  } catch { return '—'; }
+  } catch { return 'â€”'; }
 }
 
 function fmtDate(iso: string): string {
@@ -51,7 +46,7 @@ function fmtDate(iso: string): string {
   } catch { return iso; }
 }
 
-// ─── DarkTooltip (mismo que Dashboard) ────────────────────────────────────
+// â”€â”€â”€ DarkTooltip (mismo que Dashboard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function DarkTooltip({ active, payload, label }: {
   active?: boolean;
   payload?: Array<{ name: string; value: number; color: string }>;
@@ -72,12 +67,12 @@ function DarkTooltip({ active, payload, label }: {
   );
 }
 
-// ─── Skeleton row ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Skeleton row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SkeletonLine({ width = 'w-full' }: { width?: string }) {
   return <div className={`${width} h-3 bg-card-icon-bg dark:bg-gray-800 rounded animate-pulse`} />;
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function TwilioCostsPage() {
   const [period, setPeriod] = useState<Period>('Today');
   const [summary, setSummary] = useState<TwilioSummary | null>(null);
@@ -155,12 +150,11 @@ export default function TwilioCostsPage() {
     }
   }, [period]);
 
-  const hasDailyData = daily.some((d) => d.cost > 0 || d.callCount > 0);
   const hasCalls = calls.length > 0;
 
   return (
     <div className="space-y-6">
-      {/* ─── Header ─────────────────────────────────────── */}
+      {/* â”€â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display-hero text-display-hero text-primary dark:text-white">
@@ -182,7 +176,7 @@ export default function TwilioCostsPage() {
             className="h-10 px-3 rounded-lg border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
           >
             <GoogleSheetIcon size={16} className="text-emerald-signal" />
-            <span className="hidden sm:inline">{exportingExcel ? 'Generating…' : 'Excel'}</span>
+            <span className="hidden sm:inline">{exportingExcel ? 'Generatingâ€¦' : 'Excel'}</span>
           </button>
           <button
             onClick={handleExportPdf}
@@ -191,7 +185,7 @@ export default function TwilioCostsPage() {
             className="h-10 px-3 rounded-lg border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors flex items-center gap-2 text-sm font-medium disabled:opacity-50"
           >
             <Pdf01Icon size={16} className="text-deep-rose" />
-            <span className="hidden sm:inline">{exportingPdf ? 'Generating…' : 'PDF'}</span>
+            <span className="hidden sm:inline">{exportingPdf ? 'Generatingâ€¦' : 'PDF'}</span>
           </button>
           <div className="w-px h-6 bg-whisper-border dark:bg-gray-700 mx-1" />
           <button
@@ -211,7 +205,7 @@ export default function TwilioCostsPage() {
         </div>
       </div>
 
-      {/* ─── Period selector ───────────────────────────── */}
+      {/* â”€â”€â”€ Period selector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex items-center gap-2 flex-wrap">
         {(['Today', 'Week', 'Month'] as Period[]).map((p) => {
           const isActive = period === p;
@@ -245,7 +239,7 @@ export default function TwilioCostsPage() {
         </div>
       )}
 
-      {/* ─── KPI Cards ──────────────────────────────────── */}
+      {/* â”€â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           icon={<Money01Icon size={20} className="text-electric-blue" />}
@@ -260,7 +254,7 @@ export default function TwilioCostsPage() {
           iconBg="bg-emerald-signal/10"
           label="Calls"
           value={summary ? summary.totalCalls.toLocaleString('en-US') : null}
-          sub={summary ? `${summary.inboundCalls} in · ${summary.outboundCalls} out` : '—'}
+          sub={summary ? `${summary.inboundCalls} in Â· ${summary.outboundCalls} out` : 'â€”'}
           loading={loading}
         />
         <KpiCard
@@ -270,7 +264,7 @@ export default function TwilioCostsPage() {
           value={summary ? summary.totalMinutes.toLocaleString('en-US') : null}
           sub={summary && summary.totalCalls > 0
             ? `~${Math.round(summary.totalMinutes / summary.totalCalls)} min/call`
-            : '—'}
+            : 'â€”'}
           loading={loading}
         />
         <KpiCard
@@ -283,128 +277,15 @@ export default function TwilioCostsPage() {
         />
       </div>
 
-      {/* ─── Daily Cost Trend (EXACT Dashboard style) ────── */}
-      <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card">
-        <div className="p-6 border-b border-whisper-border dark:border-gray-700 flex justify-between items-center">
-          <div>
-            <h3 className="font-bold text-lg text-primary dark:text-white">Daily Cost Trend</h3>
-            <p className="text-[11px] text-secondary dark:text-gray-400 mt-0.5 font-metadata-mono uppercase tracking-wider">
-              Twilio spend over the last 30 days
-            </p>
-          </div>
-          <ChartLineData01Icon size={24} className="text-electric-blue" />
-        </div>
-        <div className="p-8 flex flex-col gap-6">
-          <div className="w-full h-80">
-            {hasDailyData ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={daily}>
-                  <defs>
-                    <linearGradient id="twilioCostGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 11, fill: '#94A3B8' }}
-                    interval={0}
-                    angle={-30}
-                    textAnchor="end"
-                    height={50}
-                    tickFormatter={(d) => fmtDate(d)}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: '#94A3B8' }}
-                    tickFormatter={(v) => '$' + v.toFixed(2)}
-                  />
-                  <Tooltip content={<DarkTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="cost"
-                    name="Cost"
-                    stroke="#3B82F6"
-                    fill="url(#twilioCostGrad)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="w-full h-full rounded-lg border border-dashed border-whisper-border bg-surface-container-low flex flex-col items-center justify-center text-muted-slate text-sm gap-1">
-                <ChartLineData01Icon size={32} className="text-muted-slate/50" />
-                <p>No cost data yet</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
 
-      {/* ─── Call Volume Trend (EXACT Dashboard style) ────── */}
-      <section className="bg-pure-surface dark:bg-gray-900 border border-card-border dark:border-gray-700 rounded-xl shadow-card">
-        <div className="p-6 border-b border-whisper-border dark:border-gray-700 flex justify-between items-center">
-          <div>
-            <h3 className="font-bold text-lg text-primary dark:text-white">Call Volume Trend</h3>
-            <p className="text-[11px] text-secondary dark:text-gray-400 mt-0.5 font-metadata-mono uppercase tracking-wider">
-              Number of calls over the last 30 days
-            </p>
-          </div>
-          <Call02Icon size={24} className="text-emerald-signal" />
-        </div>
-        <div className="p-8 flex flex-col gap-6">
-          <div className="w-full h-80">
-            {hasDailyData ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={daily}>
-                  <defs>
-                    <linearGradient id="twilioCallsGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 11, fill: '#94A3B8' }}
-                    interval={0}
-                    angle={-30}
-                    textAnchor="end"
-                    height={50}
-                    tickFormatter={(d) => fmtDate(d)}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: '#94A3B8' }}
-                    allowDecimals={false}
-                  />
-                  <Tooltip content={<DarkTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="callCount"
-                    name="Calls"
-                    stroke="#10B981"
-                    fill="url(#twilioCallsGrad)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="w-full h-full rounded-lg border border-dashed border-whisper-border bg-surface-container-low flex flex-col items-center justify-center text-muted-slate text-sm gap-1">
-                <ChartLineData01Icon size={32} className="text-muted-slate/50" />
-                <p>No call activity yet</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Recent calls table ─────────────────────────── */}
+      {/* â”€â”€â”€ Recent calls table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="bg-pure-surface dark:bg-gray-900 rounded-lg shadow-card border border-whisper-border dark:border-gray-800 overflow-hidden">
         <div className="flex items-baseline justify-between px-6 py-4 border-b border-whisper-border dark:border-gray-800">
           <h2 className="font-metadata-mono text-xs uppercase tracking-wider text-secondary dark:text-gray-400">
             Recent Calls
           </h2>
           <span className="font-metadata-mono text-xs text-secondary dark:text-gray-500">
-            Last 20 · {hasCalls ? `${calls.length}` : '—'}
+            Last 20 Â· {hasCalls ? `${calls.length}` : 'â€”'}
           </span>
         </div>
 
@@ -497,13 +378,13 @@ export default function TwilioCostsPage() {
       </div>
 
       <p className="text-xs text-muted-slate dark:text-gray-500 font-metadata-mono text-center pt-2">
-        Twilio · ALRrx SIP trunk · auto-refresh 30s · admin only
+        Twilio Â· ALRrx SIP trunk Â· auto-refresh 30s Â· admin only
       </p>
     </div>
   );
 }
 
-// ─── KPI Card ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ KPI Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function KpiCard({
   icon, iconBg, label, value, sub, loading,
 }: {
