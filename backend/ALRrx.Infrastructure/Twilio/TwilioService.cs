@@ -11,6 +11,8 @@ namespace ALRrx.Infrastructure.Twilio;
 
 public class TwilioService : ITwilioService
 {
+    private const string TwilioApiBase = "https://api.twilio.com";
+
     private readonly string _accountSid;
     private readonly string _authToken;
     private readonly ILogger<TwilioService> _logger;
@@ -28,8 +30,16 @@ public class TwilioService : ITwilioService
         }
 
         _httpClient = httpClientFactory.CreateClient();
-        _httpClient.BaseAddress = new Uri("https://api.twilio.com/2010-04-01/");
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
+    }
+
+    private static string AbsoluteUrl(string pathOrUrl)
+    {
+        if (string.IsNullOrEmpty(pathOrUrl)) return TwilioApiBase;
+        if (pathOrUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            pathOrUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return pathOrUrl;
+        return TwilioApiBase + (pathOrUrl.StartsWith("/") ? pathOrUrl : "/" + pathOrUrl);
     }
 
     public async Task<TwilioSummaryDto> GetSummaryAsync(string period, DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
@@ -138,32 +148,30 @@ public class TwilioService : ITwilioService
 
         do
         {
-            string query;
+            string url;
             if (nextPageUri != null)
             {
-                // next_page_uri is relative like "/2010-04-01/.../Calls.json?Page=2&PageSize=1000"
-                query = nextPageUri.TrimStart('/');
+                url = AbsoluteUrl(nextPageUri);
             }
             else
             {
                 var sb = new StringBuilder();
-                sb.Append($"Accounts/{_accountSid}/Calls.json?PageSize={pageSize}");
+                sb.Append($"/2010-04-01/Accounts/{_accountSid}/Calls.json?PageSize={pageSize}");
                 if (start > DateTime.MinValue)
                     sb.Append($"&StartTime>={Uri.EscapeDataString(start.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
                 if (end > DateTime.MinValue && end < DateTime.UtcNow.AddYears(1))
                     sb.Append($"&EndTime<={Uri.EscapeDataString(end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
-                query = sb.ToString();
+                url = AbsoluteUrl(sb.ToString());
             }
 
-            var request = new HttpRequestMessage(HttpMethod.Get, query);
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
             var creds = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_accountSid}:{_authToken}"));
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", creds);
 
-            _logger.LogInformation("[Twilio] HTTP GET page {Page}: {Query}", page, query);
+            _logger.LogInformation("[Twilio] HTTP GET page {Page}: {Url}", page, url);
             var response = await _httpClient.SendAsync(request, ct);
             var body = await response.Content.ReadAsStringAsync(ct);
 
-            // Log first 500 chars of body for debugging
             var bodyPreview = body.Length > 500 ? body.Substring(0, 500) + "..." : body;
             _logger.LogInformation("[Twilio] HTTP response body (page {Page}): {Body}", page, bodyPreview);
 
@@ -264,24 +272,25 @@ public class TwilioService : ITwilioService
 
         do
         {
-            string query;
+            string url;
             if (nextPageUri != null)
             {
-                query = nextPageUri.TrimStart('/');
+                url = AbsoluteUrl(nextPageUri);
             }
             else
             {
                 var sb = new StringBuilder();
-                sb.Append($"Accounts/{_accountSid}/Usage/Records.json?PageSize={pageSize}");
+                sb.Append($"/2010-04-01/Accounts/{_accountSid}/Usage/Records.json?PageSize={pageSize}");
                 sb.Append($"&StartTime>={Uri.EscapeDataString(start.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
                 sb.Append($"&EndTime<={Uri.EscapeDataString(end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
-                query = sb.ToString();
+                url = AbsoluteUrl(sb.ToString());
             }
 
-            var request = new HttpRequestMessage(HttpMethod.Get, query);
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
             var creds = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_accountSid}:{_authToken}"));
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", creds);
 
+            _logger.LogInformation("[Twilio] HTTP GET Usage/Records page {Page}: {Url}", page, url);
             var response = await _httpClient.SendAsync(request, ct);
             var body = await response.Content.ReadAsStringAsync(ct);
 
