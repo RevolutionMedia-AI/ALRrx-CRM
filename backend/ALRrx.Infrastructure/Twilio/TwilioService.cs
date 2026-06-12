@@ -4,6 +4,7 @@ using System.Text.Json;
 using ALRrx.Application.DTOs;
 using ALRrx.Application.Helpers;
 using ALRrx.Application.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -12,17 +13,26 @@ namespace ALRrx.Infrastructure.Twilio;
 public class TwilioService : ITwilioService
 {
     private const string TwilioApiBase = "https://api.twilio.com";
+    private static readonly TimeSpan SummaryTtl = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RecentTtl = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DailyTtl = TimeSpan.FromSeconds(60);
 
     private readonly string _accountSid;
     private readonly string _authToken;
     private readonly ILogger<TwilioService> _logger;
     private readonly HttpClient _httpClient;
+    private readonly IMemoryCache _cache;
 
-    public TwilioService(IConfiguration configuration, ILogger<TwilioService> logger, IHttpClientFactory httpClientFactory)
+    public TwilioService(
+        IConfiguration configuration,
+        ILogger<TwilioService> logger,
+        IHttpClientFactory httpClientFactory,
+        IMemoryCache cache)
     {
         _accountSid = configuration["Twilio:AccountSid"] ?? "";
         _authToken = configuration["Twilio:AuthToken"] ?? "";
         _logger = logger;
+        _cache = cache;
 
         if (string.IsNullOrEmpty(_accountSid) || string.IsNullOrEmpty(_authToken))
         {
@@ -44,6 +54,13 @@ public class TwilioService : ITwilioService
 
     public async Task<TwilioSummaryDto> GetSummaryAsync(string period, DateTime? startDate = null, DateTime? endDate = null, CancellationToken ct = default)
     {
+        var key = $"twilio:summary:{period}:{startDate:o}:{endDate:o}";
+        if (_cache.TryGetValue(key, out TwilioSummaryDto? cached) && cached != null)
+        {
+            _logger.LogInformation("[Twilio] GetSummaryAsync cache HIT for key {Key}", key);
+            return cached;
+        }
+
         var (start, end) = ResolvePeriod(period, startDate, endDate);
         _logger.LogInformation("[Twilio] GetSummaryAsync period='{Period}' resolved start={Start:o} end={End:o}", period, start, end);
 
@@ -59,7 +76,7 @@ public class TwilioService : ITwilioService
         var inbound = calls.Where(c => c.Direction == "inbound").ToList();
         var outbound = calls.Where(c => c.Direction != "inbound").ToList();
 
-        return new TwilioSummaryDto
+        var summary = new TwilioSummaryDto
         {
             TotalCost = totalCost,
             TotalCalls = calls.Count,
@@ -73,12 +90,22 @@ public class TwilioService : ITwilioService
             PeriodEnd = end,
             LastUpdated = DateTime.UtcNow
         };
+
+        _cache.Set(key, summary, SummaryTtl);
+        return summary;
     }
 
     public async Task<List<TwilioCallDto>> GetRecentCallsAsync(int limit = 50, CancellationToken ct = default)
     {
+        var key = $"twilio:recent:{limit}";
+        if (_cache.TryGetValue(key, out List<TwilioCallDto>? cached) && cached != null)
+        {
+            _logger.LogInformation("[Twilio] GetRecentCallsAsync cache HIT for key {Key}", key);
+            return cached;
+        }
+
         var calls = await FetchAllCallsAsync(DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct, limit);
-        return calls
+        var result = calls
             .OrderByDescending(c => c.StartTime)
             .Select(c => new TwilioCallDto
             {
@@ -95,10 +122,20 @@ public class TwilioService : ITwilioService
                 HasRecording = c.HasRecording
             })
             .ToList();
+
+        _cache.Set(key, result, RecentTtl);
+        return result;
     }
 
     public async Task<List<TwilioDailyCostDto>> GetDailyCostsAsync(int days = 30, CancellationToken ct = default)
     {
+        var key = $"twilio:daily:{days}";
+        if (_cache.TryGetValue(key, out List<TwilioDailyCostDto>? cached) && cached != null)
+        {
+            _logger.LogInformation("[Twilio] GetDailyCostsAsync cache HIT for key {Key}", key);
+            return cached;
+        }
+
         var start = DateTime.UtcNow.AddDays(-days);
         var end = DateTime.UtcNow;
 
@@ -118,7 +155,7 @@ public class TwilioService : ITwilioService
             .OrderBy(d => d)
             .ToList();
 
-        return allDates
+        var result = allDates
             .Select(d => new TwilioDailyCostDto
             {
                 Date = d,
@@ -127,6 +164,9 @@ public class TwilioService : ITwilioService
                 Minutes = callsByDate.TryGetValue(d, out var list2) ? (int)list2.Sum(c => c.DurationSeconds / 60.0) : 0
             })
             .ToList();
+
+        _cache.Set(key, result, DailyTtl);
+        return result;
     }
 
     /// <summary>
@@ -415,7 +455,10 @@ public class TwilioService : ITwilioService
     private static string IsInboundFromString(string direction)
     {
         if (string.IsNullOrEmpty(direction)) return "outbound";
-        return direction.ToLowerInvariant().Contains("inbound") ? "inbound" : "outbound";
+        var d = direction.ToLowerInvariant();
+        if (d == "inbound" || d.Contains("inbound") || d.Contains("terminating"))
+            return "inbound";
+        return "outbound";
     }
 
     private static decimal ParseCost(string? price)
