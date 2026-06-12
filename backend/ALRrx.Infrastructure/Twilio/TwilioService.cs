@@ -64,17 +64,19 @@ public class TwilioService : ITwilioService
         var (start, end) = ResolvePeriod(period, startDate, endDate);
         _logger.LogInformation("[Twilio] GetSummaryAsync period='{Period}' resolved start={Start:o} end={End:o}", period, start, end);
 
-        var callsTask = FetchAllCallsAsync(start, end, ct);
-        var usageTask = FetchUsageCostsAsync(start, end, ct);
-        await Task.WhenAll(callsTask, usageTask);
-
-        var calls = await callsTask;
-        var (totalCost, inboundCost, outboundCost, currency) = await usageTask;
-        _logger.LogInformation("[Twilio] GetSummaryAsync returned {Count} calls, totalCost={Cost} (in={In} out={Out}) {Currency} for period '{Period}'",
-            calls.Count, totalCost, inboundCost, outboundCost, currency, period);
+        var calls = await FetchAllCallsAsync(start, end, ct);
 
         var inbound = calls.Where(c => c.Direction == "inbound").ToList();
         var outbound = calls.Where(c => c.Direction != "inbound").ToList();
+
+        var totalCost = calls.Sum(c => c.Cost ?? 0m);
+        var inboundCost = inbound.Sum(c => c.Cost ?? 0m);
+        var outboundCost = outbound.Sum(c => c.Cost ?? 0m);
+        var currency = calls.FirstOrDefault(c => !string.IsNullOrEmpty(c.Currency))?.Currency ?? "USD";
+
+        _logger.LogInformation("[Twilio] GetSummaryAsync period='{Period}' calls={Count} totalCost={Cost} in={In} out={Out} {Currency} (priced={Priced}/{Total})",
+            period, calls.Count, totalCost, inboundCost, outboundCost, currency,
+            calls.Count(c => c.Cost.HasValue), calls.Count);
 
         var summary = new TwilioSummaryDto
         {
@@ -139,30 +141,18 @@ public class TwilioService : ITwilioService
 
         var (start, end) = ResolvePeriod(period, null, null);
 
-        var callsTask = FetchAllCallsAsync(start, end, ct);
-        var dailyCostTask = FetchDailyUsageCostsAsync(start, end, ct);
-        await Task.WhenAll(callsTask, dailyCostTask);
+        var calls = await FetchAllCallsAsync(start, end, ct);
 
-        var calls = await callsTask;
-        var dailyCost = await dailyCostTask;
-
-        var callsByDate = calls
+        var result = calls
             .GroupBy(c => c.StartTime.Date)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var allDates = callsByDate.Keys
-            .Union(dailyCost.Keys)
-            .OrderBy(d => d)
-            .ToList();
-
-        var result = allDates
-            .Select(d => new TwilioDailyCostDto
+            .Select(g => new TwilioDailyCostDto
             {
-                Date = d,
-                Cost = dailyCost.TryGetValue(d, out var c) ? c : 0m,
-                CallCount = callsByDate.TryGetValue(d, out var list) ? list.Count : 0,
-                Minutes = callsByDate.TryGetValue(d, out var list2) ? (int)list2.Sum(c => c.DurationSeconds / 60.0) : 0
+                Date = g.Key,
+                Cost = g.Sum(c => c.Cost ?? 0m),
+                CallCount = g.Count(),
+                Minutes = (int)g.Sum(c => c.DurationSeconds / 60.0)
             })
+            .OrderBy(d => d.Date)
             .ToList();
 
         _cache.Set(key, result, DailyTtl);
@@ -245,187 +235,6 @@ public class TwilioService : ITwilioService
         return all;
     }
 
-    /// <summary>
-    /// Fetch real billed cost from Twilio Usage/Records.json.
-    /// This is the source of truth for SIP trunking costs — Calls.json
-    /// returns price=null for trunked calls, so we MUST aggregate from
-    /// usage records (categories sip-trunking-inbound-price,
-    /// sip-trunking-outbound-*-price, sip-recording-storage, etc).
-    /// </summary>
-    private async Task<(decimal total, decimal inbound, decimal outbound, string currency)> FetchUsageCostsAsync(
-        DateTime start, DateTime end, CancellationToken ct)
-    {
-        decimal total = 0m, inbound = 0m, outbound = 0m;
-        string currency = "USD";
-        var allRecords = await FetchAllUsageRecordsAsync(start, end, ct);
-        _logger.LogInformation("[Twilio] FetchUsageCostsAsync: {Count} usage records between {Start:o} and {End:o}",
-            allRecords.Count, start, end);
-
-        var seenSip = 0;
-        var seenNonZero = 0;
-        foreach (var rec in allRecords)
-        {
-            if (!rec.Category.StartsWith("sip-", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            seenSip++;
-            if (rec.Price <= 0m)
-            {
-                _logger.LogDebug("[Twilio] Skip sip record cat='{Cat}' price={Price} (not yet billed?)", rec.Category, rec.Price);
-                continue;
-            }
-
-            seenNonZero++;
-            total += rec.Price;
-            if (!string.IsNullOrEmpty(rec.Currency))
-                currency = rec.Currency;
-
-            var cat = rec.Category.ToLowerInvariant();
-            if (cat.Contains("inbound") || cat.Contains("origination"))
-                inbound += rec.Price;
-            else if (cat.Contains("outbound") || cat.Contains("termination"))
-                outbound += rec.Price;
-        }
-
-        _logger.LogInformation("[Twilio] FetchUsageCostsAsync: sipRecords={Sip} billedRecords={Billed} total=${Total} in=${In} out=${Out}",
-            seenSip, seenNonZero, total, inbound, outbound);
-        return (total, inbound, outbound, currency);
-    }
-
-    private async Task<Dictionary<DateTime, decimal>> FetchDailyUsageCostsAsync(
-        DateTime start, DateTime end, CancellationToken ct)
-    {
-        var byDate = new Dictionary<DateTime, decimal>();
-        var allRecords = await FetchAllUsageRecordsAsync(start, end, ct);
-
-        foreach (var rec in allRecords)
-        {
-            if (!rec.Category.StartsWith("sip-", StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (rec.Price <= 0m) continue;
-
-            var date = TimeZoneHelper.ToPst(rec.StartDate).Date;
-            if (!byDate.TryAdd(date, rec.Price))
-                byDate[date] += rec.Price;
-        }
-
-        return byDate;
-    }
-
-    private async Task<List<TwilioUsageRecord>> FetchAllUsageRecordsAsync(
-        DateTime start, DateTime end, CancellationToken ct)
-    {
-        var all = new List<TwilioUsageRecord>();
-        string? nextPageUri = null;
-        var page = 0;
-        const int pageSize = 500;
-
-        do
-        {
-            string url;
-            if (nextPageUri != null)
-            {
-                url = AbsoluteUrl(nextPageUri);
-            }
-            else
-            {
-                var sb = new StringBuilder();
-                sb.Append($"/2010-04-01/Accounts/{_accountSid}/Usage/Records.json?PageSize={pageSize}");
-                sb.Append($"&StartTime>={Uri.EscapeDataString(start.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
-                sb.Append($"&EndTime<={Uri.EscapeDataString(end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
-                url = AbsoluteUrl(sb.ToString());
-            }
-
-            var request = new HttpRequestMessage(HttpMethod.Get, url);
-            var creds = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_accountSid}:{_authToken}"));
-            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", creds);
-
-            _logger.LogInformation("[Twilio] HTTP GET Usage/Records page {Page}: {Url}", page, url);
-            var response = await _httpClient.SendAsync(request, ct);
-            var body = await response.Content.ReadAsStringAsync(ct);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("[Twilio] Usage/Records HTTP {Status}: {Body}", response.StatusCode,
-                    body.Length > 300 ? body.Substring(0, 300) + "..." : body);
-                break;
-            }
-
-            using var doc = JsonDocument.Parse(body);
-            if (!doc.RootElement.TryGetProperty("usage_records", out var records))
-                break;
-
-            if (page == 0)
-            {
-                var firstRecord = records.EnumerateArray().FirstOrDefault();
-                if (firstRecord.ValueKind != JsonValueKind.Undefined)
-                {
-                    _logger.LogInformation("[Twilio] Usage/Records sample record: {Json}",
-                        firstRecord.GetRawText());
-                }
-            }
-
-            nextPageUri = doc.RootElement.TryGetProperty("next_page_uri", out var npt) ? npt.GetString() : null;
-
-            foreach (var rec in records.EnumerateArray())
-            {
-                var parsed = ParseUsageRecord(rec);
-                if (parsed != null) all.Add(parsed);
-            }
-
-            page++;
-            if (page > 200) break;
-
-        }
-        while (!string.IsNullOrEmpty(nextPageUri));
-
-        return all;
-    }
-
-    private static TwilioUsageRecord? ParseUsageRecord(JsonElement el)
-    {
-        try
-        {
-            var category = el.TryGetProperty("category", out var c) ? c.GetString() ?? "" : "";
-            var description = el.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
-            var priceStr = el.TryGetProperty("price", out var p) ? p.GetString() : null;
-            var priceUnit = el.TryGetProperty("price_unit", out var pu) ? pu.GetString() ?? "USD" : "USD";
-            var startDateStr = el.TryGetProperty("start_date", out var sd) ? sd.GetString() : null;
-            var endDateStr = el.TryGetProperty("end_date", out var ed) ? ed.GetString() : null;
-            var usageStr = el.TryGetProperty("usage", out var u) ? u.GetString() : null;
-            var usageUnit = el.TryGetProperty("usage_unit", out var uu) ? uu.GetString() ?? "" : "";
-            var count = el.TryGetProperty("count", out var cnt) && cnt.TryGetInt32(out var cv) ? cv : 0;
-
-            var price = 0m;
-            if (!string.IsNullOrEmpty(priceStr))
-                decimal.TryParse(priceStr, System.Globalization.NumberStyles.Any,
-                    System.Globalization.CultureInfo.InvariantCulture, out price);
-            price = Math.Abs(price);
-
-            DateTime startDate = DateTime.MinValue;
-            if (!string.IsNullOrEmpty(startDateStr) && DateTime.TryParse(startDateStr, out var sdp))
-                startDate = DateTime.SpecifyKind(sdp, DateTimeKind.Utc);
-
-            return new TwilioUsageRecord
-            {
-                Category = category,
-                Description = description,
-                Price = price,
-                Currency = priceUnit,
-                StartDate = startDate,
-                EndDate = !string.IsNullOrEmpty(endDateStr) && DateTime.TryParse(endDateStr, out var edp)
-                    ? DateTime.SpecifyKind(edp, DateTimeKind.Utc) : startDate,
-                Usage = usageStr ?? "",
-                UsageUnit = usageUnit,
-                Count = count
-            };
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     private static TwilioCallDto? ParseCallFromJson(JsonElement el)
     {
         try
@@ -495,17 +304,4 @@ public class TwilioService : ITwilioService
         var clean = duration.Split('.')[0];
         return int.TryParse(clean, out var s) ? s : 0;
     }
-}
-
-internal sealed class TwilioUsageRecord
-{
-    public string Category { get; set; } = "";
-    public string Description { get; set; } = "";
-    public decimal Price { get; set; }
-    public string Currency { get; set; } = "USD";
-    public DateTime StartDate { get; set; }
-    public DateTime EndDate { get; set; }
-    public string Usage { get; set; } = "";
-    public string UsageUnit { get; set; } = "";
-    public int Count { get; set; }
 }
