@@ -211,7 +211,7 @@ internal sealed class TwilioReportDocument : IDocument
                     table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignRight()
                         .Text(FormatDuration(c.DurationSeconds)).FontSize(8).FontColor(Colors.Grey.Darken1);
                     table.Cell().Background(bg).PaddingVertical(3).PaddingHorizontal(6).AlignRight()
-                        .Text(FormatCost(c.Cost)).FontSize(8).SemiBold().FontColor(Colors.Grey.Darken1);
+                        .Text(c.Cost.HasValue ? FormatCost(c.Cost.Value) : "—").FontSize(8).SemiBold().FontColor(Colors.Grey.Darken1);
                 }
             });
         });

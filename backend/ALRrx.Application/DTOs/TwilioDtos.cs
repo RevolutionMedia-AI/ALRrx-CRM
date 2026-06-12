@@ -24,7 +24,7 @@ public class TwilioCallDto
     public string Status { get; set; } = "";
     public string Direction { get; set; } = "";
     public int DurationSeconds { get; set; }
-    public decimal Cost { get; set; }
+    public decimal? Cost { get; set; }
     public string Currency { get; set; } = "USD";
     public DateTime StartTime { get; set; }
     public DateTime? EndTime { get; set; }

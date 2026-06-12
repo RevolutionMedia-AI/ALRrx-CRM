@@ -17,10 +17,10 @@ type Period = 'Today' | 'Week' | 'Month';
 const PERIOD_API: Record<Period, string> = { Today: 'today', Week: 'week', Month: 'month' };
 
 // Formatters
-function fmtCost(n: number): string {
-  if (!isFinite(n) || isNaN(n)) return '$0.0000000';
+function fmtCost(n: number | null | undefined): string {
+  if (n == null || !isFinite(n) || isNaN(n)) return '—';
   const abs = Math.abs(n);
-  if (abs === 0) return '$0.0000000';
+  if (abs === 0) return '$0';
   if (abs < 1) return '$' + n.toFixed(7);
   if (abs < 100) return '$' + n.toFixed(4);
   return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

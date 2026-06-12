@@ -261,13 +261,21 @@ public class TwilioService : ITwilioService
         _logger.LogInformation("[Twilio] FetchUsageCostsAsync: {Count} usage records between {Start:o} and {End:o}",
             allRecords.Count, start, end);
 
+        var seenSip = 0;
+        var seenNonZero = 0;
         foreach (var rec in allRecords)
         {
             if (!rec.Category.StartsWith("sip-", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            if (rec.Price <= 0m) continue;
+            seenSip++;
+            if (rec.Price <= 0m)
+            {
+                _logger.LogDebug("[Twilio] Skip sip record cat='{Cat}' price={Price} (not yet billed?)", rec.Category, rec.Price);
+                continue;
+            }
 
+            seenNonZero++;
             total += rec.Price;
             if (!string.IsNullOrEmpty(rec.Currency))
                 currency = rec.Currency;
@@ -279,6 +287,8 @@ public class TwilioService : ITwilioService
                 outbound += rec.Price;
         }
 
+        _logger.LogInformation("[Twilio] FetchUsageCostsAsync: sipRecords={Sip} billedRecords={Billed} total=${Total} in=${In} out=${Out}",
+            seenSip, seenNonZero, total, inbound, outbound);
         return (total, inbound, outbound, currency);
     }
 
@@ -344,6 +354,16 @@ public class TwilioService : ITwilioService
             using var doc = JsonDocument.Parse(body);
             if (!doc.RootElement.TryGetProperty("usage_records", out var records))
                 break;
+
+            if (page == 0)
+            {
+                var firstRecord = records.EnumerateArray().FirstOrDefault();
+                if (firstRecord.ValueKind != JsonValueKind.Undefined)
+                {
+                    _logger.LogInformation("[Twilio] Usage/Records sample record: {Json}",
+                        firstRecord.GetRawText());
+                }
+            }
 
             nextPageUri = doc.RootElement.TryGetProperty("next_page_uri", out var npt) ? npt.GetString() : null;
 
@@ -421,7 +441,7 @@ public class TwilioService : ITwilioService
                 Status = el.TryGetProperty("status", out var status) ? status.GetString() ?? "" : "",
                 Direction = IsInboundFromString(direction),
                 DurationSeconds = el.TryGetProperty("duration", out var dur) ? ParseDuration(dur.GetString()) : 0,
-                Cost = el.TryGetProperty("price", out var price) ? ParseCost(price.GetString()) : 0m,
+                Cost = el.TryGetProperty("price", out var price) ? ParseNullableCost(price.GetString()) : null,
                 Currency = el.TryGetProperty("price_unit", out var pu) ? pu.GetString() ?? "USD" : "USD",
                 StartTime = el.TryGetProperty("start_time", out var st) && DateTime.TryParse(st.GetString(), out var stp)
                     ? DateTime.SpecifyKind(stp, DateTimeKind.Utc)
@@ -435,6 +455,14 @@ public class TwilioService : ITwilioService
         {
             return null;
         }
+    }
+
+    private static decimal? ParseNullableCost(string? price)
+    {
+        if (string.IsNullOrEmpty(price)) return null;
+        if (price == "null") return null;
+        return decimal.TryParse(price, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var p) ? Math.Abs(p) : null;
     }
 
     private static (DateTime start, DateTime end) ResolvePeriod(string period, DateTime? startDate, DateTime? endDate)
@@ -459,11 +487,6 @@ public class TwilioService : ITwilioService
         if (d == "inbound" || d.Contains("inbound") || d.Contains("terminating"))
             return "inbound";
         return "outbound";
-    }
-
-    private static decimal ParseCost(string? price)
-    {
-        return decimal.TryParse(price, System.Globalization.CultureInfo.InvariantCulture, out var p) ? Math.Abs(p) : 0m;
     }
 
     private static int ParseDuration(string? duration)

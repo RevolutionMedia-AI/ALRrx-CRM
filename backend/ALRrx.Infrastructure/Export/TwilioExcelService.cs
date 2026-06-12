@@ -151,8 +151,15 @@ public sealed class TwilioExcelService : ITwilioExcelService
             ws.Cells[row, 4].Value = c.To;
             ws.Cells[row, 5].Value = c.Status;
             ws.Cells[row, 6].Value = c.DurationSeconds;
-            ws.Cells[row, 7].Value = (double)c.Cost;
-            ws.Cells[row, 7].Style.Numberformat.Format = "$#,##0.0000000";
+            if (c.Cost.HasValue)
+            {
+                ws.Cells[row, 7].Value = (double)c.Cost.Value;
+                ws.Cells[row, 7].Style.Numberformat.Format = "$#,##0.0000000";
+            }
+            else
+            {
+                ws.Cells[row, 7].Value = "—";
+            }
             ws.Cells[row, 8].Value = c.Currency;
         }
 
