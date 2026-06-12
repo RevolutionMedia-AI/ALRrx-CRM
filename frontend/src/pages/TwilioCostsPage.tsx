@@ -249,7 +249,7 @@ export default function TwilioCostsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KpiCard
           icon={<Money01Icon size={20} className="text-electric-blue" />}
           iconBg="bg-electric-blue/10"
@@ -274,16 +274,6 @@ export default function TwilioCostsPage() {
           sub={summary && summary.totalCalls > 0
             ? `~${Math.round(summary.totalMinutes / summary.totalCalls)} min/call`
             : '-'}
-          loading={loading}
-        />
-        <KpiCard
-          icon={<Money01Icon size={20} className="text-muted-slate" />}
-          iconBg="bg-muted-slate/10"
-          label="Cost / Minute"
-          value={summary ? fmtCost(summary.costPerMinute ?? null) : null}
-          sub={summary && summary.pricedMinutes > 0
-            ? `blended · ${summary.pricedMinutes} priced min`
-            : 'no priced calls yet'}
           loading={loading}
         />
       </div>
