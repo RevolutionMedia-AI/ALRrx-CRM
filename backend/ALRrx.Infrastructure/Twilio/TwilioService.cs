@@ -95,16 +95,17 @@ public class TwilioService : ITwilioService
         return summary;
     }
 
-    public async Task<List<TwilioCallDto>> GetRecentCallsAsync(int limit = 50, CancellationToken ct = default)
+    public async Task<List<TwilioCallDto>> GetRecentCallsAsync(string period = "today", int limit = 50, CancellationToken ct = default)
     {
-        var key = $"twilio:recent:{limit}";
+        var key = $"twilio:recent:{period}:{limit}";
         if (_cache.TryGetValue(key, out List<TwilioCallDto>? cached) && cached != null)
         {
             _logger.LogInformation("[Twilio] GetRecentCallsAsync cache HIT for key {Key}", key);
             return cached;
         }
 
-        var calls = await FetchAllCallsAsync(DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, ct, limit);
+        var (start, end) = ResolvePeriod(period, null, null);
+        var calls = await FetchAllCallsAsync(start, end, ct, limit);
         var result = calls
             .OrderByDescending(c => c.StartTime)
             .Select(c => new TwilioCallDto
@@ -127,17 +128,16 @@ public class TwilioService : ITwilioService
         return result;
     }
 
-    public async Task<List<TwilioDailyCostDto>> GetDailyCostsAsync(int days = 30, CancellationToken ct = default)
+    public async Task<List<TwilioDailyCostDto>> GetDailyCostsAsync(string period = "today", CancellationToken ct = default)
     {
-        var key = $"twilio:daily:{days}";
+        var key = $"twilio:daily:{period}";
         if (_cache.TryGetValue(key, out List<TwilioDailyCostDto>? cached) && cached != null)
         {
             _logger.LogInformation("[Twilio] GetDailyCostsAsync cache HIT for key {Key}", key);
             return cached;
         }
 
-        var start = DateTime.UtcNow.AddDays(-days);
-        var end = DateTime.UtcNow;
+        var (start, end) = ResolvePeriod(period, null, null);
 
         var callsTask = FetchAllCallsAsync(start, end, ct);
         var dailyCostTask = FetchDailyUsageCostsAsync(start, end, ct);

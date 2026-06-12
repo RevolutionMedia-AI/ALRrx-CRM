@@ -86,8 +86,8 @@ export default function TwilioCostsPage() {
       setError(null);
       const [sum, recent, dailyData] = await Promise.all([
         twilioApi.getSummary(PERIOD_API[period] as 'today' | 'week' | 'month'),
-        twilioApi.getRecentCalls(20),
-        twilioApi.getDailyCosts(30),
+        twilioApi.getRecentCalls(PERIOD_API[period] as 'today' | 'week' | 'month', 20),
+        twilioApi.getDailyCosts(PERIOD_API[period] as 'today' | 'week' | 'month'),
       ]);
       setSummary(sum);
       setCalls(recent);

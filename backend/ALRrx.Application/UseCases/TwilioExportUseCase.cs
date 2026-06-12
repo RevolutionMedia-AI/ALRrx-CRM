@@ -43,8 +43,8 @@ public sealed class TwilioExportUseCase
     public async Task<TwilioExportData> BuildDataAsync(string period, CancellationToken ct = default)
     {
         var summaryTask = _twilio.GetSummaryAsync(period, null, null, ct);
-        var recentTask = _twilio.GetRecentCallsAsync(50, ct);
-        var dailyTask = _twilio.GetDailyCostsAsync(30, ct);
+        var recentTask = _twilio.GetRecentCallsAsync(period, 50, ct);
+        var dailyTask = _twilio.GetDailyCostsAsync(period, ct);
 
         await Task.WhenAll(summaryTask, recentTask, dailyTask);
 

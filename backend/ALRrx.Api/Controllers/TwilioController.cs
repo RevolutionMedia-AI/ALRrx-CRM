@@ -42,11 +42,14 @@ public class TwilioController : ControllerBase
     }
 
     [HttpGet("calls/recent")]
-    public async Task<IActionResult> GetRecentCalls([FromQuery] int limit = 50, CancellationToken ct = default)
+    public async Task<IActionResult> GetRecentCalls(
+        [FromQuery] string period = "today",
+        [FromQuery] int limit = 50,
+        CancellationToken ct = default)
     {
         try
         {
-            var calls = await _twilio.GetRecentCallsAsync(limit, ct);
+            var calls = await _twilio.GetRecentCallsAsync(period, limit, ct);
             return Ok(calls);
         }
         catch (Exception ex)
@@ -57,11 +60,13 @@ public class TwilioController : ControllerBase
     }
 
     [HttpGet("costs/daily")]
-    public async Task<IActionResult> GetDailyCosts([FromQuery] int days = 30, CancellationToken ct = default)
+    public async Task<IActionResult> GetDailyCosts(
+        [FromQuery] string period = "today",
+        CancellationToken ct = default)
     {
         try
         {
-            var costs = await _twilio.GetDailyCostsAsync(days, ct);
+            var costs = await _twilio.GetDailyCostsAsync(period, ct);
             return Ok(costs);
         }
         catch (Exception ex)

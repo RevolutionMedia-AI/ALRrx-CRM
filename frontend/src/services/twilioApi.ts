@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const http = axios.create({
   baseURL: '/api',
-  timeout: 30000,
+  timeout: 60000,
 });
 
 http.interceptors.request.use((config) => {
@@ -61,13 +61,13 @@ export const twilioApi = {
     return data;
   },
 
-  getRecentCalls: async (limit = 50): Promise<TwilioCall[]> => {
-    const { data } = await http.get('/twilio/calls/recent', { params: { limit } });
+  getRecentCalls: async (period: 'today' | 'week' | 'month' | 'custom' = 'today', limit = 50): Promise<TwilioCall[]> => {
+    const { data } = await http.get('/twilio/calls/recent', { params: { period, limit } });
     return data;
   },
 
-  getDailyCosts: async (days = 30): Promise<TwilioDailyCost[]> => {
-    const { data } = await http.get('/twilio/costs/daily', { params: { days } });
+  getDailyCosts: async (period: 'today' | 'week' | 'month' | 'custom' = 'today'): Promise<TwilioDailyCost[]> => {
+    const { data } = await http.get('/twilio/costs/daily', { params: { period } });
     return data;
   },
 
