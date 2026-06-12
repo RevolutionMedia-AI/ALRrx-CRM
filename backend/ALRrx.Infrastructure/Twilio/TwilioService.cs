@@ -69,20 +69,29 @@ public class TwilioService : ITwilioService
         var inbound = calls.Where(c => c.Direction == "inbound").ToList();
         var outbound = calls.Where(c => c.Direction != "inbound").ToList();
 
-        var totalCost = calls.Sum(c => c.Cost ?? 0m);
-        var inboundCost = inbound.Sum(c => c.Cost ?? 0m);
-        var outboundCost = outbound.Sum(c => c.Cost ?? 0m);
-        var currency = calls.FirstOrDefault(c => !string.IsNullOrEmpty(c.Currency))?.Currency ?? "USD";
+        var pricedCalls = calls.Where(c => c.Cost.HasValue).ToList();
+        var pricedInbound = pricedCalls.Where(c => c.Direction == "inbound").ToList();
+        var pricedOutbound = pricedCalls.Where(c => c.Direction != "inbound").ToList();
 
-        _logger.LogInformation("[Twilio] GetSummaryAsync period='{Period}' calls={Count} totalCost={Cost} in={In} out={Out} {Currency} (priced={Priced}/{Total})",
-            period, calls.Count, totalCost, inboundCost, outboundCost, currency,
-            calls.Count(c => c.Cost.HasValue), calls.Count);
+        var totalCost = pricedCalls.Sum(c => c.Cost ?? 0m);
+        var inboundCost = pricedInbound.Sum(c => c.Cost ?? 0m);
+        var outboundCost = pricedOutbound.Sum(c => c.Cost ?? 0m);
+        var currency = pricedCalls.FirstOrDefault(c => !string.IsNullOrEmpty(c.Currency))?.Currency ?? "USD";
+
+        var pricedSeconds = pricedCalls.Sum(c => c.DurationSeconds);
+        var totalSeconds = calls.Sum(c => c.DurationSeconds);
+
+        _logger.LogInformation("[Twilio] GetSummaryAsync period='{Period}' calls={Total} priced={Priced} totalCost={Cost} in={In} out={Out} {Currency} pricedMinutes={PMin} totalMinutes={TMin}",
+            period, calls.Count, pricedCalls.Count, totalCost, inboundCost, outboundCost, currency,
+            (int)(pricedSeconds / 60.0), (int)(totalSeconds / 60.0));
 
         var summary = new TwilioSummaryDto
         {
             TotalCost = totalCost,
             TotalCalls = calls.Count,
-            TotalMinutes = (int)calls.Sum(c => c.DurationSeconds / 60.0),
+            TotalMinutes = (int)(totalSeconds / 60.0),
+            PricedMinutes = (int)(pricedSeconds / 60.0),
+            CostPerMinute = pricedSeconds > 0 ? totalCost / ((decimal)pricedSeconds / 60m) : null,
             InboundCost = inboundCost,
             OutboundCost = outboundCost,
             InboundCalls = inbound.Count,

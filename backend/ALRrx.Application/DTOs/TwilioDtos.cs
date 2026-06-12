@@ -5,6 +5,8 @@ public class TwilioSummaryDto
     public decimal TotalCost { get; set; }
     public int TotalCalls { get; set; }
     public int TotalMinutes { get; set; }
+    public int PricedMinutes { get; set; }
+    public decimal? CostPerMinute { get; set; }
     public decimal InboundCost { get; set; }
     public decimal OutboundCost { get; set; }
     public decimal RecordingCost { get; set; }

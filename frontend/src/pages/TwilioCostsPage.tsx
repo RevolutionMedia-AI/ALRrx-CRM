@@ -80,6 +80,22 @@ export default function TwilioCostsPage() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [pendingPeriod, setPendingPeriod] = useState<Period | null>(null);
+
+  const handlePeriodClick = (p: Period) => {
+    if (p === 'Today') {
+      setPeriod(p);
+    } else {
+      setPendingPeriod(p);
+    }
+  };
+
+  const confirmPeriodChange = () => {
+    if (pendingPeriod) {
+      setPeriod(pendingPeriod);
+      setPendingPeriod(null);
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -206,7 +222,7 @@ export default function TwilioCostsPage() {
           return (
             <button
               key={p}
-              onClick={() => setPeriod(p)}
+              onClick={() => handlePeriodClick(p)}
               className={
                 isActive
                   ? 'px-5 py-2 rounded-lg bg-electric-blue text-white font-medium shadow-sm transition-all text-sm'
@@ -264,8 +280,10 @@ export default function TwilioCostsPage() {
           icon={<Money01Icon size={20} className="text-muted-slate" />}
           iconBg="bg-muted-slate/10"
           label="Cost / Minute"
-          value={summary && summary.totalMinutes > 0 ? fmtCost(summary.totalCost / summary.totalMinutes) : null}
-          sub="blended average"
+          value={summary ? fmtCost(summary.costPerMinute ?? null) : null}
+          sub={summary && summary.pricedMinutes > 0
+            ? `blended · ${summary.pricedMinutes} priced min`
+            : 'no priced calls yet'}
           loading={loading}
         />
       </div>
@@ -371,6 +389,40 @@ export default function TwilioCostsPage() {
       <p className="text-xs text-muted-slate dark:text-gray-500 font-metadata-mono text-center pt-2">
         Twilio - ALRrx SIP trunk - auto-refresh 30s - admin only
       </p>
+
+      {pendingPeriod && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-pure-surface dark:bg-gray-900 rounded-xl shadow-card border border-whisper-border dark:border-gray-700 p-6 max-w-md w-full">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-amber-warmth/10 flex items-center justify-center flex-shrink-0">
+                <Clock01Icon size={20} className="text-amber-warmth" />
+              </div>
+              <div>
+                <h3 className="font-display-hero text-lg text-primary dark:text-white mb-1">
+                  Loading {pendingPeriod} data
+                </h3>
+                <p className="text-sm text-secondary dark:text-gray-300 leading-relaxed">
+                  These actions may take a few minutes; we are currently processing all Twilio call charges
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 mt-6">
+              <button
+                onClick={() => setPendingPeriod(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-secondary dark:text-gray-300 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPeriodChange}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-electric-blue text-white hover:scale-[0.98] transition-transform shadow-sm"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

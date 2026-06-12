@@ -17,6 +17,8 @@ export interface TwilioSummary {
   totalCost: number;
   totalCalls: number;
   totalMinutes: number;
+  pricedMinutes: number;
+  costPerMinute: number | null;
   inboundCost: number;
   outboundCost: number;
   recordingCost: number;
