@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using ALRrx.Application.DTOs;
+using ALRrx.Application.Helpers;
 using ALRrx.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -36,22 +37,28 @@ public class TwilioService : ITwilioService
         var (start, end) = ResolvePeriod(period, startDate, endDate);
         _logger.LogInformation("[Twilio] GetSummaryAsync period='{Period}' resolved start={Start:o} end={End:o}", period, start, end);
 
-        var calls = await FetchAllCallsAsync(start, end, ct);
-        _logger.LogInformation("[Twilio] GetSummaryAsync returned {Count} calls for period '{Period}'", calls.Count, period);
+        var callsTask = FetchAllCallsAsync(start, end, ct);
+        var usageTask = FetchUsageCostsAsync(start, end, ct);
+        await Task.WhenAll(callsTask, usageTask);
+
+        var calls = await callsTask;
+        var (totalCost, inboundCost, outboundCost, currency) = await usageTask;
+        _logger.LogInformation("[Twilio] GetSummaryAsync returned {Count} calls, totalCost={Cost} (in={In} out={Out}) {Currency} for period '{Period}'",
+            calls.Count, totalCost, inboundCost, outboundCost, currency, period);
 
         var inbound = calls.Where(c => c.Direction == "inbound").ToList();
         var outbound = calls.Where(c => c.Direction != "inbound").ToList();
 
         return new TwilioSummaryDto
         {
-            TotalCost = calls.Sum(c => c.Cost),
+            TotalCost = totalCost,
             TotalCalls = calls.Count,
             TotalMinutes = (int)calls.Sum(c => c.DurationSeconds / 60.0),
-            InboundCost = inbound.Sum(c => c.Cost),
-            OutboundCost = outbound.Sum(c => c.Cost),
+            InboundCost = inboundCost,
+            OutboundCost = outboundCost,
             InboundCalls = inbound.Count,
             OutboundCalls = outbound.Count,
-            Currency = calls.FirstOrDefault()?.Currency ?? "USD",
+            Currency = currency,
             PeriodStart = start,
             PeriodEnd = end,
             LastUpdated = DateTime.UtcNow
@@ -85,18 +92,30 @@ public class TwilioService : ITwilioService
         var start = DateTime.UtcNow.AddDays(-days);
         var end = DateTime.UtcNow;
 
-        var calls = await FetchAllCallsAsync(start, end, ct);
+        var callsTask = FetchAllCallsAsync(start, end, ct);
+        var dailyCostTask = FetchDailyUsageCostsAsync(start, end, ct);
+        await Task.WhenAll(callsTask, dailyCostTask);
 
-        return calls
+        var calls = await callsTask;
+        var dailyCost = await dailyCostTask;
+
+        var callsByDate = calls
             .GroupBy(c => c.StartTime.Date)
-            .Select(g => new TwilioDailyCostDto
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var allDates = callsByDate.Keys
+            .Union(dailyCost.Keys)
+            .OrderBy(d => d)
+            .ToList();
+
+        return allDates
+            .Select(d => new TwilioDailyCostDto
             {
-                Date = g.Key,
-                Cost = g.Sum(c => c.Cost),
-                CallCount = g.Count(),
-                Minutes = (int)g.Sum(c => c.DurationSeconds / 60.0)
+                Date = d,
+                Cost = dailyCost.TryGetValue(d, out var c) ? c : 0m,
+                CallCount = callsByDate.TryGetValue(d, out var list) ? list.Count : 0,
+                Minutes = callsByDate.TryGetValue(d, out var list2) ? (int)list2.Sum(c => c.DurationSeconds / 60.0) : 0
             })
-            .OrderBy(d => d.Date)
             .ToList();
     }
 
@@ -130,9 +149,9 @@ public class TwilioService : ITwilioService
                 var sb = new StringBuilder();
                 sb.Append($"Accounts/{_accountSid}/Calls.json?PageSize={pageSize}");
                 if (start > DateTime.MinValue)
-                    sb.Append($"&StartTime={Uri.EscapeDataString(start.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
+                    sb.Append($"&StartTime>={Uri.EscapeDataString(start.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
                 if (end > DateTime.MinValue && end < DateTime.UtcNow.AddYears(1))
-                    sb.Append($"&EndTime={Uri.EscapeDataString(end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
+                    sb.Append($"&EndTime<={Uri.EscapeDataString(end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
                 query = sb.ToString();
             }
 
@@ -178,6 +197,166 @@ public class TwilioService : ITwilioService
         return all;
     }
 
+    /// <summary>
+    /// Fetch real billed cost from Twilio Usage/Records.json.
+    /// This is the source of truth for SIP trunking costs — Calls.json
+    /// returns price=null for trunked calls, so we MUST aggregate from
+    /// usage records (categories sip-trunking-inbound-price,
+    /// sip-trunking-outbound-*-price, sip-recording-storage, etc).
+    /// </summary>
+    private async Task<(decimal total, decimal inbound, decimal outbound, string currency)> FetchUsageCostsAsync(
+        DateTime start, DateTime end, CancellationToken ct)
+    {
+        decimal total = 0m, inbound = 0m, outbound = 0m;
+        string currency = "USD";
+        var allRecords = await FetchAllUsageRecordsAsync(start, end, ct);
+        _logger.LogInformation("[Twilio] FetchUsageCostsAsync: {Count} usage records between {Start:o} and {End:o}",
+            allRecords.Count, start, end);
+
+        foreach (var rec in allRecords)
+        {
+            if (!rec.Category.StartsWith("sip-", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (rec.Price <= 0m) continue;
+
+            total += rec.Price;
+            if (!string.IsNullOrEmpty(rec.Currency))
+                currency = rec.Currency;
+
+            var cat = rec.Category.ToLowerInvariant();
+            if (cat.Contains("inbound") || cat.Contains("origination"))
+                inbound += rec.Price;
+            else if (cat.Contains("outbound") || cat.Contains("termination"))
+                outbound += rec.Price;
+        }
+
+        return (total, inbound, outbound, currency);
+    }
+
+    private async Task<Dictionary<DateTime, decimal>> FetchDailyUsageCostsAsync(
+        DateTime start, DateTime end, CancellationToken ct)
+    {
+        var byDate = new Dictionary<DateTime, decimal>();
+        var allRecords = await FetchAllUsageRecordsAsync(start, end, ct);
+
+        foreach (var rec in allRecords)
+        {
+            if (!rec.Category.StartsWith("sip-", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (rec.Price <= 0m) continue;
+
+            var date = TimeZoneHelper.ToPst(rec.StartDate).Date;
+            if (!byDate.TryAdd(date, rec.Price))
+                byDate[date] += rec.Price;
+        }
+
+        return byDate;
+    }
+
+    private async Task<List<TwilioUsageRecord>> FetchAllUsageRecordsAsync(
+        DateTime start, DateTime end, CancellationToken ct)
+    {
+        var all = new List<TwilioUsageRecord>();
+        string? nextPageUri = null;
+        var page = 0;
+        const int pageSize = 500;
+
+        do
+        {
+            string query;
+            if (nextPageUri != null)
+            {
+                query = nextPageUri.TrimStart('/');
+            }
+            else
+            {
+                var sb = new StringBuilder();
+                sb.Append($"Accounts/{_accountSid}/Usage/Records.json?PageSize={pageSize}");
+                sb.Append($"&StartTime>={Uri.EscapeDataString(start.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
+                sb.Append($"&EndTime<={Uri.EscapeDataString(end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}");
+                query = sb.ToString();
+            }
+
+            var request = new HttpRequestMessage(HttpMethod.Get, query);
+            var creds = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_accountSid}:{_authToken}"));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", creds);
+
+            var response = await _httpClient.SendAsync(request, ct);
+            var body = await response.Content.ReadAsStringAsync(ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("[Twilio] Usage/Records HTTP {Status}: {Body}", response.StatusCode,
+                    body.Length > 300 ? body.Substring(0, 300) + "..." : body);
+                break;
+            }
+
+            using var doc = JsonDocument.Parse(body);
+            if (!doc.RootElement.TryGetProperty("usage_records", out var records))
+                break;
+
+            nextPageUri = doc.RootElement.TryGetProperty("next_page_uri", out var npt) ? npt.GetString() : null;
+
+            foreach (var rec in records.EnumerateArray())
+            {
+                var parsed = ParseUsageRecord(rec);
+                if (parsed != null) all.Add(parsed);
+            }
+
+            page++;
+            if (page > 200) break;
+
+        }
+        while (!string.IsNullOrEmpty(nextPageUri));
+
+        return all;
+    }
+
+    private static TwilioUsageRecord? ParseUsageRecord(JsonElement el)
+    {
+        try
+        {
+            var category = el.TryGetProperty("category", out var c) ? c.GetString() ?? "" : "";
+            var description = el.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
+            var priceStr = el.TryGetProperty("price", out var p) ? p.GetString() : null;
+            var priceUnit = el.TryGetProperty("price_unit", out var pu) ? pu.GetString() ?? "USD" : "USD";
+            var startDateStr = el.TryGetProperty("start_date", out var sd) ? sd.GetString() : null;
+            var endDateStr = el.TryGetProperty("end_date", out var ed) ? ed.GetString() : null;
+            var usageStr = el.TryGetProperty("usage", out var u) ? u.GetString() : null;
+            var usageUnit = el.TryGetProperty("usage_unit", out var uu) ? uu.GetString() ?? "" : "";
+            var count = el.TryGetProperty("count", out var cnt) && cnt.TryGetInt32(out var cv) ? cv : 0;
+
+            var price = 0m;
+            if (!string.IsNullOrEmpty(priceStr))
+                decimal.TryParse(priceStr, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out price);
+            price = Math.Abs(price);
+
+            DateTime startDate = DateTime.MinValue;
+            if (!string.IsNullOrEmpty(startDateStr) && DateTime.TryParse(startDateStr, out var sdp))
+                startDate = DateTime.SpecifyKind(sdp, DateTimeKind.Utc);
+
+            return new TwilioUsageRecord
+            {
+                Category = category,
+                Description = description,
+                Price = price,
+                Currency = priceUnit,
+                StartDate = startDate,
+                EndDate = !string.IsNullOrEmpty(endDateStr) && DateTime.TryParse(endDateStr, out var edp)
+                    ? DateTime.SpecifyKind(edp, DateTimeKind.Utc) : startDate,
+                Usage = usageStr ?? "",
+                UsageUnit = usageUnit,
+                Count = count
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static TwilioCallDto? ParseCallFromJson(JsonElement el)
     {
         try
@@ -211,15 +390,16 @@ public class TwilioService : ITwilioService
 
     private static (DateTime start, DateTime end) ResolvePeriod(string period, DateTime? startDate, DateTime? endDate)
     {
-        var now = DateTime.UtcNow;
+        var nowUtc = DateTime.UtcNow;
+        var pstNow = TimeZoneHelper.ToPst(nowUtc);
         return period?.ToLowerInvariant() switch
         {
-            "today" => (now.Date, now),
-            "thisweek" or "week" => (now.AddDays(-(int)now.DayOfWeek).Date, now),
-            "thismonth" or "month" => (new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc), now),
+            "today" => (TimeZoneHelper.ToUtc(pstNow.Date), nowUtc),
+            "thisweek" or "week" => (TimeZoneHelper.ToUtc(pstNow.AddDays(-(int)pstNow.DayOfWeek).Date), nowUtc),
+            "thismonth" or "month" => (TimeZoneHelper.ToUtc(new DateTime(pstNow.Year, pstNow.Month, 1)), nowUtc),
             "custom" when startDate.HasValue && endDate.HasValue =>
                 (DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc), DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc)),
-            _ => (now.AddDays(-1), now)
+            _ => (nowUtc.AddDays(-1), nowUtc)
         };
     }
 
@@ -240,4 +420,17 @@ public class TwilioService : ITwilioService
         var clean = duration.Split('.')[0];
         return int.TryParse(clean, out var s) ? s : 0;
     }
+}
+
+internal sealed class TwilioUsageRecord
+{
+    public string Category { get; set; } = "";
+    public string Description { get; set; } = "";
+    public decimal Price { get; set; }
+    public string Currency { get; set; } = "USD";
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public string Usage { get; set; } = "";
+    public string UsageUnit { get; set; } = "";
+    public int Count { get; set; }
 }

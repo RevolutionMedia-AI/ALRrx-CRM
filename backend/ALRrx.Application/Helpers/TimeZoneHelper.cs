@@ -21,6 +21,14 @@ public static class TimeZoneHelper
         return TimeZoneInfo.ConvertTimeFromUtc(utcDate, PacificTz);
     }
 
+    public static DateTime ToUtc(DateTime pst)
+    {
+        var unspecified = pst.Kind == DateTimeKind.Unspecified
+            ? pst
+            : DateTime.SpecifyKind(pst, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(unspecified, PacificTz);
+    }
+
     public static string ToPstString(DateTime utc, string format = "yyyy-MM-dd HH:mm:ss")
     {
         return ToPst(utc).ToString(format, System.Globalization.CultureInfo.InvariantCulture);
