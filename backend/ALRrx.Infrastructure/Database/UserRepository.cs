@@ -352,7 +352,7 @@ public sealed class UserRepository : IUserRepository
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (!await reader.ReadAsync(ct)) return null;
 
-        return await MapUserAsync(reader, connection, ct);
+        return await MapUserAsync(reader, ct);
     }
 
     public async Task<AuthUser?> GetByIdAsync(int id, CancellationToken ct = default)
@@ -364,7 +364,7 @@ public sealed class UserRepository : IUserRepository
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (!await reader.ReadAsync(ct)) return null;
 
-        return await MapUserAsync(reader, connection, ct);
+        return await MapUserAsync(reader, ct);
     }
 
     public async Task<List<AuthUser>> GetAllAsync(CancellationToken ct = default)
@@ -376,7 +376,7 @@ public sealed class UserRepository : IUserRepository
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            var u = await MapUserAsync(reader, connection, ct);
+            var u = await MapUserAsync(reader, ct);
             if (u is not null) users.Add(u);
         }
         return users;
@@ -392,7 +392,7 @@ public sealed class UserRepository : IUserRepository
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
-            var u = await MapUserAsync(reader, connection, ct);
+            var u = await MapUserAsync(reader, ct);
             if (u is not null) users.Add(u);
         }
         return users;
@@ -518,7 +518,7 @@ public sealed class UserRepository : IUserRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
-    private static async Task<AuthUser?> MapUserAsync(MySqlDataReader reader, MySqlConnection connection, CancellationToken ct)
+    private async Task<AuthUser?> MapUserAsync(MySqlDataReader reader, CancellationToken ct)
     {
         var roleId = reader.GetInt32("RoleId");
         var roleName = reader.GetString("Role");
@@ -546,11 +546,17 @@ public sealed class UserRepository : IUserRepository
             CreatedAt = reader.GetDateTime("CreatedAt"),
         };
 
-        await using var permCmd = new MySqlCommand(Queries.SelectPermissionsByRoleId, connection);
-        permCmd.Parameters.AddWithValue("@RoleId", roleId);
+        // BUG-FIX: the caller's connection still has an open DataReader when we
+        // get here, so a second ExecuteReaderAsync on the same connection throws
+        // "This MySqlConnection is already in use". MySQL Connector/NET does
+        // not support Multiple Active Result Sets (MARS). Open a fresh
+        // connection for the permissions lookup.
         var perms = new List<string>();
-        await using (var permReader = await permCmd.ExecuteReaderAsync(ct))
+        await using (var permConn = await GetOpenConnectionAsync(ct))
+        await using (var permCmd = new MySqlCommand(Queries.SelectPermissionsByRoleId, permConn))
         {
+            permCmd.Parameters.AddWithValue("@RoleId", roleId);
+            await using var permReader = await permCmd.ExecuteReaderAsync(ct);
             while (await permReader.ReadAsync(ct))
                 perms.Add(permReader.GetString("KeyName"));
         }
