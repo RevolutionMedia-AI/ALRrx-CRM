@@ -27,16 +27,40 @@
 #     de PowerShell Set-Content con encoding incorrecto. Reemplazados
 #     todos los caracteres especiales (—, ·) con ASCII simple (-) para
 #     evitar futuros problemas de encoding entre Windows y Linux.
-# 2026-06-15-bust-34: Switch all base images from mcr.microsoft.com
-#     to the Docker Hub mirror (docker.io/microsoft/dotnet). MCR was
-#     returning 401 / 429 for anonymous pulls from the Northflank
-#     build runner, causing the image to fail to resolve. The
-#     Docker Hub repos are Microsoft's own mirrors of the same
-#     images (microsoft/dotnet:8.0 SDK and microsoft/dotnet:8.0-aspnet
-#     runtime), so behavior is identical. Bump CACHE_BUST to
-#     2026-06-15-bust-34.
-# Bump CACHE_BUST a 2026-06-15-bust-34.
-ARG CACHE_BUST=2026-06-15-bust-34
+# 2026-06-15-bust-35: Install .NET 8 SDK + ASP.NET Core 8 runtime via
+#     Microsoft's official install-dotnet.sh script (downloaded
+#     from https://dot.net/v1/) instead of pulling mcr.microsoft.com
+#     base images. MCR was throttling anonymous pulls (401 / 429)
+#     and Microsoft's Docker Hub mirror (microsoft/dotnet:8.0)
+#     no longer publishes the 8.0 tags (verified: count=0 in
+#     Docker Hub API). The install script downloads from a
+#     different endpoint so it sidesteps the MCR rate-limit
+#     entirely. Cost: ~1.5 GB larger final image (SDK gets
+#     pulled into the runtime stage) but the build is otherwise
+#     identical. Bump CACHE_BUST to 2026-06-15-bust-35.
+# Bump CACHE_BUST a 2026-06-15-bust-35.
+ARG CACHE_BUST=2026-06-15-bust-35
+
+# ─── Stage 0: Install .NET 8 SDK + ASP.NET Core 8 runtime ───────────────────
+# Single shared installer stage. Pulls both the SDK (needed by the
+# build stages below) and the ASP.NET Core runtime (needed by the
+# final runtime image). Installed via Microsoft's official script so
+# we don't depend on MCR's docker registry.
+FROM debian:bookworm-slim AS dotnet-installer
+ARG CACHE_BUST
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && \
+    chmod +x /tmp/dotnet-install.sh && \
+    /tmp/dotnet-install.sh --channel 8.0            --install-dir /usr/share/dotnet && \
+    /tmp/dotnet-install.sh --channel 8.0 --runtime aspnetcore --install-dir /usr/share/dotnet && \
+    rm /tmp/dotnet-install.sh
+ENV DOTNET_ROOT=/usr/share/dotnet
+ENV PATH=$PATH:/usr/share/dotnet \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1 \
+    DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend
@@ -48,7 +72,7 @@ COPY frontend/ .
 RUN npm run build
 
 # ─── Stage 2a: Build ALRrx.Api ────────────────────────────────────────────────
-FROM docker.io/microsoft/dotnet:8.0 AS alrrx-api
+FROM dotnet-installer AS alrrx-api
 ARG CACHE_BUST
 WORKDIR /src
 COPY backend/ALRrx.sln ./
@@ -61,7 +85,7 @@ COPY backend/ .
 RUN dotnet publish ALRrx.Api/ALRrx.Api.csproj -c Release -o /publish-alrrx
 
 # ─── Stage 2b: Build Slice.Api ────────────────────────────────────────────────
-FROM docker.io/microsoft/dotnet:8.0 AS slice-api
+FROM dotnet-installer AS slice-api
 ARG CACHE_BUST
 WORKDIR /src
 COPY slice-backend/Slice.sln ./
@@ -74,8 +98,8 @@ COPY slice-backend/ .
 RUN dotnet publish Slice.Api/Slice.Api.csproj -c Release -o /publish-slice
 
 # ─── Stage 3: Runtime image (nginx + 2 dotnet apps managed by supervisord) ────
-FROM docker.io/microsoft/dotnet:8.0-aspnet
-RUN apt-get update && apt-get install -y nginx supervisor && rm -rf /var/lib/apt/lists/*
+FROM dotnet-installer
+RUN apt-get update && apt-get install -y --no-install-recommends nginx supervisor && rm -rf /var/lib/apt/lists/*
 # Ensure the SQLite path exists so the slice-api can create /data/slice.db on
 # first boot even if the Northflank volume is mounted slightly later.
 RUN mkdir -p /data && chmod 0777 /data
