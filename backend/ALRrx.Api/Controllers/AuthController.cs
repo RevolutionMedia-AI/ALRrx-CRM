@@ -304,6 +304,7 @@ public sealed class AuthController : ControllerBase
 
     [Authorize]
     [HttpGet("me")]
+    [EnableRateLimiting("authCheck")]
     public async Task<ActionResult<UserInfoDto>> Me(CancellationToken ct = default)
     {
         var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

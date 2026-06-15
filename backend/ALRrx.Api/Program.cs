@@ -83,10 +83,11 @@ builder.Services.AddControllers();
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<IEmailService, ResendEmailService>();
 
-var rlGlobal = builder.Configuration.GetValue<int>("RateLimiting:GlobalPerIpPerMinute", 200);
-var rlAuth = builder.Configuration.GetValue<int>("RateLimiting:AuthPerIpPerMinute", 5);
-var rlVicidial = builder.Configuration.GetValue<int>("RateLimiting:VicidialPerIpPerMinute", 30);
-var rlAdmin = builder.Configuration.GetValue<int>("RateLimiting:AdminPerUserPerMinute", 30);
+var rlGlobal = builder.Configuration.GetValue<int>("RateLimiting:GlobalPerIpPerMinute", 600);
+var rlAuth = builder.Configuration.GetValue<int>("RateLimiting:AuthPerIpPerMinute", 60);
+var rlAuthCheck = builder.Configuration.GetValue<int>("RateLimiting:AuthCheckPerUserPerMinute", 120);
+var rlVicidial = builder.Configuration.GetValue<int>("RateLimiting:VicidialPerIpPerMinute", 120);
+var rlAdmin = builder.Configuration.GetValue<int>("RateLimiting:AdminPerUserPerMinute", 120);
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -125,6 +126,24 @@ builder.Services.AddRateLimiter(options =>
         return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = rlAuth,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        });
+    });
+
+    // Per-user: applied to /api/auth/me (token validation). Each user has their
+    // own bucket keyed on the JWT NameIdentifier claim, so 10 users behind
+    // the same NAT/proxy don't share a single limit. Falls back to IP if
+    // the token is missing (e.g. token refresh race).
+    options.AddPolicy("authCheck", ctx =>
+    {
+        var userId = ctx.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var key = !string.IsNullOrEmpty(userId)
+            ? $"u:{userId}"
+            : $"ip:{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = rlAuthCheck,
             Window = TimeSpan.FromMinutes(1),
             QueueLimit = 0,
         });
