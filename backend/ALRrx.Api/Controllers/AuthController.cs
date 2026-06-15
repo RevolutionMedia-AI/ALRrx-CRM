@@ -11,7 +11,6 @@ namespace ALRrx.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[EnableRateLimiting("auth")]
 public sealed class AuthController : ControllerBase
 {
     private readonly IUserRepository _users;
@@ -48,6 +47,7 @@ public sealed class AuthController : ControllerBase
         _auth.GetBootstrapAdminEmails().Contains(email, StringComparer.OrdinalIgnoreCase);
 
     [HttpPost("dev-login")]
+    [EnableRateLimiting("auth")]
     public ActionResult<LoginResponse> DevLogin()
     {
         if (!_env.IsDevelopment())
@@ -86,6 +86,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("google")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<LoginResponse>> GoogleLogin(
         [FromBody] GoogleLoginRequest request,
         CancellationToken ct = default)
@@ -215,6 +216,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<LoginResponse>> Login(
         [FromBody] LoginRequest request,
         CancellationToken ct = default)
@@ -260,6 +262,7 @@ public sealed class AuthController : ControllerBase
 
     [Authorize(Roles = "Admin")]
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<UserInfoDto>> Register(
         [FromBody] RegisterRequest request,
         CancellationToken ct = default)
