@@ -219,7 +219,7 @@ public sealed class AuthController : ControllerBase
         {
             throw;
         }
-        catch
+        catch (Exception ex)
         {
             // BUG-10 fix: do NOT synthesize a fake user with Id=0. That JWT
             // would carry NameIdentifier=0 and RoleId=0/1, which would break
@@ -228,7 +228,7 @@ public sealed class AuthController : ControllerBase
             // controller to respond 503, which the frontend will surface as
             // "service unavailable — try again" instead of giving the user a
             // broken session.
-            _logger.LogError("User DB unavailable during Google login for {Email}", userInfo.Email);
+            _logger.LogError(ex, "User DB unavailable during Google login for {Email}", userInfo.Email);
             return (null, false);
         }
     }
