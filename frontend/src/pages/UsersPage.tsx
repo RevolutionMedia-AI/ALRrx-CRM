@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getUsers, register, updateUser, type UserInfo, type RegisterRequest } from '../services/authApi';
 import { getRoles, type RoleDto } from '../services/adminApi';
+import { formatDate } from '../utils/dateFormat';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<UserInfo[]>([]);
@@ -146,7 +147,7 @@ export default function UsersPage() {
                     {u.status}
                   </button>
                 </td>
-                <td className="p-4 text-secondary dark:text-gray-400 font-metadata-mono text-xs">{new Date(u.createdAt).toLocaleDateString()}</td>
+                <td className="p-4 text-secondary dark:text-gray-400 font-metadata-mono text-xs">{formatDate(u.createdAt)}</td>
               </tr>
             ))}
           </tbody>

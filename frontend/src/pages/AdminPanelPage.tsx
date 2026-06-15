@@ -14,6 +14,7 @@ import {
   type AuditLogEntry,
 } from '../services/adminApi';
 import type { PlatformAccess, UserStatus } from '../services/authApi';
+import { formatDateTime } from '../utils/dateFormat';
 import {
   CheckmarkCircle01Icon,
   Cancel01Icon,
@@ -276,7 +277,7 @@ export default function AdminPanelPage() {
                     </span>
                   </td>
                   <td className="p-4 text-secondary dark:text-gray-400 text-xs font-metadata-mono">
-                    {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '—'}
+                    {formatDateTime(u.lastLoginAt)}
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-1 justify-end flex-wrap">
@@ -429,7 +430,7 @@ export default function AdminPanelPage() {
                       <li key={a.id} className="border border-whisper-border dark:border-gray-700 rounded p-2">
                         <div className="flex items-center justify-between">
                           <span className="font-mono font-medium text-primary dark:text-gray-100">{a.action}</span>
-                          <span className="text-muted-slate dark:text-gray-500">{new Date(a.createdAt).toLocaleString()}</span>
+                          <span className="text-muted-slate dark:text-gray-500">{formatDateTime(a.createdAt)}</span>
                         </div>
                         {a.oldValue && <div className="text-muted-slate dark:text-gray-500">from: {a.oldValue}</div>}
                         {a.newValue && <div className="text-muted-slate dark:text-gray-500">to: {a.newValue}</div>}
