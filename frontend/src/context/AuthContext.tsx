@@ -1,13 +1,11 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, type UserInfo } from '../services/authApi';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, type UserInfo, type UserStatus } from '../services/authApi';
 import { getGoogleAccessToken, setGoogleAccessToken } from '../utils/googleTokenStore';
 import { SHARED_TOKEN_KEY, readSharedToken, writeSharedToken, clearSharedToken } from '../utils/sharedToken';
+import { AUTH_FORBIDDEN_EVENT } from '../services/httpClient';
 
-// ─── DEV BYPASS ────────────────────────────────────────────────────────────────
-// Set VITE_DEV_BYPASS=true in frontend/.env.local to skip login locally.
-// The backend emits a real JWT via POST /api/auth/dev-login (Development only).
 const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS === 'true';
-// ───────────────────────────────────────────────────────────────────────────────
 
 interface AuthContextType {
   user: UserInfo | null;
@@ -16,19 +14,42 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
+  refresh: () => Promise<void>;
   isAdmin: boolean;
   canEdit: boolean;
+  isPending: boolean;
+  isSuspended: boolean;
+  isRejected: boolean;
+  has: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+function routeForStatus(status: UserStatus | undefined): string {
+  if (status === 'Pending') return '/pending-approval';
+  if (status === 'Suspended' || status === 'Rejected') return '/access-denied';
+  return '/';
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const applyUserAndRedirect = useCallback((u: UserInfo | null, tok: string | null) => {
+    setUser(u);
+    setToken(tok);
+    if (u && (u.status === 'Pending' || u.status === 'Suspended' || u.status === 'Rejected')) {
+      const target = routeForStatus(u.status);
+      if (location.pathname !== target && !location.pathname.startsWith(target)) {
+        navigate(target, { replace: true });
+      }
+    }
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
-    // ── Dev bypass: auto-login without credentials ──
     if (DEV_BYPASS) {
       fetch('/api/auth/dev-login', { method: 'POST' })
         .then((r) => r.json())
@@ -38,35 +59,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setAuthToken(data.token);
             setToken(data.token);
             setUser(data.user);
+            applyUserAndRedirect(data.user, data.token);
           }
         })
-        .catch(() => { /* backend no disponible, queda sin sesión */ })
+        .catch(() => {})
         .finally(() => setLoading(false));
       return;
     }
-    // ── Flujo normal ──
-    // We use a single shared token key (`auth_token`) that both AuthContext
-    // (alrrx) and SliceAuthContext (slice) read/write. That way a login on
-    // either side is enough to access both backends (the backends now share
-    // the same JWT key/issuer/audience). For backwards compatibility we also
-    // fall back to the old per-context keys if a user still has them around.
     const stored = readSharedToken();
     if (stored) {
       setAuthToken(stored);
       setToken(stored);
-      getMe().then((u) => { setUser(u); setLoading(false); }).catch((err: unknown) => {
-        const status = err && typeof err === 'object' && 'response' in err
-          ? (err as { response?: { status?: number } }).response?.status
-          : undefined;
-        if (status === 401) {
-          clearSharedToken();
-          setAuthToken(null);
-          setToken(null);
-        } else {
-          console.warn('getMe failed (transient), keeping token:', err);
-        }
-        setLoading(false);
-      });
+      getMe()
+        .then((u) => applyUserAndRedirect(u, stored))
+        .catch((err: unknown) => {
+          const status = err && typeof err === 'object' && 'response' in err
+            ? (err as { response?: { status?: number } }).response?.status
+            : undefined;
+          if (status === 401) {
+            clearSharedToken();
+            setAuthToken(null);
+            setToken(null);
+          }
+        })
+        .finally(() => setLoading(false));
       return;
     }
     const googleToken = getGoogleAccessToken();
@@ -76,23 +92,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           writeSharedToken(res.token);
           setAuthToken(res.token);
           setToken(res.token);
-          setUser(res.user);
+          applyUserAndRedirect(res.user, res.token);
         })
         .catch((err: unknown) => {
           const status = err && typeof err === 'object' && 'response' in err
             ? (err as { response?: { status?: number } }).response?.status
             : undefined;
-          if (status === 401) {
-            setGoogleAccessToken(null);
-          } else {
-            console.warn('Google rehydrate failed (transient), keeping token:', err);
-          }
+          if (status === 401) setGoogleAccessToken(null);
         })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [applyUserAndRedirect]);
+
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail;
+      if (detail?.code === 'USER_PENDING') {
+        applyUserAndRedirect(user, token);
+        navigate('/pending-approval', { replace: true });
+      } else if (detail?.code === 'USER_SUSPENDED' || detail?.code === 'USER_REJECTED') {
+        applyUserAndRedirect(user, token);
+        navigate('/access-denied', { replace: true });
+      }
+    };
+    window.addEventListener(AUTH_FORBIDDEN_EVENT, handler);
+    return () => window.removeEventListener(AUTH_FORBIDDEN_EVENT, handler);
+  }, [applyUserAndRedirect, navigate, user, token]);
 
   const login = async (email: string, password: string) => {
     const res = await apiLogin({ email, password });
@@ -100,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(res.token);
     setToken(res.token);
     setUser(res.user);
+    navigate(routeForStatus(res.user.status), { replace: true });
   };
 
   const loginWithGoogle = async (credential: string) => {
@@ -109,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(res.token);
     setToken(res.token);
     setUser(res.user);
+    navigate(routeForStatus(res.user.status), { replace: true });
   };
 
   const logout = () => {
@@ -117,13 +146,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(null);
     setToken(null);
     setUser(null);
+    navigate('/login', { replace: true });
+  };
+
+  const refresh = async () => {
+    try {
+      const u = await getMe();
+      setUser(u);
+    } catch {/* ignore */}
   };
 
   const isAdmin = user?.role === 'Admin';
   const canEdit = user?.role === 'Admin' || user?.role === 'Supervisor';
+  const isPending = user?.status === 'Pending';
+  const isSuspended = user?.status === 'Suspended';
+  const isRejected = user?.status === 'Rejected';
+  const has = (perm: string) => !!user?.permissions?.includes(perm);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, loginWithGoogle, logout, isAdmin, canEdit }}>
+    <AuthContext.Provider value={{
+      user, token, loading,
+      login, loginWithGoogle, logout, refresh,
+      isAdmin, canEdit, isPending, isSuspended, isRejected,
+      has,
+    }}>
       {children}
     </AuthContext.Provider>
   );

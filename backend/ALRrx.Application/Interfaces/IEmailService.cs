@@ -1,0 +1,11 @@
+using ALRrx.Application.DTOs;
+
+namespace ALRrx.Application.Interfaces;
+
+public interface IEmailService
+{
+    Task<EmailResult> SendAccountApprovedAsync(string toEmail, string toName, string roleName, CancellationToken ct = default);
+    Task<EmailResult> SendAccountRejectedAsync(string toEmail, string toName, string reason, CancellationToken ct = default);
+    Task<EmailResult> SendAccountSuspendedAsync(string toEmail, string toName, string reason, CancellationToken ct = default);
+    Task<EmailResult> SendPasswordResetAsync(string toEmail, string toName, string temporaryPassword, CancellationToken ct = default);
+}

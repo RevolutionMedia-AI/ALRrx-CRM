@@ -2,6 +2,7 @@ using ALRrx.Application.Interfaces;
 using ALRrx.Application.UseCases;
 using ALRrx.Domain.Interfaces;
 using ALRrx.Domain.ValueObjects;
+using ALRrx.Infrastructure.Auth;
 using ALRrx.Infrastructure.Database;
 using ALRrx.Infrastructure.Export;
 using ALRrx.Infrastructure.Ssh;
@@ -24,6 +25,9 @@ public static class InfrastructureServiceRegistration
         services.AddSingleton<FormDbConnectionFactory>();
         services.AddSingleton<IQueryService, QueryExecutor>();
         services.AddSingleton<IUserRepository, UserRepository>();
+        services.AddSingleton<IRoleRepository, RoleRepository>();
+        services.AddSingleton<IAuditLogRepository, AuditLogRepository>();
+        services.AddSingleton<IRevokedUserStore, InMemoryRevokedUserStore>();
         services.AddSingleton<MutationExecutor>();
         services.AddSingleton<IDashboardPdfService, DashboardPdfService>();
         services.AddSingleton<IDashboardExcelService, DashboardExcelService>();

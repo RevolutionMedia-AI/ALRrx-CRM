@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { readSharedToken, clearSharedToken } from '../utils/sharedToken';
 
-export const client = axios.create({ baseURL: '/api', timeout: 15000 });
+export const client = axios.create({ baseURL: '/api', timeout: 30000 });
+
+export const AUTH_FORBIDDEN_EVENT = 'auth:forbidden';
 
 client.interceptors.request.use((config) => {
-  // Read from the shared token store so slice sessions are also visible here.
   const token = readSharedToken();
   if (token) {
     config.headers = config.headers ?? {};
@@ -18,11 +19,24 @@ client.interceptors.response.use(
   (err) => {
     if (err?.response?.status === 401) {
       const url: string = err.config?.url ?? '';
-      if (!url.startsWith('/auth/')) {
-        // Don't hard-redirect: AuthContext owns the navigation decision so a
-        // transient 401 on one backend doesn't kick the user out of the other.
+      const code = err?.response?.data?.code;
+      if (code === 'TOKEN_REVOKED') {
+        // BUG-008: Admin revoked this session. Force re-login.
         clearSharedToken();
         delete client.defaults.headers.common['Authorization'];
+        window.dispatchEvent(new CustomEvent(AUTH_FORBIDDEN_EVENT, { detail: { code: 'TOKEN_REVOKED', error: err.response.data?.error } }));
+        return Promise.reject(err);
+      }
+      if (!url.startsWith('/auth/')) {
+        clearSharedToken();
+        delete client.defaults.headers.common['Authorization'];
+      }
+    }
+    if (err?.response?.status === 403) {
+      const data = err?.response?.data;
+      const code = data?.code;
+      if (code && ['USER_PENDING', 'USER_SUSPENDED', 'USER_REJECTED', 'USER_LOCKED'].includes(code)) {
+        window.dispatchEvent(new CustomEvent(AUTH_FORBIDDEN_EVENT, { detail: { code, error: data?.error } }));
       }
     }
     return Promise.reject(err);

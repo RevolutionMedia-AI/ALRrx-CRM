@@ -3,6 +3,7 @@ using ALRrx.Application.Interfaces;
 using ALRrx.Application.UseCases;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 
 namespace ALRrx.Api.Controllers;
@@ -10,6 +11,7 @@ namespace ALRrx.Api.Controllers;
 [ApiController]
 [Route("api/vicidial-form")]
 [AllowAnonymous]
+[EnableRateLimiting("vicidial")]
 public sealed class VicidialFormController : ControllerBase
 {
     private readonly SubmitVicidialSaleUseCase _submit;

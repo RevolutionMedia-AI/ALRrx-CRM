@@ -29,6 +29,15 @@ public static class ApplicationServiceRegistration
         services.AddScoped<GetAgentPerformanceWithSalesUseCase>();
         services.AddScoped<TwilioExportUseCase>();
 
+        services.AddScoped<GetAdminUsersUseCase>();
+        services.AddScoped<GetAdminUserDetailUseCase>();
+        services.AddScoped<ApproveUserUseCase>();
+        services.AddScoped<RejectUserUseCase>();
+        services.AddScoped<SuspendUserUseCase>();
+        services.AddScoped<ReactivateUserUseCase>();
+        services.AddScoped<ChangeUserRoleUseCase>();
+        services.AddScoped<ResetUserPasswordUseCase>();
+
         return services;
     }
 }

@@ -9,6 +9,9 @@ import RealTimePage from './pages/RealTimePage';
 import UsersPage from './pages/UsersPage';
 import VicidialFormPage from './pages/VicidialFormPage';
 import TwilioCostsPage from './pages/TwilioCostsPage';
+import AdminPanelPage from './pages/AdminPanelPage';
+import PendingApprovalPage from './pages/PendingApprovalPage';
+import AccessDeniedPage from './pages/AccessDeniedPage';
 import AppLayout from './components/Layout/AppLayout';
 import PlatformPickerModal from './components/PlatformPickerModal';
 import { resolveAccess, ROUTES } from './utils/accessControl';
@@ -37,13 +40,18 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
+  if (user.status === 'Pending') return <Navigate to="/pending-approval" replace />;
+  if (user.status === 'Suspended' || user.status === 'Rejected') return <Navigate to="/access-denied" replace />;
   return <AppLayout>{children}</AppLayout>;
 }
 
 function AdminRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  if (!user || user.role !== 'Admin') return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.status === 'Pending') return <Navigate to="/pending-approval" replace />;
+  if (user.status === 'Suspended' || user.status === 'Rejected') return <Navigate to="/access-denied" replace />;
+  if (user.role !== 'Admin') return <Navigate to="/dashboard" replace />;
   return <AppLayout>{children}</AppLayout>;
 }
 
@@ -214,6 +222,22 @@ function AppRoutes() {
             <UsersPage />
           </AdminRoute>
         }
+      />
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminPanelPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/pending-approval"
+        element={<PendingApprovalPage />}
+      />
+      <Route
+        path="/access-denied"
+        element={<AccessDeniedPage />}
       />
       <Route
         path="/twilio-costs"

@@ -1,11 +1,14 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using ALRrx.Api.Hubs;
 using ALRrx.Api.Middleware;
 using ALRrx.Application.DependencyInjection;
 using ALRrx.Application.Interfaces;
 using ALRrx.Domain.ValueObjects;
 using ALRrx.Infrastructure.DependencyInjection;
+using ALRrx.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -78,6 +81,82 @@ builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient<IEmailService, ResendEmailService>();
+
+var rlGlobal = builder.Configuration.GetValue<int>("RateLimiting:GlobalPerIpPerMinute", 200);
+var rlAuth = builder.Configuration.GetValue<int>("RateLimiting:AuthPerIpPerMinute", 5);
+var rlVicidial = builder.Configuration.GetValue<int>("RateLimiting:VicidialPerIpPerMinute", 30);
+var rlAdmin = builder.Configuration.GetValue<int>("RateLimiting:AdminPerUserPerMinute", 30);
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "application/json";
+        var retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var ra)
+            ? ra.TotalSeconds.ToString("0") : "60";
+        context.HttpContext.Response.Headers["Retry-After"] = retryAfter;
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            error = "Too many requests — please slow down",
+            retryAfterSeconds = int.Parse(retryAfter)
+        }, ct);
+    };
+
+    // Global per-IP limit applied to every API request as a baseline.
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+    {
+        var key = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = rlGlobal,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+        });
+    });
+
+    // Per-IP: defends against brute force on /api/auth/login and burst attacks on /api/auth/google.
+    options.AddPolicy("auth", ctx =>
+    {
+        var key = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = rlAuth,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        });
+    });
+
+    // Per-IP: more permissive because Vicidial may legitimately send several in quick succession.
+    options.AddPolicy("vicidial", ctx =>
+    {
+        var key = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = rlVicidial,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        });
+    });
+
+    // Per-user: mitigates compromised-admin scenarios. Falls back to IP for unauthenticated requests.
+    options.AddPolicy("admin", ctx =>
+    {
+        var userId = ctx.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var key = !string.IsNullOrEmpty(userId)
+            ? $"u:{userId}"
+            : $"ip:{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = rlAdmin,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        });
+    });
+});
 
 var cfg = builder.Configuration;
 var connectionConfig = new ConnectionConfig
@@ -126,6 +205,8 @@ app.Use(async (ctx, next) =>
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
+app.UseMiddleware<UserStatusMiddleware>();
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
 

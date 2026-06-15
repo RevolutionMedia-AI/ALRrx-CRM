@@ -3,13 +3,19 @@ export interface LoginRequest {
   password: string;
 }
 
+export type UserStatus = 'Pending' | 'Active' | 'Rejected' | 'Suspended';
+
 export interface UserInfo {
   id: number;
   email: string;
   fullName: string;
+  roleId: number;
   role: string;
+  status: UserStatus;
   isActive: boolean;
+  lastLoginAt?: string | null;
   createdAt: string;
+  permissions: string[];
 }
 
 export interface LoginResponse {
@@ -21,7 +27,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   fullName: string;
-  role: string;
+  roleId: number;
 }
 
 import { client, setAuthToken } from './httpClient';

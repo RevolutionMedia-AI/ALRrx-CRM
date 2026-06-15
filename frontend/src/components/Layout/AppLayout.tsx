@@ -11,6 +11,7 @@ const navItems = [
 ];
 
 const adminNavItems = [
+  { label: 'Admin Panel', path: '/admin' },
   { label: 'Twilio Costs', path: '/twilio-costs' },
 ];
 

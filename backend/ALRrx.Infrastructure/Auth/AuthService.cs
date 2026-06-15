@@ -23,13 +23,20 @@ public sealed class AuthService : IAuthService
             Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? "super-secret-key-alrrx-2026-min-32-chars!"));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.FullName),
-            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Name, user.FullName),
+            new(ClaimTypes.Role, user.RoleName),
+            new("status", user.Status.ToString()),
         };
+
+        // Add permissions as a single space-delimited claim
+        if (user.Permissions.Count > 0)
+        {
+            claims.Add(new Claim("permissions", string.Join(' ', user.Permissions)));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"] ?? "ALRrx",
@@ -71,6 +78,11 @@ public sealed class AuthService : IAuthService
     }
 
     public string HashPassword(string password) => BCrypt.Net.BCrypt.HashPassword(password);
-
     public bool VerifyPassword(string password, string hash) => BCrypt.Net.BCrypt.Verify(password, hash);
+
+    public IReadOnlyList<string> GetBootstrapAdminEmails()
+    {
+        var section = _config.GetSection("Auth:AdminBootstrapEmails");
+        return section.Get<string[]>() ?? Array.Empty<string>();
+    }
 }

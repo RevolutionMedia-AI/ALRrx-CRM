@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using ALRrx.Application.DTOs;
 using ALRrx.Application.Interfaces;
+using ALRrx.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,28 +13,23 @@ namespace ALRrx.Api.Controllers;
 public sealed class UsersController : ControllerBase
 {
     private readonly IUserRepository _users;
+    private readonly IRoleRepository _roles;
     private readonly IAuthService _auth;
+    private readonly IAuditLogRepository _audit;
 
-    public UsersController(IUserRepository users, IAuthService auth)
+    public UsersController(IUserRepository users, IRoleRepository roles, IAuthService auth, IAuditLogRepository audit)
     {
         _users = users;
+        _roles = roles;
         _auth = auth;
+        _audit = audit;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<UserInfoDto>>> GetAll(CancellationToken ct = default)
     {
         var users = await _users.GetAllAsync(ct);
-        var dtos = users.Select(u => new UserInfoDto
-        {
-            Id = u.Id,
-            Email = u.Email,
-            FullName = u.FullName,
-            Role = u.Role.ToString(),
-            IsActive = u.IsActive,
-            CreatedAt = u.CreatedAt
-        }).ToList();
-        return Ok(dtos);
+        return Ok(users.Select(MapUser).ToList());
     }
 
     [HttpGet("{id}")]
@@ -40,16 +37,7 @@ public sealed class UsersController : ControllerBase
     {
         var user = await _users.GetByIdAsync(id, ct);
         if (user is null) return NotFound();
-
-        return Ok(new UserInfoDto
-        {
-            Id = user.Id,
-            Email = user.Email,
-            FullName = user.FullName,
-            Role = user.Role.ToString(),
-            IsActive = user.IsActive,
-            CreatedAt = user.CreatedAt
-        });
+        return Ok(MapUser(user));
     }
 
     [HttpPut("{id}")]
@@ -59,17 +47,39 @@ public sealed class UsersController : ControllerBase
         if (user is null) return NotFound();
 
         var newHash = request.Password is not null ? _auth.HashPassword(request.Password) : user.PasswordHash;
+        var newRoleId = request.RoleId ?? user.RoleId;
 
-        var updated = user with
+        await _users.SetRoleAsync(id, newRoleId, ct);
+        if (request.IsActive.HasValue)
         {
-            FullName = request.FullName ?? user.FullName,
-            PasswordHash = newHash,
-            Role = request.Role is not null ? Enum.Parse<Domain.Enums.UserRole>(request.Role) : user.Role,
-            IsActive = request.IsActive ?? user.IsActive
-        };
+            var status = request.IsActive.Value ? UserStatus.Active : UserStatus.Suspended;
+            var adminId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            await _users.SetStatusAsync(id, status, adminId, null, ct);
+        }
 
-        await _users.UpdateAsync(updated, ct);
+        await _audit.LogAsync(new Domain.Entities.UserAuditLog
+        {
+            UserId = id,
+            Action = "RoleChanged",
+            PerformedBy = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value),
+            OldValue = user.RoleName,
+            NewValue = (await _roles.GetByIdAsync(newRoleId, ct))?.Name ?? user.RoleName,
+        }, ct);
 
         return NoContent();
     }
+
+    private static UserInfoDto MapUser(Domain.Entities.AuthUser u) => new()
+    {
+        Id = u.Id,
+        Email = u.Email,
+        FullName = u.FullName,
+        RoleId = u.RoleId,
+        Role = u.RoleName,
+        Status = u.Status.ToString(),
+        IsActive = u.IsActive,
+        LastLoginAt = u.LastLoginAt,
+        CreatedAt = u.CreatedAt,
+        Permissions = u.Permissions,
+    };
 }

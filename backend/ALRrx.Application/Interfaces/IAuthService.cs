@@ -8,4 +8,5 @@ public interface IAuthService
     int? ValidateToken(string token);
     string HashPassword(string password);
     bool VerifyPassword(string password, string hash);
+    IReadOnlyList<string> GetBootstrapAdminEmails();
 }
