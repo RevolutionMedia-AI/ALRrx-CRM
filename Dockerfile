@@ -27,29 +27,32 @@
 #     de PowerShell Set-Content con encoding incorrecto. Reemplazados
 #     todos los caracteres especiales (—, ·) con ASCII simple (-) para
 #     evitar futuros problemas de encoding entre Windows y Linux.
-# 2026-06-15-bust-35: Install .NET 8 SDK + ASP.NET Core 8 runtime via
-#     Microsoft's official install-dotnet.sh script (downloaded
-#     from https://dot.net/v1/) instead of pulling mcr.microsoft.com
-#     base images. MCR was throttling anonymous pulls (401 / 429)
-#     and Microsoft's Docker Hub mirror (microsoft/dotnet:8.0)
-#     no longer publishes the 8.0 tags (verified: count=0 in
-#     Docker Hub API). The install script downloads from a
-#     different endpoint so it sidesteps the MCR rate-limit
-#     entirely. Cost: ~1.5 GB larger final image (SDK gets
-#     pulled into the runtime stage) but the build is otherwise
-#     identical. Bump CACHE_BUST to 2026-06-15-bust-35.
-# Bump CACHE_BUST a 2026-06-15-bust-35.
-ARG CACHE_BUST=2026-06-15-bust-35
+# 2026-06-15-bust-36: Add DEBIAN_FRONTEND=noninteractive and install
+#     apt-utils. Without these, the apt-get install of ca-certificates
+#     / openssl / krb5 hangs on debconf prompts ("delaying package
+#     configuration, since apt-utils is not installed") and the
+#     chained install-dotnet.sh never runs — the build appears to
+#     succeed silently at the apt step but then no .NET is
+#     available, causing every subsequent dotnet command to fail
+#     with "dotnet: not found". Bump CACHE_BUST to 2026-06-15-bust-36.
+# Bump CACHE_BUST a 2026-06-15-bust-36.
+ARG CACHE_BUST=2026-06-15-bust-36
 
 # ─── Stage 0: Install .NET 8 SDK + ASP.NET Core 8 runtime ───────────────────
 # Single shared installer stage. Pulls both the SDK (needed by the
 # build stages below) and the ASP.NET Core runtime (needed by the
 # final runtime image). Installed via Microsoft's official script so
 # we don't depend on MCR's docker registry.
+#
+# DEBIAN_FRONTEND=noninteractive + apt-utils are both required: without
+# them, the apt install of ca-certificates / openssl / krb5 hangs on
+# debconf prompts that the slim image can't answer, and the chained
+# `dotnet-install.sh` never runs.
 FROM debian:bookworm-slim AS dotnet-installer
 ARG CACHE_BUST
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates curl && \
+        apt-utils ca-certificates curl && \
     rm -rf /var/lib/apt/lists/* && \
     curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && \
     chmod +x /tmp/dotnet-install.sh && \
