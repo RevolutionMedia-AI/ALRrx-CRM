@@ -63,15 +63,6 @@ public sealed class ResendEmailService : IEmailService
             $"<p>Contacta al administrador para más información.</p>",
             ct);
 
-    public Task<EmailResult> SendPasswordResetAsync(string toEmail, string toName, string temporaryPassword, CancellationToken ct = default)
-        => SendAsync(toEmail, toName,
-            "Tu contraseña de ALRrx fue restablecida",
-            $"<p>Hola <strong>{HtmlEncode(toName)}</strong>,</p>" +
-            $"<p>Tu contraseña ha sido restablecida por un administrador.</p>" +
-            $"<p><strong>Contraseña temporal:</strong> <code>{HtmlEncode(temporaryPassword)}</code></p>" +
-            $"<p>Inicia sesión aquí: <a href=\"{_loginUrl}\">{_loginUrl}</a> y cámbiala lo antes posible.</p>",
-            ct);
-
     private async Task<EmailResult> SendAsync(string toEmail, string toName, string subject, string htmlBody, CancellationToken ct)
     {
         if (!_enabled)

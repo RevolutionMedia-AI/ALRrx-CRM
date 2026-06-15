@@ -86,9 +86,6 @@ public sealed class AuthService : IAuthService
         }
     }
 
-    public string HashPassword(string password) => BCrypt.Net.BCrypt.HashPassword(password);
-    public bool VerifyPassword(string password, string hash) => BCrypt.Net.BCrypt.Verify(password, hash);
-
     public IReadOnlyList<string> GetBootstrapAdminEmails()
     {
         var section = _config.GetSection("Auth:AdminBootstrapEmails");

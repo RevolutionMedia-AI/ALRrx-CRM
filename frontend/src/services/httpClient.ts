@@ -60,7 +60,6 @@ client.interceptors.response.use(
     const url: string = config?.url ?? '';
     const code = (err?.response?.data as { code?: string } | undefined)?.code;
     const isAnonymousEndpoint =
-      url.startsWith('/auth/login') ||
       url.startsWith('/auth/google') ||
       url.startsWith('/auth/register') ||
       url.startsWith('/auth/dev-login') ||

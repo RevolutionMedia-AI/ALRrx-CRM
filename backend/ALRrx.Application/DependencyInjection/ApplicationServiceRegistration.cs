@@ -36,7 +36,6 @@ public static class ApplicationServiceRegistration
         services.AddScoped<SuspendUserUseCase>();
         services.AddScoped<ReactivateUserUseCase>();
         services.AddScoped<ChangeUserRoleUseCase>();
-        services.AddScoped<ResetUserPasswordUseCase>();
         services.AddScoped<SetUserPlatformAccessUseCase>();
 
         return services;

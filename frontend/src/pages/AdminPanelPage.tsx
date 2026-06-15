@@ -6,14 +6,12 @@ import {
   suspendUser,
   reactivateUser,
   changeUserRole,
-  resetUserPassword,
   setUserPlatformAccess,
   getRoles,
   getUserDetail,
   type AdminUserDto,
   type RoleDto,
   type AuditLogEntry,
-  type PasswordResetResult,
 } from '../services/adminApi';
 import type { PlatformAccess, UserStatus } from '../services/authApi';
 import {
@@ -31,7 +29,7 @@ import {
 } from 'hugeicons-react';
 
 type Tab = 'Pending' | 'Active' | 'Suspended' | 'Rejected';
-type ActionModal = 'approve' | 'reject' | 'suspend' | 'changeRole' | 'resetPassword' | 'setAccess' | 'detail';
+type ActionModal = 'approve' | 'reject' | 'suspend' | 'changeRole' | 'setAccess' | 'detail';
 
 const PLATFORM_ACCESS_OPTIONS: { value: PlatformAccess; label: string; description: string }[] = [
   { value: 'Both',  label: 'Both (ALTRX + Slice)',  description: 'Access to both platforms' },
@@ -76,8 +74,6 @@ export default function AdminPanelPage() {
   const [detailAudit, setDetailAudit] = useState<AuditLogEntry[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const [resetResult, setResetResult] = useState<PasswordResetResult | null>(null);
-
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -106,14 +102,12 @@ export default function AdminPanelPage() {
     setActionRoleId(u.roleId);
     setActionPlatformAccess(u.platformAccess);
     setActionMsg(null);
-    setResetResult(null);
   };
 
   const closeAction = () => {
     setActionTarget(null);
     setActionModal(null);
     setActionReason('');
-    setResetResult(null);
     setActionMsg(null);
   };
 
@@ -161,15 +155,6 @@ export default function AdminPanelPage() {
           kind: 'ok',
           text: `Platform access set to ${actionPlatformAccess}. User will be asked to re-login.`,
         });
-      } else if (actionModal === 'resetPassword') {
-        const res = await resetUserPassword(actionTarget.id);
-        setResetResult(res);
-        emailFailed = !res.emailSent;
-        if (res.emailSent) {
-          setActionMsg({ kind: 'ok', text: 'Password reset — temp password generated AND emailed' });
-        } else {
-          setActionMsg({ kind: 'err', text: `Password reset — temp password generated but email FAILED: ${res.emailError ?? 'unknown'}. Share the password above manually.` });
-        }
       } else if (actionModal === 'detail') {
         setDetailLoading(true);
         const detail = await getUserDetail(actionTarget.id);
@@ -313,9 +298,6 @@ export default function AdminPanelPage() {
                           <button onClick={() => openAction(u, 'changeRole')} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800">
                             <Shield01Icon size={12} /> Change role
                           </button>
-                          <button onClick={() => openAction(u, 'resetPassword')} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800">
-                            <Key01Icon size={12} /> Reset pwd
-                          </button>
                           <button onClick={() => openAction(u, 'suspend')} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-amber-warmth/10 text-amber-warmth border border-amber-warmth/20 hover:bg-amber-warmth/20">
                             <PauseIcon size={12} /> Suspend
                           </button>
@@ -356,7 +338,6 @@ export default function AdminPanelPage() {
               {actionModal === 'suspend' && `Suspend ${actionTarget.fullName}`}
               {actionModal === 'changeRole' && `Change role of ${actionTarget.fullName}`}
               {actionModal === 'setAccess' && `Platform access for ${actionTarget.fullName}`}
-              {actionModal === 'resetPassword' && `Reset password for ${actionTarget.fullName}`}
               {actionModal === 'detail' && `User detail: ${actionTarget.fullName}`}
             </h3>
             <p className="text-xs text-muted-slate dark:text-gray-500 mb-4">{actionTarget.email}</p>
@@ -436,18 +417,6 @@ export default function AdminPanelPage() {
               </div>
             )}
 
-            {actionModal === 'resetPassword' && resetResult && (
-              <div className="mb-4 p-4 rounded-lg bg-emerald-signal/10 border border-emerald-signal/30 text-sm">
-                <p className="text-emerald-signal font-medium mb-2">Temporary password generated</p>
-                <p className="text-primary dark:text-gray-100 font-mono text-base break-all bg-pure-surface dark:bg-gray-800 p-3 rounded border border-whisper-border dark:border-gray-700">
-                  {resetResult.temporaryPassword}
-                </p>
-                <p className="text-xs text-muted-slate dark:text-gray-500 mt-2">
-                  Share this securely with the user. They must change it after first login.
-                </p>
-              </div>
-            )}
-
             {actionModal === 'detail' && (
               <div className="mb-4 max-h-80 overflow-y-auto">
                 {detailLoading ? (
@@ -473,7 +442,7 @@ export default function AdminPanelPage() {
               </div>
             )}
 
-            {actionMsg && actionModal !== 'resetPassword' && (
+            {actionMsg && (
               <div className={`mb-4 px-3 py-2 rounded text-sm ${
                 actionMsg.kind === 'ok'
                   ? 'bg-emerald-signal/10 text-emerald-signal'
@@ -485,9 +454,9 @@ export default function AdminPanelPage() {
 
             <div className="flex items-center justify-end gap-2">
               <button onClick={closeAction} className="px-4 py-2 rounded-lg text-sm font-medium text-secondary dark:text-gray-300 hover:bg-card-icon-bg dark:hover:bg-gray-800 transition-colors">
-                {actionModal === 'resetPassword' && resetResult ? 'Close' : 'Cancel'}
+                Cancel
               </button>
-              {actionModal !== 'detail' && !(actionModal === 'resetPassword' && resetResult) && (
+              {actionModal !== 'detail' && (
                 <button
                   onClick={submitAction}
                   disabled={actionBusy}

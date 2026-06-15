@@ -6,7 +6,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [roles, setRoles] = useState<RoleDto[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<RegisterRequest>({ email: '', password: '', fullName: '', roleId: 0 });
+  const [form, setForm] = useState<RegisterRequest>({ email: '', fullName: '', roleId: 0 });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -31,7 +31,7 @@ export default function UsersPage() {
       await register(form);
       setShowForm(false);
       const employeeRole = roles.find(r => r.name === 'Employee')?.id ?? 0;
-      setForm({ email: '', password: '', fullName: '', roleId: employeeRole });
+      setForm({ email: '', fullName: '', roleId: employeeRole });
       await load();
       setMsg({ kind: 'ok', text: 'User registered successfully' });
     } catch (err: unknown) {
@@ -87,17 +87,6 @@ export default function UsersPage() {
               value={form.email}
               onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
               required
-              className="w-full px-3 py-2 rounded-lg border border-whisper-border dark:border-gray-700 bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 text-sm outline-none focus:border-electric-blue transition-colors"
-            />
-          </div>
-          <div>
-            <label className="block text-sm text-secondary mb-1">Password</label>
-            <input
-              type="password"
-              value={form.password}
-              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-              required
-              minLength={10}
               className="w-full px-3 py-2 rounded-lg border border-whisper-border dark:border-gray-700 bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 text-sm outline-none focus:border-electric-blue transition-colors"
             />
           </div>

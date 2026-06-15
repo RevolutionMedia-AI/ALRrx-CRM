@@ -13,6 +13,7 @@ import TwilioCostsPage from './pages/TwilioCostsPage';
 import AdminPanelPage from './pages/AdminPanelPage';
 import PendingApprovalPage from './pages/PendingApprovalPage';
 import AccessDeniedPage from './pages/AccessDeniedPage';
+import NoAccessPage from './pages/NoAccessPage';
 import AppLayout from './components/Layout/AppLayout';
 import PlatformPickerModal from './components/PlatformPickerModal';
 import { resolveAccess, ROUTES } from './utils/accessControl';
@@ -297,6 +298,10 @@ function AppRoutes() {
       <Route
         path="/access-denied"
         element={<AccessDeniedPage />}
+      />
+      <Route
+        path="/no-access"
+        element={<NoAccessPage />}
       />
       <Route
         path="/twilio-costs"

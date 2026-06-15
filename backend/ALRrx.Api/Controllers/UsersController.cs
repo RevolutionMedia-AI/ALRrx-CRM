@@ -46,7 +46,6 @@ public sealed class UsersController : ControllerBase
         var user = await _users.GetByIdAsync(id, ct);
         if (user is null) return NotFound();
 
-        var newHash = request.Password is not null ? _auth.HashPassword(request.Password) : user.PasswordHash;
         var newRoleId = request.RoleId ?? user.RoleId;
 
         await _users.SetRoleAsync(id, newRoleId, ct);
@@ -82,5 +81,6 @@ public sealed class UsersController : ControllerBase
         LastLoginAt = u.LastLoginAt,
         CreatedAt = u.CreatedAt,
         Permissions = u.Permissions,
+        HasAccess = u.Permissions.Count > 0,
     };
 }

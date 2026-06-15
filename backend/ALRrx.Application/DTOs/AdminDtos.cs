@@ -52,15 +52,6 @@ public sealed record AuditLogEntryDto
     public DateTime CreatedAt { get; init; }
 }
 
-public sealed record PasswordResetResult
-{
-    public string TemporaryPassword { get; init; } = string.Empty;
-    public string Email { get; init; } = string.Empty;
-    public string FullName { get; init; } = string.Empty;
-    public bool EmailSent { get; init; }
-    public string? EmailError { get; init; }
-}
-
 public sealed record EmailResult(bool Sent, string? Error);
 
 public sealed record AdminActionResultDto

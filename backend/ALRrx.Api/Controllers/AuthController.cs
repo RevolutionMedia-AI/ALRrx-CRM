@@ -58,7 +58,6 @@ public sealed class AuthController : ControllerBase
         {
             Id = 0,
             Email = "dev@local.test",
-            PasswordHash = string.Empty,
             FullName = "Dev (local)",
             RoleId = 1,
             RoleName = "Admin",
@@ -186,20 +185,24 @@ public sealed class AuthController : ControllerBase
             var user = await _users.GetByEmailAsync(userInfo.Email, dbCts.Token);
             if (user is null)
             {
-                // Decide role and status
+                // All @revolutionmedia.ai users can sign in. Bootstrap admins
+                // become Admin/Active immediately. Everyone else is created
+                // with the Pending role (0 permissions) and Active status so
+                // they can sign in but the frontend sends them to /no-access
+                // until an admin assigns them a real role.
                 var isBootstrap = IsBootstrapAdmin(userInfo.Email);
-                var role = await _roles.GetByNameAsync(isBootstrap ? "Admin" : "Employee", dbCts.Token)
-                           ?? throw new InvalidOperationException("Default role not found");
+                var roleName = isBootstrap ? "Admin" : "Pending";
+                var role = await _roles.GetByNameAsync(roleName, dbCts.Token)
+                           ?? throw new InvalidOperationException($"Default role '{roleName}' not found");
 
                 user = new Domain.Entities.AuthUser
                 {
                     Email = userInfo.Email,
-                    PasswordHash = string.Empty,
                     FullName = userInfo.Name ?? userInfo.Email.Split('@')[0],
                     RoleId = role.Id,
                     RoleName = role.Name,
-                    Status = isBootstrap ? UserStatus.Active : UserStatus.Pending,
-                    IsActive = isBootstrap,
+                    Status = UserStatus.Active,
+                    IsActive = true,
                     CreatedAt = DateTime.UtcNow,
                 };
 
@@ -233,71 +236,6 @@ public sealed class AuthController : ControllerBase
         }
     }
 
-    [HttpPost("login")]
-    [EnableRateLimiting("auth")]
-    public async Task<ActionResult<LoginResponse>> Login(
-        [FromBody] LoginRequest request,
-        CancellationToken ct = default)
-    {
-        // BUG-7 fix: normalize the email to its ASCII/punycode form so a
-        // login attempt with a homograph domain can't bypass the audit log
-        // or compare against a different casing/encoding of the same domain.
-        // BUG-25 fix: trim AND lowercase before lookup. Email comparisons
-        // are case-insensitive in nearly every mail provider; users will
-        // routinely type "User@..." once and "user@..." the next time and
-        // expect both to work. Without lowercasing, a user with a mixed-case
-        // stored email would be rejected even when typing the right
-        // address. Trailing whitespace and CRLF (common when copy-pasting
-        // from emails) are trimmed here too.
-        var normalizedEmail = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
-        if (!IsAsciiEmail(normalizedEmail)) {
-            return Unauthorized(new { error = "Invalid email or password" });
-        }
-        normalizedEmail = NormalizeEmailDomain(normalizedEmail);
-
-        // BUG-16 fix: detect Google-only accounts (empty password hash) and
-        // return a distinct message so the user knows to sign in with
-        // Google instead of being told their password is wrong.
-        var user = await _users.GetByEmailAsync(normalizedEmail, ct);
-        if (user is null)
-            return Unauthorized(new { error = "Invalid email or password" });
-        if (string.IsNullOrEmpty(user.PasswordHash))
-            return Unauthorized(new { error = "This account uses Google sign-in", code = "USE_GOOGLE_LOGIN" });
-        if (!_auth.VerifyPassword(request.Password, user.PasswordHash)) {
-            await _users.RecordLoginAsync(user.Id, success: false, ct);
-            return Unauthorized(new { error = "Invalid email or password" });
-        }
-
-        if (user.LockedUntil.HasValue && user.LockedUntil > DateTime.UtcNow)
-            return StatusCode(423, new { error = "Account temporarily locked. Try again later.", code = "USER_LOCKED" });
-
-        if (user.Status == UserStatus.Pending)
-            return StatusCode(403, new { error = "Account pending approval", code = "USER_PENDING" });
-        if (user.Status == UserStatus.Suspended)
-            return StatusCode(403, new { error = "Account suspended", code = "USER_SUSPENDED" });
-        if (user.Status == UserStatus.Rejected)
-            return StatusCode(403, new { error = "Account rejected", code = "USER_REJECTED" });
-
-        if (!user.IsActive)
-            return Unauthorized(new { error = "Account is deactivated" });
-
-        await _users.RecordLoginAsync(user.Id, success: true, ct);
-        await _audit.LogAsync(new Domain.Entities.UserAuditLog
-        {
-            UserId = user.Id,
-            Action = "Login",
-            IpAddress = ClientIp,
-        }, ct);
-
-        var token = _auth.GenerateToken(user);
-
-        return Ok(new LoginResponse
-        {
-            Token = token,
-            User = MapUser(user),
-        });
-    }
-
     [Authorize(Roles = "Admin")]
     [HttpPost("register")]
     [EnableRateLimiting("auth")]
@@ -305,10 +243,10 @@ public sealed class AuthController : ControllerBase
         [FromBody] RegisterRequest request,
         CancellationToken ct = default)
     {
-        // BUG-28 fix: normalize the email the same way as Login (trim +
-        // lowercase) so registering "User@revolutionmedia.ai" doesn't
-        // create a duplicate account for "user@revolutionmedia.ai" later.
-        // Also reject homograph / non-ASCII emails here too.
+        // Admin can pre-create a user. No password — the user must sign in
+        // via Google. Until an admin assigns them a real role, they get
+        // the Pending role (0 permissions) and are routed to /no-access
+        // on first login.
         var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
         if (!IsAsciiEmail(email) ||
             !NormalizeEmailDomain(email).EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase)) {
@@ -326,7 +264,6 @@ public sealed class AuthController : ControllerBase
         var user = new Domain.Entities.AuthUser
         {
             Email = email,
-            PasswordHash = _auth.HashPassword(request.Password),
             FullName = request.FullName,
             RoleId = role.Id,
             RoleName = role.Name,
@@ -491,6 +428,7 @@ public sealed class AuthController : ControllerBase
         LastLoginAt = u.LastLoginAt,
         CreatedAt = u.CreatedAt,
         Permissions = u.Permissions,
+        HasAccess = u.Permissions.Count > 0,
     };
 
     // BUG-7 helpers

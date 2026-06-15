@@ -21,7 +21,6 @@ public sealed class AdminController : ControllerBase
     private readonly SuspendUserUseCase _suspend;
     private readonly ReactivateUserUseCase _reactivate;
     private readonly ChangeUserRoleUseCase _changeRole;
-    private readonly ResetUserPasswordUseCase _resetPassword;
     private readonly SetUserPlatformAccessUseCase _setPlatformAccess;
     private readonly IRoleRepository _roles;
     private readonly IAuditLogRepository _audit;
@@ -34,7 +33,6 @@ public sealed class AdminController : ControllerBase
         SuspendUserUseCase suspend,
         ReactivateUserUseCase reactivate,
         ChangeUserRoleUseCase changeRole,
-        ResetUserPasswordUseCase resetPassword,
         SetUserPlatformAccessUseCase setPlatformAccess,
         IRoleRepository roles,
         IAuditLogRepository audit)
@@ -46,7 +44,6 @@ public sealed class AdminController : ControllerBase
         _suspend = suspend;
         _reactivate = reactivate;
         _changeRole = changeRole;
-        _resetPassword = resetPassword;
         _setPlatformAccess = setPlatformAccess;
         _roles = roles;
         _audit = audit;
@@ -156,20 +153,6 @@ public sealed class AdminController : ControllerBase
         try
         {
             var result = await _changeRole.ExecuteAsync(id, body.RoleId, CurrentUserId, ClientIp, ct);
-            return Ok(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-    }
-
-    [HttpPost("users/{id:int}/reset-password")]
-    public async Task<ActionResult<PasswordResetResult>> ResetPassword(int id, CancellationToken ct = default)
-    {
-        try
-        {
-            var result = await _resetPassword.ExecuteAsync(id, CurrentUserId, ClientIp, ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)

@@ -43,14 +43,6 @@ export interface RoleDto {
   permissions: string[];
 }
 
-export interface PasswordResetResult {
-  temporaryPassword: string;
-  email: string;
-  fullName: string;
-  emailSent: boolean;
-  emailError?: string | null;
-}
-
 export interface AdminActionResult {
   user: AdminUserDto;
   emailSent: boolean;
@@ -99,11 +91,6 @@ export async function changeUserRole(id: number, roleId: number): Promise<AdminA
 
 export async function setUserPlatformAccess(id: number, platformAccess: string): Promise<AdminActionResult> {
   const { data } = await client.put<AdminActionResult>(`/admin/users/${id}/platform-access`, { platformAccess });
-  return data;
-}
-
-export async function resetUserPassword(id: number): Promise<PasswordResetResult> {
-  const { data } = await client.post<PasswordResetResult>(`/admin/users/${id}/reset-password`);
   return data;
 }
 

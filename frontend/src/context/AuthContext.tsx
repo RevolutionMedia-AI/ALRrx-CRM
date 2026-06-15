@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, logoutRequest, refreshRequest, type UserInfo, type UserStatus, type LoginResponse } from '../services/authApi';
+import { googleLogin as apiGoogleLogin, getMe, setAuthToken, logoutRequest, refreshRequest, type UserInfo, type UserStatus, type LoginResponse } from '../services/authApi';
 import { getGoogleAccessToken, setGoogleAccessToken } from '../utils/googleTokenStore';
 import { SHARED_TOKEN_KEY, readSharedToken, writeSharedToken, clearSharedToken, getJwtExp, msUntilExpiry, shouldRefreshToken } from '../utils/sharedToken';
 import { AUTH_FORBIDDEN_EVENT, AUTH_UNAUTHORIZED_EVENT, refreshOnce } from '../services/httpClient';
@@ -13,7 +13,6 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   authUnavailable: boolean;
-  login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
@@ -31,6 +30,21 @@ function routeForStatus(status: UserStatus | undefined): string {
   if (status === 'Pending') return '/pending-approval';
   if (status === 'Suspended' || status === 'Rejected') return '/access-denied';
   return '/';
+}
+
+// Active users with no permissions (e.g. auto-created Google sign-ins
+// that landed in the Pending role) get a dedicated "no access" page
+// with a clear message instead of being silently dumped on a dashboard
+// they can't use.
+function routeForNoAccess(): string {
+  return '/no-access';
+}
+
+function targetRouteFor(user: UserInfo): string {
+  if (user.status === 'Pending') return routeForStatus(user.status);
+  if (user.status === 'Suspended' || user.status === 'Rejected') return routeForStatus(user.status);
+  if (user.status === 'Active' && !user.hasAccess) return routeForNoAccess();
+  return routeForActiveUser(user);
 }
 
 function routeForActiveUser(user: UserInfo): string {
@@ -68,10 +82,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const applyUserAndRedirect = useCallback((u: UserInfo | null, tok: string | null) => {
     setUser(u);
     setToken(tok);
-    if (u && (u.status === 'Pending' || u.status === 'Suspended' || u.status === 'Rejected')) {
-      const target = routeForStatus(u.status);
-      if (pathnameRef.current !== target && !pathnameRef.current.startsWith(target)) {
+    if (!u) return;
+    const target = targetRouteFor(u);
+    if (
+      target === '/no-access' ||
+      target === '/pending-approval' ||
+      target === '/access-denied'
+    ) {
+      // No-access / status pages are terminal landing spots — always
+      // force the user there regardless of their current path.
+      if (pathnameRef.current !== target) {
         navigateRef.current(target, { replace: true });
+      }
+    } else if (u.status === 'Active' && !u.hasAccess) {
+      // Defense-in-depth: if some other path slips through, still send
+      // them to /no-access.
+      if (pathnameRef.current !== '/no-access') {
+        navigateRef.current('/no-access', { replace: true });
       }
     }
   }, []);
@@ -255,31 +282,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('storage', handler);
   }, [applyUserAndRedirect, navigate]);
 
-  const login = async (email: string, password: string) => {
-    const res = await apiLogin({ email, password });
-    writeSharedToken(res.token);
-    setAuthToken(res.token);
-    setToken(res.token);
-    setUser(res.user);
-    // BUG-1 fix: route based on user.status first, then platformAccess for Active.
-    const target = res.user.status === 'Active'
-      ? routeForActiveUser(res.user)
-      : routeForStatus(res.user.status);
-    navigate(target, { replace: true });
-  };
-
   const loginWithGoogle = async (credential: string) => {
     setGoogleAccessToken(credential);
     const res = await apiGoogleLogin(credential);
     writeSharedToken(res.token);
     setAuthToken(res.token);
     setToken(res.token);
-    setUser(res.user);
-    // BUG-1 fix: same platform-aware routing for Google login.
-    const target = res.user.status === 'Active'
-      ? routeForActiveUser(res.user)
-      : routeForStatus(res.user.status);
-    navigate(target, { replace: true });
+    // Routes through targetRouteFor so no-access and status-gated users
+    // land on the right page automatically.
+    applyUserAndRedirect(res.user, res.token);
   };
 
   const logout = () => {
@@ -326,7 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       user, token, loading,
-      login, loginWithGoogle, logout, refresh,
+      loginWithGoogle, logout, refresh,
       isAdmin, canEdit, isPending, isSuspended, isRejected,
       has, authUnavailable,
     }}>

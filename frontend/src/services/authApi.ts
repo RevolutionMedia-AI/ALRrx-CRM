@@ -1,8 +1,3 @@
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
 export type UserStatus = 'Pending' | 'Active' | 'Rejected' | 'Suspended';
 
 export type PlatformAccess = 'None' | 'Altrx' | 'Slice' | 'Both';
@@ -19,6 +14,7 @@ export interface UserInfo {
   lastLoginAt?: string | null;
   createdAt: string;
   permissions: string[];
+  hasAccess: boolean;
 }
 
 export interface LoginResponse {
@@ -28,18 +24,12 @@ export interface LoginResponse {
 
 export interface RegisterRequest {
   email: string;
-  password: string;
   fullName: string;
   roleId: number;
 }
 
 import { client, setAuthToken } from './httpClient';
 export { setAuthToken };
-
-export async function login(req: LoginRequest): Promise<LoginResponse> {
-  const { data } = await client.post<LoginResponse>('/auth/login', req);
-  return data;
-}
 
 export async function googleLogin(accessToken: string): Promise<LoginResponse> {
   const { data } = await client.post<LoginResponse>('/auth/google', { accessToken });

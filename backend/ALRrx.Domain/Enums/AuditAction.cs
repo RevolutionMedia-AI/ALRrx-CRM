@@ -11,7 +11,6 @@ public enum AuditAction
     Suspended,
     Reactivated,
     RoleChanged,
-    PasswordReset,
     Locked,
     EmailFailed,
     TokenRevoked

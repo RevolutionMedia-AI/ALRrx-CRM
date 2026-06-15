@@ -1,11 +1,5 @@
 namespace ALRrx.Application.DTOs;
 
-public sealed record LoginRequest
-{
-    public string Email { get; init; } = string.Empty;
-    public string Password { get; init; } = string.Empty;
-}
-
 public sealed record GoogleLoginRequest
 {
     public string AccessToken { get; init; } = string.Empty;
@@ -20,7 +14,6 @@ public sealed record LoginResponse
 public sealed record RegisterRequest
 {
     public string Email { get; init; } = string.Empty;
-    public string Password { get; init; } = string.Empty;
     public string FullName { get; init; } = string.Empty;
     public int RoleId { get; init; } = 0;
 }
@@ -38,12 +31,12 @@ public sealed record UserInfoDto
     public DateTime? LastLoginAt { get; init; }
     public DateTime CreatedAt { get; init; }
     public List<string> Permissions { get; init; } = [];
+    public bool HasAccess { get; init; }
 }
 
 public sealed record UpdateUserRequest
 {
     public string? FullName { get; init; }
-    public string? Password { get; init; }
     public int? RoleId { get; init; }
     public bool? IsActive { get; init; }
 }

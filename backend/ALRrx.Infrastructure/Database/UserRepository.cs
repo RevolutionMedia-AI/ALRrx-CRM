@@ -42,9 +42,10 @@ public sealed class UserRepository : IUserRepository
         await ExecAsync(connection, """
             INSERT INTO alrrx_roles (Name, Description, IsSystem) VALUES
                 ('Admin',          'Full system access',              1),
-                ('Supervisor',     'Team management + read all',      1),
+                ('Supervisor',     'Team management + can edit data', 1),
                 ('Employee',       'Read-only basic access',          1),
-                ('VicidialEditor', 'Can edit Vicidial sales entries', 1)
+                ('VicidialEditor', 'Can edit Vicidial sales entries', 1),
+                ('Pending',        'Awaiting access grant — 0 perms', 1)
             ON DUPLICATE KEY UPDATE Description = VALUES(Description)
             """, ct);
 
@@ -99,14 +100,15 @@ public sealed class UserRepository : IUserRepository
             SELECT r.Id, p.Id FROM alrrx_roles r CROSS JOIN alrrx_permissions p WHERE r.Name = 'Admin'
             """, ct);
 
-        // Supervisor: read all + manage team
+        // Supervisor: read all + manage team + edit data
         await ExecAsync(connection, """
             INSERT IGNORE INTO alrrx_role_permissions (RoleId, PermissionId)
             SELECT r.Id, p.Id
             FROM alrrx_roles r
             JOIN alrrx_permissions p ON p.KeyName IN (
                 'users.view', 'dashboard.view', 'reports.view', 'staffing.view',
-                'staffing.view.team', 'twilio.view', 'vicidial.view', 'period-comparison.run'
+                'staffing.view.team', 'twilio.view', 'vicidial.view', 'period-comparison.run',
+                'data.edit'
             )
             WHERE r.Name = 'Supervisor'
             """, ct);
@@ -157,7 +159,8 @@ public sealed class UserRepository : IUserRepository
             CREATE TABLE IF NOT EXISTS alrrx_users (
                 Id INT AUTO_INCREMENT PRIMARY KEY,
                 Email VARCHAR(255) NOT NULL UNIQUE,
-                PasswordHash VARCHAR(255) NOT NULL,
+                -- Retained for backward compatibility; all values are now '' (Google-only auth)
+                PasswordHash VARCHAR(255) NOT NULL DEFAULT '',
                 FullName VARCHAR(255) NOT NULL,
                 Role VARCHAR(50) NOT NULL DEFAULT 'Employee',
                 RoleId INT NULL,
@@ -266,18 +269,30 @@ public sealed class UserRepository : IUserRepository
             "ALTER TABLE alrrx_users ADD CONSTRAINT FK_alrrx_users_ApprovedBy FOREIGN KEY (ApprovedBy) REFERENCES alrrx_users(Id)", ct);
 
         // ============================================================================
-        // 9. Seed bootstrap users (4 hardcoded)
+        // 9. Seed bootstrap users (14 hardcoded — no passwords, Google-only)
         // ============================================================================
-        var admins = new (string Email, string Name, string Hash, string Role, string PlatformAccess)[]
+        var seedUsers = new (string Email, string Name, string Role, string PlatformAccess)[]
         {
-            ("kevin.escalante@revolutionmedia.ai", "Kevin Escalante", BCrypt.Net.BCrypt.HashPassword("Admin123!"),  "Admin",      "Both"),
-            ("david@revolutionmedia.ai",          "David",           BCrypt.Net.BCrypt.HashPassword("Admin123!"),  "Admin",      "Both"),
-            ("cuauhtemoc@revolutionmedia.ai",     "Cuauhtemoc",      BCrypt.Net.BCrypt.HashPassword("Admin123!"),  "Admin",      "Both"),
-            ("j.lines@revolutionmedia.ai",         "Justin Lines",    BCrypt.Net.BCrypt.HashPassword("Admin123!"),  "Admin",      "Both"),
-            ("jessica.duarte@revolutionmedia.ai", "Jessica Duarte",  BCrypt.Net.BCrypt.HashPassword("Super123!"),  "Supervisor", "Altrx"),
+            // Admins (4) — full access, Both platforms
+            ("kevin.escalante@revolutionmedia.ai",  "Kevin Escalante",  "Admin",      "Both"),
+            ("david@revolutionmedia.ai",            "David",            "Admin",      "Both"),
+            ("cuauhtemoc@revolutionmedia.ai",       "Cuauhtemoc",       "Admin",      "Both"),
+            ("j.lines@revolutionmedia.ai",          "Justin Lines",     "Admin",      "Both"),
+            // Supervisors (4) — can edit data, scoped to one platform
+            ("jessica.duarte@revolutionmedia.ai",   "Jessica Duarte",   "Supervisor", "Altrx"),
+            ("silverio.arellano@revolutionmedia.ai","Silverio Arellano","Supervisor", "Altrx"),
+            ("pedro@revolutionmedia.ai",            "Pedro",            "Supervisor", "Slice"),
+            ("ofelia.palomino@revolutionmedia.ai",  "Ofelia Palomino",  "Supervisor", "Slice"),
+            // Employees (6) — read-only Slice only
+            ("victor.ramirez@revolutionmedia.ai",   "Victor Ramirez",   "Employee",   "Slice"),
+            ("jose.camacho@revolutionmedia.ai",     "Jose Camacho",     "Employee",   "Slice"),
+            ("luis.mariano@revolutionmedia.ai",     "Luis Mariano",     "Employee",   "Slice"),
+            ("nayeli.novoa@revolutionmedia.ai",     "Nayeli Novoa",     "Employee",   "Slice"),
+            ("eduardo.hernandez@revolutionmedia.ai","Eduardo Hernandez","Employee",   "Slice"),
+            ("kenny.santaella@revolutionmedia.ai",  "Kenny Santaella",  "Employee",   "Slice"),
         };
 
-        foreach (var (email, name, hash, role, platformAccess) in admins)
+        foreach (var (email, name, role, platformAccess) in seedUsers)
         {
             var existsRaw = await ExecScalarAsync(connection,
                 "SELECT COUNT(*) FROM alrrx_users WHERE Email = @Email", ct,
@@ -293,11 +308,11 @@ public sealed class UserRepository : IUserRepository
             var roleId = Convert.ToInt32(roleIdRaw);
             await ExecAsync(connection, """
                 INSERT INTO alrrx_users
-                    (Email, PasswordHash, FullName, Role, RoleId, Status, PlatformAccess, IsActive, ApprovedAt)
+                    (Email, FullName, Role, RoleId, Status, PlatformAccess, IsActive, ApprovedAt)
                 VALUES
-                    (@Email, @PasswordHash, @FullName, @Role, @RoleId, 'Active', @PlatformAccess, 1, @ApprovedAt)
+                    (@Email, @FullName, @Role, @RoleId, 'Active', @PlatformAccess, 1, @ApprovedAt)
                 """, ct,
-                ("@Email", email), ("@PasswordHash", hash), ("@FullName", name),
+                ("@Email", email), ("@FullName", name),
                 ("@Role", role), ("@RoleId", roleId), ("@PlatformAccess", platformAccess),
                 ("@ApprovedAt", DateTime.UtcNow));
 
@@ -413,7 +428,6 @@ public sealed class UserRepository : IUserRepository
 
         await using var cmd = new MySqlCommand(Queries.InsertUser, connection);
         cmd.Parameters.AddWithValue("@Email", user.Email);
-        cmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
         cmd.Parameters.AddWithValue("@FullName", user.FullName);
         cmd.Parameters.AddWithValue("@RoleId", user.RoleId);
         cmd.Parameters.AddWithValue("@Role", roleName);
@@ -430,7 +444,6 @@ public sealed class UserRepository : IUserRepository
         await using var cmd = new MySqlCommand(Queries.UpdateUser, connection);
         cmd.Parameters.AddWithValue("@Id", user.Id);
         cmd.Parameters.AddWithValue("@FullName", user.FullName);
-        cmd.Parameters.AddWithValue("@PasswordHash", user.PasswordHash);
         cmd.Parameters.AddWithValue("@RoleId", user.RoleId);
         cmd.Parameters.AddWithValue("@IsActive", user.IsActive);
         await cmd.ExecuteNonQueryAsync(ct);
@@ -507,17 +520,6 @@ public sealed class UserRepository : IUserRepository
         }
     }
 
-    public async Task ResetPasswordAsync(int userId, string newHash, CancellationToken ct = default)
-    {
-        await using var connection = await GetOpenConnectionAsync(ct);
-        await using var cmd = new MySqlCommand(
-            "UPDATE alrrx_users SET PasswordHash = @Hash, FailedLoginAttempts = 0, LockedUntil = NULL WHERE Id = @Id",
-            connection);
-        cmd.Parameters.AddWithValue("@Hash", newHash);
-        cmd.Parameters.AddWithValue("@Id", userId);
-        await cmd.ExecuteNonQueryAsync(ct);
-    }
-
     private async Task<AuthUser?> MapUserAsync(MySqlDataReader reader, CancellationToken ct)
     {
         var roleId = reader.GetInt32("RoleId");
@@ -529,7 +531,6 @@ public sealed class UserRepository : IUserRepository
         {
             Id = id,
             Email = reader.GetString("Email"),
-            PasswordHash = reader.GetString("PasswordHash"),
             FullName = reader.GetString("FullName"),
             RoleId = roleId,
             RoleName = roleName,
@@ -566,7 +567,7 @@ public sealed class UserRepository : IUserRepository
     private static class Queries
     {
         public const string SelectUserBase = """
-            SELECT u.Id, u.Email, u.PasswordHash, u.FullName, u.RoleId, r.Name AS Role,
+            SELECT u.Id, u.Email, u.FullName, u.RoleId, r.Name AS Role,
                    u.Status, u.PlatformAccess, u.IsActive, u.ApprovedBy, u.ApprovedAt, u.RejectionReason,
                    u.LastLoginAt, u.FailedLoginAttempts, u.LockedUntil, u.CreatedBy, u.CreatedAt
             FROM alrrx_users u
@@ -586,13 +587,13 @@ public sealed class UserRepository : IUserRepository
             """;
 
         public const string InsertUser = """
-            INSERT INTO alrrx_users (Email, PasswordHash, FullName, RoleId, Role, Status, PlatformAccess, IsActive, CreatedBy)
-            VALUES (@Email, @PasswordHash, @FullName, @RoleId, @Role, @Status, @PlatformAccess, @IsActive, @CreatedBy)
+            INSERT INTO alrrx_users (Email, FullName, RoleId, Role, Status, PlatformAccess, IsActive, CreatedBy)
+            VALUES (@Email, @FullName, @RoleId, @Role, @Status, @PlatformAccess, @IsActive, @CreatedBy)
             """;
 
         public const string UpdateUser = """
             UPDATE alrrx_users
-            SET FullName = @FullName, PasswordHash = @PasswordHash, RoleId = @RoleId, IsActive = @IsActive
+            SET FullName = @FullName, RoleId = @RoleId, IsActive = @IsActive
             WHERE Id = @Id
             """;
 
