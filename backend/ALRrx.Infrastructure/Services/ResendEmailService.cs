@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ALRrx.Application.DTOs;
 using ALRrx.Application.Interfaces;
 using Microsoft.Extensions.Configuration;
@@ -19,7 +20,12 @@ public sealed class ResendEmailService : IEmailService
     private readonly string _loginUrl;
     private readonly string _logoUrl;
     private readonly bool _enabled;
-    private readonly string? _platformAccessGrantedTemplate;
+
+    // All four transactional templates are loaded once at startup from
+    // embedded resources. Each is HTML with {{Placeholder}} tokens that
+    // we string-replace at send time. The templates are kept in
+    // /Templates/*.html so designers can edit them without touching C#.
+    private readonly Dictionary<string, string> _templates;
 
     public ResendEmailService(HttpClient http, IConfiguration config, ILogger<ResendEmailService> logger)
     {
@@ -40,58 +46,116 @@ public sealed class ResendEmailService : IEmailService
             _http.Timeout = TimeSpan.FromSeconds(10);
         }
 
-        // Load the platform-access-granted template from the embedded
-        // resource once at startup. If the resource can't be found we
-        // log a warning and fall back to a simple plain-text subject —
-        // the email service still works, just with the basic subject
-        // line instead of the styled HTML.
+        _templates = LoadTemplates(logger);
+    }
+
+    /// <summary>
+    /// Load every .html file under /Templates as an embedded resource.
+    /// The key is the file name without extension (e.g. "account-approved"),
+    /// which each Send method looks up to render its body.
+    /// </summary>
+    private static Dictionary<string, string> LoadTemplates(ILogger logger)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         try
         {
             var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = assembly.GetManifestResourceNames()
-                .FirstOrDefault(n => n.EndsWith("platform-access-granted.html", StringComparison.OrdinalIgnoreCase));
-            if (resourceName is not null)
+            foreach (var resourceName in assembly.GetManifestResourceNames())
             {
+                // Resources are named like
+                //   ALRrx.Infrastructure.Templates.account-approved.html
+                const string suffix = ".Templates.";
+                var idx = resourceName.IndexOf(suffix, StringComparison.Ordinal);
+                if (idx < 0) continue;
+                var fileName = resourceName[(idx + suffix.Length)..];
+                if (!fileName.EndsWith(".html", StringComparison.OrdinalIgnoreCase)) continue;
+                var key = fileName[..^".html".Length];
+
                 using var stream = assembly.GetManifestResourceStream(resourceName)!;
                 using var reader = new StreamReader(stream, Encoding.UTF8);
-                _platformAccessGrantedTemplate = reader.ReadToEnd();
+                result[key] = reader.ReadToEnd();
             }
-            else
-            {
-                _logger.LogWarning("[Resend] Embedded resource 'platform-access-granted.html' not found — falling back to plain-text email");
-            }
+            logger.LogInformation("[Resend] loaded {Count} email template(s): {Keys}",
+                result.Count, string.Join(", ", result.Keys));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Resend] Failed to load platform-access-granted.html embedded resource");
+            logger.LogError(ex, "[Resend] failed to load embedded email templates");
         }
+        return result;
+    }
+
+    /// <summary>
+    /// Render a template by key, substituting every {{Token}} with its
+    /// value. Falls back to a small plain-text body if the template is
+    /// missing so the user still gets *some* email when the embedded
+    /// resource fails to load.
+    /// </summary>
+    private Task<EmailResult> RenderOrFallback(
+        string templateKey,
+        string subject,
+        IReadOnlyDictionary<string, string?> values,
+        string fallbackBody)
+    {
+        if (!_templates.TryGetValue(templateKey, out var template))
+        {
+            _logger.LogWarning("[Resend] template '{Key}' not found — using plain-text fallback", templateKey);
+            return SendAsync(values["UserEmail"] ?? "", values["UserFullName"] ?? "", subject, fallbackBody, default);
+        }
+
+        var body = Regex.Replace(template, @"\{\{(\w+)\}\}", match =>
+        {
+            var key = match.Groups[1].Value;
+            return values.TryGetValue(key, out var v) ? HtmlEncode(v ?? string.Empty) : match.Value;
+        });
+
+        return SendAsync(values["UserEmail"] ?? "", values["UserFullName"] ?? "", subject, body, default);
     }
 
     public Task<EmailResult> SendAccountApprovedAsync(string toEmail, string toName, string roleName, CancellationToken ct = default)
-        => SendAsync(toEmail, toName,
-            "Tu cuenta de ALRrx fue aprobada",
-            $"<p>Hola <strong>{HtmlEncode(toName)}</strong>,</p>" +
-            $"<p>Tu cuenta en ALRrx CRM ha sido aprobada con el rol <strong>{HtmlEncode(roleName)}</strong>.</p>" +
-            $"<p>Ya puedes iniciar sesión: <a href=\"{_loginUrl}\">{_loginUrl}</a></p>",
-            ct);
+        => RenderOrFallback("account-approved",
+            "Your account has been approved — RevolutionMedia.ai",
+            new Dictionary<string, string?>
+            {
+                ["UserEmail"]    = toEmail,
+                ["UserFullName"] = toName,
+                ["RoleName"]     = roleName,
+                ["LoginUrl"]     = _loginUrl,
+                ["LogoUrl"]      = _logoUrl,
+            },
+            $"<p>Hello {HtmlEncode(toName)},</p>" +
+            $"<p>Your account on RevolutionMedia.ai has been approved with the role <strong>{HtmlEncode(roleName)}</strong>.</p>" +
+            $"<p>Sign in here: <a href=\"{_loginUrl}\">{_loginUrl}</a></p>");
 
     public Task<EmailResult> SendAccountRejectedAsync(string toEmail, string toName, string reason, CancellationToken ct = default)
-        => SendAsync(toEmail, toName,
-            "Tu solicitud a ALRrx fue rechazada",
-            $"<p>Hola <strong>{HtmlEncode(toName)}</strong>,</p>" +
-            $"<p>Lamentablemente tu solicitud de acceso a ALRrx CRM fue rechazada.</p>" +
-            $"<p><strong>Motivo:</strong> {HtmlEncode(reason)}</p>" +
-            $"<p>Si crees que es un error, contacta al administrador.</p>",
-            ct);
+        => RenderOrFallback("account-rejected",
+            "Your account application has been rejected — RevolutionMedia.ai",
+            new Dictionary<string, string?>
+            {
+                ["UserEmail"]    = toEmail,
+                ["UserFullName"] = toName,
+                ["Reason"]       = reason,
+                ["LogoUrl"]      = _logoUrl,
+            },
+            $"<p>Hello {HtmlEncode(toName)},</p>" +
+            $"<p>Your account application on RevolutionMedia.ai was not approved.</p>" +
+            $"<p><strong>Reason:</strong> {HtmlEncode(reason)}</p>" +
+            $"<p>If you believe this was a mistake, please contact the administrator.</p>");
 
     public Task<EmailResult> SendAccountSuspendedAsync(string toEmail, string toName, string reason, CancellationToken ct = default)
-        => SendAsync(toEmail, toName,
-            "Your ALRrx account was suspended",
-            $"<p>Hello <strong>{HtmlEncode(toName)}</strong>,</p>" +
-            $"<p>Your account in ALRrx CRM has been suspended.</p>" +
+        => RenderOrFallback("account-suspended",
+            "Your account has been suspended — RevolutionMedia.ai",
+            new Dictionary<string, string?>
+            {
+                ["UserEmail"]    = toEmail,
+                ["UserFullName"] = toName,
+                ["Reason"]       = reason,
+                ["LogoUrl"]      = _logoUrl,
+            },
+            $"<p>Hello {HtmlEncode(toName)},</p>" +
+            $"<p>Your account on RevolutionMedia.ai has been suspended.</p>" +
             $"<p><strong>Reason:</strong> {HtmlEncode(reason)}</p>" +
-            $"<p>Contact the administrator for more information.</p>",
-            ct);
+            $"<p>Contact the administrator for more information.</p>");
 
     public Task<EmailResult> SendPlatformAccessGrantedAsync(
         string toEmail,
@@ -99,33 +163,22 @@ public sealed class ResendEmailService : IEmailService
         string roleName,
         string platformName,
         CancellationToken ct = default)
-    {
-        var subject = $"Your access to {platformName} is now active — RevolutionMedia.ai";
-
-        if (_platformAccessGrantedTemplate is null)
-        {
-            // Fallback when the embedded resource is missing: send a
-            // simple plain-text body so the user still gets the
-            // notification, just without the styled HTML.
-            return SendAsync(toEmail, toName, subject,
-                $"<p>Hello <strong>{HtmlEncode(toName)}</strong>,</p>" +
-                $"<p>You have been granted <strong>{HtmlEncode(roleName)}</strong> access to " +
-                $"<strong>{HtmlEncode(platformName)}</strong> on RevolutionMedia.ai.</p>" +
-                $"<p>Sign in with your @revolutionmedia.ai Google account to get started:</p>" +
-                $"<p><a href=\"{_loginUrl}\">{_loginUrl}</a></p>",
-                ct);
-        }
-
-        var body = _platformAccessGrantedTemplate
-            .Replace("{{UserFullName}}", HtmlEncode(toName))
-            .Replace("{{UserEmail}}",    HtmlEncode(toEmail))
-            .Replace("{{RoleName}}",     HtmlEncode(roleName))
-            .Replace("{{PlatformName}}", HtmlEncode(platformName))
-            .Replace("{{LoginUrl}}",     HtmlEncode(_loginUrl))
-            .Replace("{{LogoUrl}}",      HtmlEncode(_logoUrl));
-
-        return SendAsync(toEmail, toName, subject, body, ct);
-    }
+        => RenderOrFallback("platform-access-granted",
+            $"Your access to {platformName} is now active — RevolutionMedia.ai",
+            new Dictionary<string, string?>
+            {
+                ["UserEmail"]    = toEmail,
+                ["UserFullName"] = toName,
+                ["RoleName"]     = roleName,
+                ["PlatformName"] = platformName,
+                ["LoginUrl"]     = _loginUrl,
+                ["LogoUrl"]      = _logoUrl,
+            },
+            $"<p>Hello {HtmlEncode(toName)},</p>" +
+            $"<p>You have been granted <strong>{HtmlEncode(roleName)}</strong> access to " +
+            $"<strong>{HtmlEncode(platformName)}</strong> on RevolutionMedia.ai.</p>" +
+            $"<p>Sign in with your @revolutionmedia.ai Google account: " +
+            $"<a href=\"{_loginUrl}\">{_loginUrl}</a></p>");
 
     private async Task<EmailResult> SendAsync(string toEmail, string toName, string subject, string htmlBody, CancellationToken ct)
     {

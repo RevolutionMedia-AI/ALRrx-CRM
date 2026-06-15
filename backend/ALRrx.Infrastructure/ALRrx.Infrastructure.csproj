@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Templates\platform-access-granted.html" />
+    <EmbeddedResource Include="Templates\account-approved.html" />
+    <EmbeddedResource Include="Templates\account-rejected.html" />
+    <EmbeddedResource Include="Templates\account-suspended.html" />
   </ItemGroup>
 
   <ItemGroup>
