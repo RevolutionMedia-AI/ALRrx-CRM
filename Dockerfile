@@ -27,16 +27,16 @@
 #     de PowerShell Set-Content con encoding incorrecto. Reemplazados
 #     todos los caracteres especiales (—, ·) con ASCII simple (-) para
 #     evitar futuros problemas de encoding entre Windows y Linux.
-# 2026-06-15-bust-36: Add DEBIAN_FRONTEND=noninteractive and install
-#     apt-utils. Without these, the apt-get install of ca-certificates
-#     / openssl / krb5 hangs on debconf prompts ("delaying package
-#     configuration, since apt-utils is not installed") and the
-#     chained install-dotnet.sh never runs — the build appears to
-#     succeed silently at the apt step but then no .NET is
-#     available, causing every subsequent dotnet command to fail
-#     with "dotnet: not found". Bump CACHE_BUST to 2026-06-15-bust-36.
-# Bump CACHE_BUST a 2026-06-15-bust-36.
-ARG CACHE_BUST=2026-06-15-bust-36
+# 2026-06-15-bust-37: Install libicu-dev alongside ca-certificates.
+#     The slim debian image is missing the ICU library, so the
+#     first `dotnet restore` call crashed with "Couldn't find a
+#     valid ICU package installed on the system" (a hard
+#     FailFast inside System.TimeZoneInfo..cctor) — the .NET
+#     runtime needs ICU to load timezones for globalization.
+#     libicu-dev is the package name in Debian 12 / bookworm.
+#     Bump CACHE_BUST to 2026-06-15-bust-37.
+# Bump CACHE_BUST a 2026-06-15-bust-37.
+ARG CACHE_BUST=2026-06-15-bust-37
 
 # ─── Stage 0: Install .NET 8 SDK + ASP.NET Core 8 runtime ───────────────────
 # Single shared installer stage. Pulls both the SDK (needed by the
@@ -52,7 +52,7 @@ FROM debian:bookworm-slim AS dotnet-installer
 ARG CACHE_BUST
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        apt-utils ca-certificates curl && \
+        apt-utils ca-certificates curl libicu-dev && \
     rm -rf /var/lib/apt/lists/* && \
     curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh && \
     chmod +x /tmp/dotnet-install.sh && \
