@@ -82,18 +82,23 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               </button>
             ))}
             {user?.platformAccess === 'Slice' || user?.platformAccess === 'Both' ? (
-              <button
-                key={sliceNavItem.path}
-                onClick={() => navigate(sliceNavItem.path)}
-                className={
-                  location.pathname.startsWith('/slice')
-                    ? 'text-primary dark:text-gray-100 border-b-2 border-primary dark:border-gray-100 pb-1 h-full flex items-center pt-1 text-sm font-semibold'
-                    : 'text-secondary dark:text-gray-400 hover:text-primary dark:hover:text-gray-200 transition-colors h-full flex items-center text-sm font-medium'
-                }
-                title="Go to Slice platform"
-              >
-                {sliceNavItem.label}
-              </button>
+              // Admins already have a "Switch" button that goes to the platform
+              // picker, so the Slice quick-jump would be redundant for them.
+              // Hide it here — they get Slice access via the picker instead.
+              !isAdmin && (
+                <button
+                  key={sliceNavItem.path}
+                  onClick={() => navigate(sliceNavItem.path)}
+                  className={
+                    location.pathname.startsWith('/slice')
+                      ? 'text-primary dark:text-gray-100 border-b-2 border-primary dark:border-gray-100 pb-1 h-full flex items-center pt-1 text-sm font-semibold'
+                      : 'text-secondary dark:text-gray-400 hover:text-primary dark:hover:text-gray-200 transition-colors h-full flex items-center text-sm font-medium'
+                  }
+                  title="Go to Slice platform"
+                >
+                  {sliceNavItem.label}
+                </button>
+              )
             ) : null}
             {isAdmin && adminNavItems.map((item) => (
               <button

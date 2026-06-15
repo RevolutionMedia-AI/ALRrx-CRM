@@ -15,6 +15,7 @@ import PendingApprovalPage from './pages/PendingApprovalPage';
 import AccessDeniedPage from './pages/AccessDeniedPage';
 import NoAccessPage from './pages/NoAccessPage';
 import AppLayout from './components/Layout/AppLayout';
+import AdminLayout from './components/Layout/AdminLayout';
 import PlatformPickerModal from './components/PlatformPickerModal';
 import { resolveAccess, ROUTES } from './utils/accessControl';
 import SliceShopOverviewPage from './slice/pages/SliceShopOverviewPage';
@@ -60,7 +61,7 @@ function AdminRoute({ children }: { children: ReactNode }) {
   if (user.status === 'Pending') return <Navigate to="/pending-approval" replace />;
   if (user.status === 'Suspended' || user.status === 'Rejected') return <Navigate to="/access-denied" replace />;
   if (user.role !== 'Admin') return <Navigate to="/dashboard" replace />;
-  return <AppLayout>{children}</AppLayout>;
+  return <AdminLayout>{children}</AdminLayout>;
 }
 
 function SliceProtectedRoute({ children }: { children: ReactNode }) {
