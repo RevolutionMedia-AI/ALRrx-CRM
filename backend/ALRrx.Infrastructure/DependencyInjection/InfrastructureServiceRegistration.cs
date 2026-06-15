@@ -15,14 +15,14 @@ public static class InfrastructureServiceRegistration
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         ConnectionConfig connectionConfig,
-        FormConnectionConfig formConnectionConfig)
+        CrmConnectionConfig crmConnectionConfig)
     {
         services.AddSingleton(connectionConfig);
-        services.AddSingleton(formConnectionConfig);
+        services.AddSingleton(crmConnectionConfig);
 
         services.AddSingleton<ISshTunnelService, SshTunnelService>();
         services.AddSingleton<IDatabaseConnection, MariaDbConnectionFactory>();
-        services.AddSingleton<FormDbConnectionFactory>();
+        services.AddSingleton<CrmDbConnectionFactory>();
         services.AddSingleton<IQueryService, QueryExecutor>();
         services.AddSingleton<IUserRepository, UserRepository>();
         services.AddSingleton<IRoleRepository, RoleRepository>();

@@ -6,9 +6,9 @@ namespace ALRrx.Infrastructure.Database;
 
 public sealed class RoleRepository : IRoleRepository
 {
-    private readonly IDatabaseConnection _dbConnection;
+    private readonly CrmDbConnectionFactory _dbConnection;
 
-    public RoleRepository(IDatabaseConnection dbConnection)
+    public RoleRepository(CrmDbConnectionFactory dbConnection)
     {
         _dbConnection = dbConnection;
     }

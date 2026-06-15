@@ -42,9 +42,21 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
             ? (err as { response?: { status?: number } }).response?.status
             : undefined;
           if (status === 401) {
+            // Token is invalid (revoked, expired, signature mismatch) — full sign-out.
             clearSharedToken();
             setSliceAuthToken(null);
             setToken(null);
+          } else if (status && status >= 500) {
+            // BUG-19 fix: a 5xx from the slice backend is a server problem,
+            // not the user's token. But keeping a half-authenticated slice
+            // state would block the SliceProtectedRoute rehydration with no
+            // way for the user to recover (no UI feedback). Clear slice
+            // state so the rehydration can be retried, but keep the shared
+            // token so the altrx side still works.
+            console.warn('slice getMe 5xx, clearing slice state:', err);
+            setSliceAuthToken(null);
+            setToken(null);
+            setUser(null);
           } else {
             console.warn('slice getMe failed (transient), keeping token:', err);
           }

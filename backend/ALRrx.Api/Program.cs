@@ -195,16 +195,16 @@ var connectionConfig = new ConnectionConfig
     DatabasePassword = cfg["Database:Password"] ?? throw new InvalidOperationException("DB_PASSWORD is required"),
 };
 
-var formConnectionConfig = new FormConnectionConfig
+var crmConnectionConfig = new CrmConnectionConfig
 {
-    Host = cfg["FormDatabase:Host"] ?? "",
-    Port = int.Parse(cfg["FormDatabase:Port"] ?? "3306"),
-    Database = cfg["FormDatabase:Name"] ?? "",
-    User = cfg["FormDatabase:User"] ?? "",
-    Password = cfg["FormDatabase:Password"] ?? "",
+    Host = cfg["CrmDatabase:Host"] ?? throw new InvalidOperationException("CrmDatabase:Host is required"),
+    Port = int.Parse(cfg["CrmDatabase:Port"] ?? "3306"),
+    Database = cfg["CrmDatabase:Name"] ?? throw new InvalidOperationException("CrmDatabase:Name is required"),
+    User = cfg["CrmDatabase:User"] ?? throw new InvalidOperationException("CrmDatabase:User is required"),
+    Password = cfg["CrmDatabase:Password"] ?? throw new InvalidOperationException("CrmDatabase:Password is required"),
 };
 
-builder.Services.AddInfrastructure(connectionConfig, formConnectionConfig);
+builder.Services.AddInfrastructure(connectionConfig, crmConnectionConfig);
 builder.Services.AddApplication();
 
 builder.Services.AddSingleton<IAuthService, ALRrx.Infrastructure.Auth.AuthService>();

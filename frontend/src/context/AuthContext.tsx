@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, type UserInfo, type UserStatus } from '../services/authApi';
+import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, logoutRequest, type UserInfo, type UserStatus } from '../services/authApi';
 import { getGoogleAccessToken, setGoogleAccessToken } from '../utils/googleTokenStore';
 import { SHARED_TOKEN_KEY, readSharedToken, writeSharedToken, clearSharedToken } from '../utils/sharedToken';
 import { AUTH_FORBIDDEN_EVENT } from '../services/httpClient';
@@ -169,6 +169,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // BUG-20 fix: notify the backend so the logout is recorded in the
+    // audit log. The call is best-effort: if the network is down or the
+    // backend is unreachable, we still clear local state and navigate.
+    void logoutRequest();
     clearSharedToken();
     setGoogleAccessToken(null);
     setAuthToken(null);

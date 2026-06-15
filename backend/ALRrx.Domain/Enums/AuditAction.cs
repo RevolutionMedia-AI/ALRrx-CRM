@@ -5,6 +5,7 @@ public enum AuditAction
     Registered,
     Login,
     LoginFailed,
+    Logout,
     Approved,
     Rejected,
     Suspended,

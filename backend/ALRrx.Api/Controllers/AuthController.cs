@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Globalization;
 using ALRrx.Application.DTOs;
 using ALRrx.Application.Interfaces;
 using ALRrx.Domain.Enums;
@@ -118,7 +119,14 @@ public sealed class AuthController : ControllerBase
         // emails like "  user@revolutionmedia.ai  " fail the EndsWith test
         // and the user is wrongly told their domain is not allowed.
         var email = userInfo.Email.Trim();
-        if (!email.EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
+
+        // BUG-7 fix: reject homograph attacks where the domain contains
+        // non-ASCII (Cyrillic 'і', fullwidth '@', etc) lookalikes. A legit
+        // @revolutionmedia.ai account will always be pure ASCII since
+        // Google does not allow unicode in verified email addresses. We
+        // also normalize via IdnMapping to defend against any future
+        // punycode edge cases.
+        if (!IsAsciiEmail(email) || !NormalizeEmailDomain(email).EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
             return Unauthorized(new { error = "Only @revolutionmedia.ai emails are allowed" });
         userInfo = userInfo with { Email = email };
 
@@ -231,12 +239,25 @@ public sealed class AuthController : ControllerBase
         [FromBody] LoginRequest request,
         CancellationToken ct = default)
     {
-        var user = await _users.GetByEmailAsync(request.Email, ct);
-        if (user is null || string.IsNullOrEmpty(user.PasswordHash) ||
-            !_auth.VerifyPassword(request.Password, user.PasswordHash))
-        {
-            if (user is not null)
-                await _users.RecordLoginAsync(user.Id, success: false, ct);
+        // BUG-7 fix: normalize the email to its ASCII/punycode form so a
+        // login attempt with a homograph domain can't bypass the audit log
+        // or compare against a different casing/encoding of the same domain.
+        var normalizedEmail = (request.Email ?? string.Empty).Trim();
+        if (!IsAsciiEmail(normalizedEmail)) {
+            return Unauthorized(new { error = "Invalid email or password" });
+        }
+        normalizedEmail = NormalizeEmailDomain(normalizedEmail);
+
+        // BUG-16 fix: detect Google-only accounts (empty password hash) and
+        // return a distinct message so the user knows to sign in with
+        // Google instead of being told their password is wrong.
+        var user = await _users.GetByEmailAsync(normalizedEmail, ct);
+        if (user is null)
+            return Unauthorized(new { error = "Invalid email or password" });
+        if (string.IsNullOrEmpty(user.PasswordHash))
+            return Unauthorized(new { error = "This account uses Google sign-in", code = "USE_GOOGLE_LOGIN" });
+        if (!_auth.VerifyPassword(request.Password, user.PasswordHash)) {
+            await _users.RecordLoginAsync(user.Id, success: false, ct);
             return Unauthorized(new { error = "Invalid email or password" });
         }
 
@@ -353,6 +374,33 @@ public sealed class AuthController : ControllerBase
         return Unauthorized(new { error = "User no longer exists" });
     }
 
+    // BUG-20 fix: explicit sign-out endpoint. JWTs are stateless so we
+    // cannot truly invalidate the token server-side without a blacklist,
+    // but acknowledging the logout gives us:
+    //   - A place to log the action in the audit log.
+    //   - A signal to the frontend that the backend is reachable, so the
+    //     local token cleanup only happens after the round-trip succeeds.
+    //   - Forward compatibility: if we add a token blacklist later, the
+    //     frontend already calls the right endpoint.
+    [Authorize]
+    [HttpPost("logout")]
+    [EnableRateLimiting("authCheck")]
+    public async Task<IActionResult> Logout(CancellationToken ct = default) {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(idClaim, out var userId)) {
+            try {
+                await _audit.LogAsync(new Domain.Entities.UserAuditLog {
+                    UserId = userId,
+                    Action = "Logout",
+                    IpAddress = ClientIp,
+                }, ct);
+            } catch {
+                // Best-effort. The user's local token is cleared regardless.
+            }
+        }
+        return NoContent();
+    }
+
     private static UserInfoDto MapUser(Domain.Entities.AuthUser u) => new()
     {
         Id = u.Id,
@@ -367,4 +415,26 @@ public sealed class AuthController : ControllerBase
         CreatedAt = u.CreatedAt,
         Permissions = u.Permissions,
     };
+
+    // BUG-7 helpers
+    private static bool IsAsciiEmail(string email) {
+        for (var i = 0; i < email.Length; i++) {
+            if (email[i] > 127) return false;
+        }
+        return true;
+    }
+
+    private static string NormalizeEmailDomain(string email) {
+        var at = email.LastIndexOf('@');
+        if (at < 0) return email;
+        var local = email[..at];
+        var domain = email[(at + 1)..];
+        try {
+            var idn = new System.Globalization.IdnMapping();
+            domain = idn.GetAscii(domain);
+        } catch {
+            return email;
+        }
+        return local + "@" + domain;
+    }
 }

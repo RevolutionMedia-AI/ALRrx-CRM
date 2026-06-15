@@ -1,14 +1,15 @@
 using System.Data.Common;
+using ALRrx.Application.Interfaces;
 using ALRrx.Domain.ValueObjects;
 using MySqlConnector;
 
 namespace ALRrx.Infrastructure.Database;
 
-public sealed class FormDbConnectionFactory : IDisposable
+public sealed class CrmDbConnectionFactory : IDatabaseConnection
 {
-    private readonly FormConnectionConfig _config;
+    private readonly CrmConnectionConfig _config;
 
-    public FormDbConnectionFactory(FormConnectionConfig config)
+    public CrmDbConnectionFactory(CrmConnectionConfig config)
     {
         _config = config;
     }
@@ -43,12 +44,11 @@ public sealed class FormDbConnectionFactory : IDisposable
         }
         catch (OperationCanceledException)
         {
-            throw new TimeoutException("Form database connection timed out after 30s");
+            throw new TimeoutException("CRM database connection timed out after 30s");
         }
 
         return connection;
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-    public void Dispose() { }
 }

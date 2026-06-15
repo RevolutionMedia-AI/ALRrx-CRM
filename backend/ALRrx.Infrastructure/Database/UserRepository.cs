@@ -8,10 +8,10 @@ namespace ALRrx.Infrastructure.Database;
 
 public sealed class UserRepository : IUserRepository
 {
-    private readonly IDatabaseConnection _dbConnection;
+    private readonly CrmDbConnectionFactory _dbConnection;
     private readonly ILogger<UserRepository> _logger;
 
-    public UserRepository(IDatabaseConnection dbConnection, ILogger<UserRepository> logger)
+    public UserRepository(CrmDbConnectionFactory dbConnection, ILogger<UserRepository> logger)
     {
         _dbConnection = dbConnection;
         _logger = logger;

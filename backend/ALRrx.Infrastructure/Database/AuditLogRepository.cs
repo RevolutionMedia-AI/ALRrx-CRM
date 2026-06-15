@@ -6,9 +6,9 @@ namespace ALRrx.Infrastructure.Database;
 
 public sealed class AuditLogRepository : IAuditLogRepository
 {
-    private readonly IDatabaseConnection _dbConnection;
+    private readonly CrmDbConnectionFactory _dbConnection;
 
-    public AuditLogRepository(IDatabaseConnection dbConnection)
+    public AuditLogRepository(CrmDbConnectionFactory dbConnection)
     {
         _dbConnection = dbConnection;
     }

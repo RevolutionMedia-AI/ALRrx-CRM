@@ -56,6 +56,19 @@ export async function getMe(): Promise<UserInfo> {
   return data;
 }
 
+// BUG-20 fix: best-effort sign-out call to the backend. The JWT is
+// stateless so the server cannot truly invalidate it, but the endpoint
+// logs the logout action and gives the frontend a place to react if the
+// backend is unreachable. We swallow network errors: local token cleanup
+// must always happen, even if the API call fails.
+export async function logoutRequest(): Promise<void> {
+  try {
+    await client.post('/auth/logout', null, { timeout: 5000 });
+  } catch {
+    // ignored — local token clear is the source of truth for the client
+  }
+}
+
 export async function getUsers(): Promise<UserInfo[]> {
   const { data } = await client.get<UserInfo[]>('/users');
   return data;

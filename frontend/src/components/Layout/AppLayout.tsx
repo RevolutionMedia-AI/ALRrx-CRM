@@ -33,6 +33,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const hasDualAccess = !!user && getAccessGroup(user.platformAccess) === 'both';
   const handleSignOut = () => {
     if (hasDualAccess || isAdmin) {
+      // BUG-15 fix: no-op when we're already on the picker, otherwise
+      // repeated clicks would just spam the navigate call.
+      if (location.pathname === '/select-platform') return;
       navigate('/select-platform');
     } else {
       logout();
