@@ -242,7 +242,14 @@ public sealed class AuthController : ControllerBase
         // BUG-7 fix: normalize the email to its ASCII/punycode form so a
         // login attempt with a homograph domain can't bypass the audit log
         // or compare against a different casing/encoding of the same domain.
-        var normalizedEmail = (request.Email ?? string.Empty).Trim();
+        // BUG-25 fix: trim AND lowercase before lookup. Email comparisons
+        // are case-insensitive in nearly every mail provider; users will
+        // routinely type "User@..." once and "user@..." the next time and
+        // expect both to work. Without lowercasing, a user with a mixed-case
+        // stored email would be rejected even when typing the right
+        // address. Trailing whitespace and CRLF (common when copy-pasting
+        // from emails) are trimmed here too.
+        var normalizedEmail = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
         if (!IsAsciiEmail(normalizedEmail)) {
             return Unauthorized(new { error = "Invalid email or password" });
         }
@@ -298,7 +305,17 @@ public sealed class AuthController : ControllerBase
         [FromBody] RegisterRequest request,
         CancellationToken ct = default)
     {
-        var existing = await _users.GetByEmailAsync(request.Email, ct);
+        // BUG-28 fix: normalize the email the same way as Login (trim +
+        // lowercase) so registering "User@revolutionmedia.ai" doesn't
+        // create a duplicate account for "user@revolutionmedia.ai" later.
+        // Also reject homograph / non-ASCII emails here too.
+        var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+        if (!IsAsciiEmail(email) ||
+            !NormalizeEmailDomain(email).EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase)) {
+            return BadRequest(new { error = "Invalid email — must be a valid @revolutionmedia.ai address" });
+        }
+
+        var existing = await _users.GetByEmailAsync(email, ct);
         if (existing is not null)
             return Conflict(new { error = "Email already registered" });
 
@@ -308,7 +325,7 @@ public sealed class AuthController : ControllerBase
 
         var user = new Domain.Entities.AuthUser
         {
-            Email = request.Email,
+            Email = email,
             PasswordHash = _auth.HashPassword(request.Password),
             FullName = request.FullName,
             RoleId = role.Id,

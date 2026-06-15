@@ -83,7 +83,12 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
           const status = err && typeof err === 'object' && 'response' in err
             ? (err as { response?: { status?: number } }).response?.status
             : undefined;
-          if (status === 401 || status === 403) {
+          if (status === 401) {
+            // BUG-27 fix: 401 means the Google token is no longer valid
+            // (revoked by Google, user signed out, etc). Clear it so the
+            // next attempt forces a fresh Google sign-in. Do NOT clear on
+            // 403 (forbidden at the slice side) or 5xx (server error) —
+            // those are recoverable on retry.
             setGoogleAccessToken(null);
           } else {
             console.warn('slice google rehydrate failed (transient):', err);
@@ -140,7 +145,14 @@ export function SliceAuthProvider({ children }: { children: ReactNode }) {
         createdAt: new Date().toISOString(),
       });
       return true;
-    } catch (err) {
+    } catch (err: unknown) {
+      // BUG-27 fix: only nuke the Google access token on 401 (truly
+      // invalid). 5xx (server down) and network errors are transient —
+      // keeping the token lets the next rehydration attempt reuse it.
+      const status = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { status?: number } }).response?.status
+        : undefined;
+      if (status === 401) setGoogleAccessToken(null);
       console.warn('[SliceAuth] rehydrateWithGoogle failed:', err);
       return false;
     }

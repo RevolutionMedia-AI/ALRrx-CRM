@@ -23,7 +23,7 @@ const adminNavItems = [
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, authUnavailable } = useAuth();
   const { isDark, toggle } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,7 +44,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="bg-canvas-white dark:bg-gray-950 text-on-surface dark:text-gray-100 font-body-md antialiased min-h-screen transition-colors">
-      <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-gutter-desktop h-16 bg-pure-surface dark:bg-gray-900 border-b border-whisper-border dark:border-gray-800 transition-colors">
+      {authUnavailable && (
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-amber-warmth/95 text-white text-center text-sm py-2 px-4 shadow-md">
+          <span className="material-symbols-outlined text-base align-middle mr-1">cloud_off</span>
+          User service temporarily unavailable. Showing cached data. Retrying…
+        </div>
+      )}
+      <nav className={`fixed ${authUnavailable ? 'top-9' : 'top-0'} left-0 right-0 z-50 flex justify-between items-center px-gutter-desktop h-16 bg-pure-surface dark:bg-gray-900 border-b border-whisper-border dark:border-gray-800 transition-colors`}>
         <div className="flex items-center gap-8">
           <div className="font-display-hero text-lg font-bold text-primary dark:text-gray-100 flex items-center gap-2">
             <span className="material-symbols-outlined text-electric-blue" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -119,7 +125,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
       </nav>
-      <main className="max-w-[1400px] mx-auto px-gutter-mobile md:px-gutter-tablet lg:px-gutter-desktop py-8 flex flex-col gap-8 min-h-[calc(100dvh-4rem)] pt-24">
+      <main className={`max-w-[1400px] mx-auto px-gutter-mobile md:px-gutter-tablet lg:px-gutter-desktop py-8 flex flex-col gap-8 min-h-[calc(100dvh-4rem)] ${authUnavailable ? 'pt-32' : 'pt-24'}`}>
         {children}
       </main>
     </div>

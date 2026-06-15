@@ -1,0 +1,60 @@
+fix: additional auth/routing/state bugs (401 handling, email normalize, 503 banner)
+
+BUG-21 (high): 401 on any authenticated endpoint (including /auth/me)
+  cleared the shared token but did NOT clear the React user state or
+  notify the AuthContext. Result: the user kept seeing their name,
+  role, and admin links in the navbar while every subsequent API call
+  also 401'd. Now dispatches a new AUTH_UNAUTHORIZED_EVENT that the
+  AuthContext listens to and reacts to (clears state, navigates to
+  /login).
+
+BUG-22 (high): 401 on /auth/me specifically slipped through the
+  previous '/auth/' guard so the token was never cleared, leaving
+  the user in an inconsistent state. Fixed by the BUG-21 rework:
+  the guard now whitelists only the truly-anonymous endpoints
+  (login, google, register, dev-login) instead of the entire /auth/
+  prefix.
+
+BUG-23 (high): When the httpClient intercepted a 403 USER_SUSPENDED
+  or USER_REJECTED, the AuthContext handler navigated to
+  /access-denied but kept the token in localStorage and the user
+  state populated. A new tab opened in the same browser would
+  auto-login as the suspended user. Now clears token, Google token,
+  axios default header, and user state before navigating.
+
+BUG-24 (high): refresh() only called setUser(u) without routing.
+  If PendingApprovalPage polling detected that the admin had just
+  approved the user (status flipped to Active), the page rendered
+  the wrong content. If admin suspended mid-session, the user kept
+  their admin views until the next API call. Now calls
+  applyUserAndRedirect so status changes are reflected in routing.
+
+BUG-25 (medium): /auth/login did not lowercase the email before
+  the DB lookup. Users frequently type mixed case across sessions
+  and expect both to work. Also no Trim — pasted emails with CRLF
+  (common when copying from a mail client) would fail. Now
+  Trim().ToLowerInvariant() before both the homograph check and
+  the DB query.
+
+BUG-26 (medium): When /auth/me returns 503 (user DB down) the
+  bootstrap useEffect silently swallowed the error. The user
+  kept a valid token in localStorage but no React state, ending
+  up on the login screen with no feedback. Now the AuthContext
+  sets authUnavailable=true on 503, and AppLayout renders a
+  fixed banner with a 'retrying...' message. The token is kept
+  so a retry succeeds without re-authentication. The banner
+  also adjusts the nav/main top padding.
+
+BUG-27 (medium): SliceAuthContext cleared the Google access
+  token on both 401 and 403 from sliceGoogleLogin. A 403 from
+  the slice backend (e.g. user not whitelisted on slice) is not
+  a Google-token problem; throwing away the Google token would
+  force a full re-authentication with Google just to get the
+  same 403. Now only clears on 401. Same fix applied to
+  rehydrateWithGoogle.
+
+BUG-28 (low): /auth/register did not normalize the email
+  (no trim, no lowercase, no domain check). An admin registering
+  'User@revolutionmedia.ai' would create a row that Login
+  (which DOES lowercase) could not find. Now does the same
+  Trim().ToLowerInvariant() + ASCII + domain check as Login.
