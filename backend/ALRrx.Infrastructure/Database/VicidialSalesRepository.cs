@@ -22,7 +22,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
     }
 
     private const string SalesColumns =
-        "Id, LeadId, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt";
+        "Id, LeadId, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, ConfirmationUrl, CreatedAt";
 
     public async Task EnsureTableAsync(CancellationToken ct = default)
     {
@@ -54,6 +54,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
 
         await EnsureLeadIdColumnAsync(connection, ct);
         await EnsureLeadIdIndexAsync(connection, ct);
+        await EnsureConfirmationUrlColumnAsync(connection, ct);
     }
 
     private async Task EnsureLeadIdColumnAsync(MySqlConnection connection, CancellationToken ct)
@@ -110,6 +111,33 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         _logger.LogInformation("vicidial_form_sales idx_lead_id index added");
     }
 
+    private async Task EnsureConfirmationUrlColumnAsync(MySqlConnection connection, CancellationToken ct)
+    {
+        const string checkSql = """
+            SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'vicidial_form_sales'
+              AND COLUMN_NAME = 'ConfirmationUrl'
+            """;
+
+        await using var checkCmd = new MySqlCommand(checkSql, connection);
+        var exists = Convert.ToInt32(await checkCmd.ExecuteScalarAsync(ct)) > 0;
+
+        if (exists)
+        {
+            _logger.LogInformation("vicidial_form_sales.ConfirmationUrl column already present");
+            return;
+        }
+
+        const string alterSql = """
+            ALTER TABLE vicidial_form_sales
+                ADD COLUMN ConfirmationUrl VARCHAR(2048) NULL AFTER Amount
+            """;
+        await using var alterCmd = new MySqlCommand(alterSql, connection);
+        await alterCmd.ExecuteNonQueryAsync(ct);
+        _logger.LogInformation("vicidial_form_sales.ConfirmationUrl column added");
+    }
+
     public async Task<int> InsertAsync(VicidialSaleRequest request, string bundleDisplayName, CancellationToken ct = default)
     {
         var source = request.LeadId.HasValue ? "VicidialForm" : "ManualForm";
@@ -117,9 +145,9 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand("""
             INSERT INTO vicidial_form_sales
-                (LeadId, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, Source)
+                (LeadId, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, ConfirmationUrl, Source)
             VALUES
-                (@LeadId, @SalesRep, @SaleDate, @ClientPhone, @ClientName, @ClientEmail, @Bundle, @Amount, @Source)
+                (@LeadId, @SalesRep, @SaleDate, @ClientPhone, @ClientName, @ClientEmail, @Bundle, @Amount, @ConfirmationUrl, @Source)
             """, connection);
 
         cmd.Parameters.Add("@LeadId", MySqlDbType.Int32).Value = (object?)request.LeadId ?? DBNull.Value;
@@ -130,6 +158,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         cmd.Parameters.AddWithValue("@ClientEmail", request.ClientEmail.Trim().ToLowerInvariant());
         cmd.Parameters.AddWithValue("@Bundle", bundleDisplayName);
         cmd.Parameters.AddWithValue("@Amount", request.Amount);
+        cmd.Parameters.AddWithValue("@ConfirmationUrl", request.ConfirmationUrl.Trim());
         cmd.Parameters.Add("@Source", MySqlDbType.VarChar).Value = source;
 
         await cmd.ExecuteNonQueryAsync(ct);
@@ -167,7 +196,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         if (leadId <= 0) return new List<VicidialSaleDto>();
         var clampedLimit = Math.Clamp(limit, 1, 1000);
         const string sql = """
-            SELECT Id, LeadId, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, CreatedAt
+            SELECT Id, LeadId, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, ConfirmationUrl, CreatedAt
             FROM vicidial_form_sales
             WHERE LeadId = @LeadId
             ORDER BY SaleDate DESC
@@ -355,6 +384,11 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
             sets.Add("Amount = @Amount");
             parameters.Add(new MySqlParameter("@Amount", MySqlDbType.Decimal) { Value = request.Amount.Value });
         }
+        if (request.ConfirmationUrl != null)
+        {
+            sets.Add("ConfirmationUrl = @ConfirmationUrl");
+            parameters.Add(new MySqlParameter("@ConfirmationUrl", MySqlDbType.VarChar) { Value = request.ConfirmationUrl.Trim() });
+        }
 
         if (sets.Count == 0) return false;
 
@@ -383,6 +417,9 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         var leadIdOrdinal = reader.GetOrdinal("LeadId");
         int? leadId = reader.IsDBNull(leadIdOrdinal) ? null : reader.GetInt32(leadIdOrdinal);
 
+        var confirmationOrdinal = reader.GetOrdinal("ConfirmationUrl");
+        string? confirmationUrl = reader.IsDBNull(confirmationOrdinal) ? null : reader.GetString(confirmationOrdinal);
+
         return new VicidialSaleDto
         {
             Id = reader.GetInt32("Id"),
@@ -394,6 +431,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
             ClientEmail = reader.GetString("ClientEmail"),
             Bundle = reader.GetString("Bundle"),
             Amount = reader.GetDecimal("Amount"),
+            ConfirmationUrl = confirmationUrl,
             CreatedAt = reader.GetDateTime("CreatedAt"),
         };
     }

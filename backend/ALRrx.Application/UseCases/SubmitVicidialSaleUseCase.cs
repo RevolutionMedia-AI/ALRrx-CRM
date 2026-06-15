@@ -29,6 +29,11 @@ public sealed class SubmitVicidialSaleUseCase
             throw new ArgumentException("ClientPhone is required");
         if (request.Amount <= 0)
             throw new ArgumentException("Amount must be greater than zero");
+        if (string.IsNullOrWhiteSpace(request.ConfirmationUrl))
+            throw new ArgumentException("ConfirmationUrl is required");
+        if (!Uri.TryCreate(request.ConfirmationUrl.Trim(), UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            throw new ArgumentException("ConfirmationUrl must be a valid http(s) URL");
         if (!BundleTypeExtensions.TryParseBundle(request.Bundle, out var bundleType))
             throw new ArgumentException($"Invalid bundle: '{request.Bundle}'. Allowed: GLP-1 1/3/6/12 Months, GLP-1/GIP 1/3/6/12 Months");
 

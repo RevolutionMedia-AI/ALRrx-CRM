@@ -64,6 +64,7 @@ export interface VicidialSaleUpdatePayload {
   clientEmail?: string;
   bundle?: string;
   amount?: number;
+  confirmationUrl?: string;
 }
 
 export async function updateVicidialSale(id: number, payload: VicidialSaleUpdatePayload): Promise<{ id: number; message: string }> {
@@ -98,6 +99,7 @@ export async function exportVicidialSalesExcel(
     { header: 'Email', key: 'email', width: 30 },
     { header: 'Bundle', key: 'bundle', width: 18 },
     { header: 'Amount (USD)', key: 'amount', width: 16, style: { numFmt: '"$"#,##0.00' } },
+    { header: 'Confirmation URL', key: 'confirmationUrl', width: 48 },
   ];
 
   const headerRow = sheet.getRow(1);
@@ -107,7 +109,7 @@ export async function exportVicidialSalesExcel(
   headerRow.height = 22;
 
   sales.forEach((s) => {
-    sheet.addRow({
+    const row = sheet.addRow({
       date: s.saleDate,
       agent: s.salesRep,
       client: s.clientName,
@@ -115,7 +117,13 @@ export async function exportVicidialSalesExcel(
       email: s.clientEmail,
       bundle: s.bundle,
       amount: Number(s.amount),
+      confirmationUrl: s.confirmationUrl ?? '',
     });
+    if (s.confirmationUrl) {
+      const cell = row.getCell('confirmationUrl');
+      cell.value = { text: s.confirmationUrl, hyperlink: s.confirmationUrl };
+      cell.font = { color: { argb: 'FF2563EB' }, underline: true };
+    }
   });
 
   const totalRow = sheet.addRow({
@@ -126,6 +134,7 @@ export async function exportVicidialSalesExcel(
     email: '',
     bundle: 'TOTAL',
     amount: sales.reduce((sum, s) => sum + Number(s.amount), 0),
+    confirmationUrl: '',
   });
   totalRow.font = { bold: true };
   totalRow.getCell('bundle').alignment = { horizontal: 'right' };

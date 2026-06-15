@@ -35,6 +35,11 @@ public sealed class UpdateVicidialSaleUseCase
         if (request.Amount.HasValue && request.Amount.Value <= 0)
             throw new ArgumentException("Amount must be greater than zero");
 
+        if (!string.IsNullOrWhiteSpace(request.ConfirmationUrl)
+            && (!Uri.TryCreate(request.ConfirmationUrl.Trim(), UriKind.Absolute, out var url)
+                || (url.Scheme != Uri.UriSchemeHttp && url.Scheme != Uri.UriSchemeHttps)))
+            throw new ArgumentException("ConfirmationUrl must be a valid http(s) URL");
+
         var bundleType = default(ALRrx.Application.DTOs.BundleType);
         var hasBundle = !string.IsNullOrWhiteSpace(request.Bundle);
         if (hasBundle && !BundleTypeExtensions.TryParseBundle(request.Bundle, out bundleType))

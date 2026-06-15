@@ -60,6 +60,7 @@ export default function VSaleForm() {
   const [clientEmail, setClientEmail] = useState('');
   const [bundle, setBundle] = useState<BundleOption>('GLP-1 1 Month');
   const [amount, setAmount] = useState('');
+  const [confirmationUrl, setConfirmationUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -159,6 +160,7 @@ export default function VSaleForm() {
     setBundle('GLP-1 1 Month');
     setAmount('');
     setSaleDate(getTodayLocalDateTime());
+    setConfirmationUrl('');
     if (resolvedLeadRef.current) {
       const lead = resolvedLeadRef.current;
       setClientName(combineName(lead.firstName, lead.lastName));
@@ -188,6 +190,15 @@ export default function VSaleForm() {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clientEmail.trim())) return setError('Client email is invalid');
     const amountNum = Number(amount);
     if (!amount || isNaN(amountNum) || amountNum <= 0) return setError('Amount must be greater than 0');
+    if (!confirmationUrl.trim()) return setError('Confirmation URL is required');
+    try {
+      const parsedUrl = new URL(confirmationUrl.trim());
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        return setError('Confirmation URL must start with http:// or https://');
+      }
+    } catch {
+      return setError('Confirmation URL is not a valid URL');
+    }
 
     const payload: VicidialSaleRequest = {
       ...(validLeadId != null ? { leadId: validLeadId } : {}),
@@ -203,6 +214,7 @@ export default function VSaleForm() {
       clientEmail: clientEmail.trim(),
       bundle,
       amount: amountNum,
+      confirmationUrl: confirmationUrl.trim(),
     };
 
     setSubmitting(true);
@@ -375,6 +387,21 @@ export default function VSaleForm() {
                   className="w-full pl-7 pr-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none font-metadata-mono"
                 />
               </div>
+            </Field>
+            <Field label="Confirmation URL" required full>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary dark:text-gray-400 text-[18px]">link</span>
+                <input
+                  type="url"
+                  value={confirmationUrl}
+                  onChange={(e) => setConfirmationUrl(e.target.value)}
+                  placeholder="https://checkout.example.com/order/abc123"
+                  className="w-full pl-10 pr-3 py-2 text-sm border border-whisper-border dark:border-gray-700 rounded-lg bg-pure-surface dark:bg-gray-800 text-primary dark:text-gray-100 focus:border-electric-blue focus:outline-none font-metadata-mono"
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-secondary dark:text-gray-400">
+                Pega aquí el enlace de confirmación de compra que te dio el sistema de pagos.
+              </p>
             </Field>
           </div>
         </fieldset>

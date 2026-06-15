@@ -93,6 +93,7 @@ export interface VicidialSaleRequest {
   clientEmail: string;
   bundle: BundleOption;
   amount: number;
+  confirmationUrl: string;
 }
 
 export interface VicidialSaleDto {
@@ -105,6 +106,7 @@ export interface VicidialSaleDto {
   clientEmail: string;
   bundle: string;
   amount: number;
+  confirmationUrl?: string | null;
   createdAt: string;
 }
 

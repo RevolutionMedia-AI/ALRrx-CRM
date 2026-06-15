@@ -246,6 +246,7 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
       clientEmail: sale.clientEmail,
       bundle: sale.bundle,
       amount: sale.amount,
+      confirmationUrl: sale.confirmationUrl ?? '',
     });
     setEditError(null);
   };
@@ -409,6 +410,7 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
                 <th className="p-3 font-medium">Email</th>
                 <th className="p-3 font-medium">Bundle</th>
                 <th className="p-3 font-medium text-right">Amount</th>
+                <th className="p-3 font-medium">Confirmation URL</th>
                 {canEdit && <th className="p-3 font-medium text-right">Actions</th>}
               </tr>
             </thead>
@@ -492,6 +494,29 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
                           className="w-[100px] px-2 py-1 text-xs text-right border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 text-primary font-metadata-mono"
                         />
                       ) : formatCurrency(s.amount)}
+                    </td>
+                    <td className="p-3 text-secondary dark:text-gray-400 text-xs max-w-[260px]">
+                      {isEditing ? (
+                        <input
+                          type="url"
+                          value={editForm.confirmationUrl ?? ''}
+                          onChange={(e) => setEditForm((f) => ({ ...f, confirmationUrl: e.target.value }))}
+                          placeholder="https://..."
+                          className="w-[240px] px-2 py-1 text-xs border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 text-primary font-metadata-mono"
+                        />
+                      ) : s.confirmationUrl ? (
+                        <a
+                          href={s.confirmationUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-electric-blue hover:underline truncate inline-block max-w-full align-middle"
+                          title={s.confirmationUrl}
+                        >
+                          {s.confirmationUrl}
+                        </a>
+                      ) : (
+                        <span className="text-[11px] text-muted-slate italic">—</span>
+                      )}
                     </td>
                     {canEdit && (
                       <td className="p-3 text-right whitespace-nowrap">

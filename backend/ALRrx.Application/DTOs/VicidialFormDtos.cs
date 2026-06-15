@@ -66,6 +66,9 @@ public sealed class VicidialSaleRequest
 
     [Required, Range(0.01, 1000000)]
     public decimal Amount { get; init; }
+
+    [Required, Url, StringLength(2048, MinimumLength = 1)]
+    public string ConfirmationUrl { get; init; } = string.Empty;
 }
 
 public sealed record VicidialSaleDto
@@ -79,6 +82,7 @@ public sealed record VicidialSaleDto
     public string ClientEmail { get; init; } = string.Empty;
     public string Bundle { get; init; } = string.Empty;
     public decimal Amount { get; init; }
+    public string? ConfirmationUrl { get; init; }
     public DateTime CreatedAt { get; init; }
 }
 
@@ -95,6 +99,8 @@ public sealed class VicidialSaleUpdateRequest
     public string? ClientEmail { get; init; }
     public string? Bundle { get; init; }
     public decimal? Amount { get; init; }
+    [Url, StringLength(2048, MinimumLength = 1)]
+    public string? ConfirmationUrl { get; init; }
 }
 
 public sealed record ActiveAltrxAgentDto
@@ -114,6 +120,7 @@ public sealed record VicidialSaleEnrichedDto
     public string ClientEmail { get; init; } = string.Empty;
     public string Bundle { get; init; } = string.Empty;
     public decimal Amount { get; init; }
+    public string? ConfirmationUrl { get; init; }
     public DateTime CreatedAt { get; init; }
     public VicidialLeadDto? Lead { get; init; }
     public bool LeadFound { get; init; }
