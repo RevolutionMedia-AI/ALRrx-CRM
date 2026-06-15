@@ -90,6 +90,7 @@ export default function LoginPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [clientId, setClientId] = useState<string | null>(null);
+  const [envVarName, setEnvVarName] = useState<string>('Google__ClientId');
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -107,7 +108,10 @@ export default function LoginPage() {
     }
     fetch('/api/config/google-client-id')
       .then((r) => r.json())
-      .then((d) => setClientId(d.clientId || null))
+      .then((d) => {
+        setClientId(d.clientId || null);
+        if (d.envVarName) setEnvVarName(d.envVarName);
+      })
       .catch(() => setClientId(null))
       .finally(() => setLoading(false));
   }, [user, navigate]);
@@ -185,7 +189,7 @@ export default function LoginPage() {
               </div>
 
               <div className="bg-deep-rose/10 border border-deep-rose/20 dark:bg-deep-rose/20 dark:border-deep-rose/30 rounded-lg px-4 py-3 text-deep-rose text-sm mb-6">
-                Google Sign-In is not configured. Set <code className="text-electric-blue bg-electric-blue/10 px-1 rounded text-xs">Google__ClientId</code> in Northflank backend environment.
+                Google Sign-In is not configured. Set <code className="text-electric-blue bg-electric-blue/10 px-1 rounded text-xs">{envVarName}</code> in the backend deployment environment (Northflank / Railway / Render / etc.) and redeploy.
               </div>
             </div>
           </div>

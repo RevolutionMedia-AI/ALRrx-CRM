@@ -5,6 +5,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // COOP must be same-origin-allow-popups or unsafe-none for Google OAuth
+    // implicit flow (popup) to work — strict same-origin blocks window.closed
+    // calls from the popup, killing the login silently.
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      'Cross-Origin-Embedder-Policy': 'unsafe-none',
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

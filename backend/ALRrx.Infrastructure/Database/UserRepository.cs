@@ -273,6 +273,7 @@ public sealed class UserRepository : IUserRepository
             ("kevin.escalante@revolutionmedia.ai", "Kevin Escalante", BCrypt.Net.BCrypt.HashPassword("Admin123!"),  "Admin",      "Both"),
             ("david@revolutionmedia.ai",          "David",           BCrypt.Net.BCrypt.HashPassword("Admin123!"),  "Admin",      "Both"),
             ("cuauhtemoc@revolutionmedia.ai",     "Cuauhtemoc",      BCrypt.Net.BCrypt.HashPassword("Admin123!"),  "Admin",      "Both"),
+            ("j.lines@revolutionmedia.ai",         "Justin Lines",    BCrypt.Net.BCrypt.HashPassword("Admin123!"),  "Admin",      "Both"),
             ("jessica.duarte@revolutionmedia.ai", "Jessica Duarte",  BCrypt.Net.BCrypt.HashPassword("Super123!"),  "Supervisor", "Altrx"),
         };
 
