@@ -437,12 +437,18 @@ public sealed class ChangeUserRoleUseCase
     private readonly IUserRepository _users;
     private readonly IRoleRepository _roles;
     private readonly IAuditLogRepository _audit;
+    private readonly IEmailService _email;
 
-    public ChangeUserRoleUseCase(IUserRepository users, IRoleRepository roles, IAuditLogRepository audit)
+    public ChangeUserRoleUseCase(
+        IUserRepository users,
+        IRoleRepository roles,
+        IAuditLogRepository audit,
+        IEmailService email)
     {
         _users = users;
         _roles = roles;
         _audit = audit;
+        _email = email;
     }
 
     public async Task<AdminUserDto> ExecuteAsync(int userId, int roleId, int performedBy, string? ip, CancellationToken ct = default)
@@ -452,6 +458,7 @@ public sealed class ChangeUserRoleUseCase
             throw new InvalidOperationException("You cannot change your own role away from Admin");
         var role = await _roles.GetByIdAsync(roleId, ct) ?? throw new InvalidOperationException("Role not found");
 
+        var oldRoleName = user.RoleName;
         await _users.SetRoleAsync(userId, roleId, ct);
 
         await _audit.LogAsync(new UserAuditLog
@@ -459,10 +466,31 @@ public sealed class ChangeUserRoleUseCase
             UserId = userId,
             Action = nameof(AuditAction.RoleChanged),
             PerformedBy = performedBy,
-            OldValue = user.RoleName,
+            OldValue = oldRoleName,
             NewValue = role.Name,
             IpAddress = ip,
         }, ct);
+
+        // Notify the user when access is actually granted — i.e. they
+        // move from the no-permission Pending role into something with
+        // real permissions. We don't email on any other role change
+        // (e.g. Employee → Supervisor) because the user is already
+        // inside the platform and the admin panel is the source of
+        // truth for their new state. Only the initial grant is news
+        // they need to act on.
+        if (string.Equals(oldRoleName, "Pending", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(role.Name, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            var updatedForEmail = await _users.GetByIdAsync(userId, ct) ?? user;
+            var platformName = MapPlatformAccessLabel(updatedForEmail.PlatformAccess);
+            var emailResult = await _email.SendPlatformAccessGrantedAsync(
+                updatedForEmail.Email,
+                updatedForEmail.FullName,
+                role.Name,
+                platformName,
+                ct);
+            await AdminAuditHelpers.LogEmailFailureAsync(_audit, userId, performedBy, emailResult, ip, ct);
+        }
 
         var updated = await _users.GetByIdAsync(userId, ct) ?? throw new InvalidOperationException("User disappeared");
         return new AdminUserDto
@@ -483,6 +511,14 @@ public sealed class ChangeUserRoleUseCase
             Permissions = updated.Permissions,
         };
     }
+
+    private static string MapPlatformAccessLabel(PlatformAccess access) => access switch
+    {
+        PlatformAccess.Altrx => "ALTRX",
+        PlatformAccess.Slice => "SLICE",
+        PlatformAccess.Both  => "ALTRX + SLICE",
+        _                    => "the platform",
+    };
 }
 
 public sealed class SetUserPlatformAccessUseCase

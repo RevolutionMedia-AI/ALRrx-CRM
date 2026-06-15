@@ -5,6 +5,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Templates\platform-access-granted.html" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.1" />
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="EPPlus" Version="8.5.4" />

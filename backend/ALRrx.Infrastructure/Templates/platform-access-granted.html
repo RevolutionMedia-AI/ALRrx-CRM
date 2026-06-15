@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Platform Access Granted</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #060b18;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(22, 100, 220, 0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 90%, rgba(14, 60, 140, 0.12) 0%, transparent 70%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      padding: 40px 20px;
+      color: #e4eaf4;
+    }
+
+    .wrapper {
+      width: 100%;
+      max-width: 560px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: linear-gradient(145deg, #0d1528 0%, #0a1020 100%);
+      border: 1px solid rgba(40, 90, 180, 0.25);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03) inset,
+        0 30px 80px rgba(0, 0, 0, 0.55),
+        0 0 60px rgba(18, 80, 200, 0.08);
+    }
+
+    /* ── Header band ── */
+    .card-header {
+      background: linear-gradient(135deg, #0d2a5e 0%, #0a1e47 50%, #091840 100%);
+      border-bottom: 1px solid rgba(40, 100, 220, 0.2);
+      padding: 40px 48px 36px;
+      text-align: center;
+      position: relative;
+    }
+    .card-header::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 60%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(65, 145, 255, 0.4), transparent);
+    }
+
+    .logo-wrap {
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+    .logo-wrap img {
+      height: 72px;
+      width: auto;
+      display: block;
+    }
+
+    .platform-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #4a8fff;
+      margin-bottom: 6px;
+    }
+
+    .card-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.3;
+      letter-spacing: -0.3px;
+    }
+
+    /* ── Body ── */
+    .card-body {
+      padding: 40px 48px;
+    }
+
+    .greeting {
+      font-size: 15px;
+      color: #8ea8cc;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+    .greeting strong {
+      color: #c8d8f0;
+      font-weight: 600;
+    }
+
+    .message {
+      font-size: 14.5px;
+      color: #7a95b8;
+      line-height: 1.75;
+      margin-bottom: 32px;
+    }
+
+    /* ── CTA Button ── */
+    .cta-wrap {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .btn-primary {
+      display: inline-block;
+      padding: 15px 44px;
+      background: linear-gradient(135deg, #1a6edf 0%, #0d52b8 100%);
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      font-size: 14.5px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      text-decoration: none;
+      border-radius: 10px;
+      border: 1px solid rgba(80, 160, 255, 0.35);
+      box-shadow:
+        0 4px 20px rgba(20, 90, 220, 0.4),
+        0 0 0 1px rgba(255,255,255,0.05) inset;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #2278f0 0%, #1460cc 100%);
+      box-shadow: 0 6px 28px rgba(20, 90, 220, 0.55), 0 0 0 1px rgba(255,255,255,0.08) inset;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(35, 70, 130, 0.35);
+      margin: 0 0 30px;
+    }
+
+    /* ── Details block ── */
+    .details-title {
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: #3a6aaa;
+      margin-bottom: 16px;
+    }
+
+    .detail-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(40, 80, 150, 0.18);
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+    .detail-icon {
+      flex-shrink: 0;
+      width: 34px;
+      height: 34px;
+      background: rgba(18, 70, 165, 0.25);
+      border: 1px solid rgba(40, 100, 220, 0.25);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .detail-icon svg {
+      width: 16px; height: 16px; fill: none;
+      stroke: #4a8fff; stroke-width: 1.8;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
+    .detail-info {
+      flex: 1;
+    }
+    .detail-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #3a5a8a;
+      margin-bottom: 3px;
+    }
+    .detail-value {
+      font-size: 13.5px;
+      color: #9ab5d8;
+      font-weight: 500;
+    }
+
+    /* ── Fallback link ── */
+    .link-fallback {
+      text-align: center;
+      margin-top: 28px;
+      font-size: 12px;
+      color: #3a5a8a;
+    }
+    .link-fallback a {
+      color: #4a8fff;
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .link-fallback a:hover { text-decoration: underline; }
+
+    /* ── Footer ── */
+    .card-footer {
+      background: rgba(5, 10, 22, 0.5);
+      border-top: 1px solid rgba(35, 65, 120, 0.25);
+      padding: 20px 48px;
+      text-align: center;
+    }
+    .footer-text {
+      font-size: 11.5px;
+      color: #2e4a72;
+      line-height: 1.6;
+    }
+    .footer-text a {
+      color: #3a6aaa;
+      text-decoration: none;
+    }
+    .footer-text a:hover { color: #4a8fff; }
+
+    @media (max-width: 480px) {
+      .card-header, .card-body, .card-footer { padding-left: 28px; padding-right: 28px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="card">
+
+    <!-- ── HEADER ── -->
+    <div class="card-header">
+      <div class="logo-wrap">
+        <img src="{{LogoUrl}}" alt="RevolutionMedia" />
+      </div>
+      <div class="platform-label">Platform Access</div>
+      <div class="card-title">Your access to {{PlatformName}}<br/>is now active</div>
+    </div>
+
+    <!-- ── BODY ── -->
+    <div class="card-body">
+
+      <p class="greeting">Hello, <strong>{{UserFullName}}</strong></p>
+      <p class="message">
+        You have been granted <strong style="color:#c8d8f0;">{{RoleName}}</strong> access to
+        <strong style="color:#c8d8f0;">{{PlatformName}}</strong> on
+        <strong style="color:#c8d8f0;">RevolutionMedia.ai</strong>.
+        Sign in with your <strong style="color:#c8d8f0;">@revolutionmedia.ai</strong> Google
+        account to get started.
+      </p>
+
+      <!-- CTA -->
+      <div class="cta-wrap">
+        <a href="{{LoginUrl}}" class="btn-primary">Sign in to the platform</a>
+      </div>
+
+      <!-- Separador -->
+      <hr class="divider"/>
+
+      <!-- Access details -->
+      <div class="details-title">Access details</div>
+
+      <!-- Email -->
+      <div class="detail-row">
+        <div class="detail-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        </div>
+        <div class="detail-info">
+          <div class="detail-label">Email</div>
+          <div class="detail-value">{{UserEmail}}</div>
+        </div>
+      </div>
+
+      <!-- Role -->
+      <div class="detail-row">
+        <div class="detail-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12h6M12 9v6"/></svg>
+        </div>
+        <div class="detail-info">
+          <div class="detail-label">Assigned role</div>
+          <div class="detail-value">{{RoleName}}</div>
+        </div>
+      </div>
+
+      <!-- Platform -->
+      <div class="detail-row">
+        <div class="detail-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <div class="detail-info">
+          <div class="detail-label">Platform</div>
+          <div class="detail-value">RevolutionMedia Report Platform · {{PlatformName}}</div>
+        </div>
+      </div>
+
+      <!-- Link de respaldo -->
+      <div class="link-fallback">
+        If the button doesn't work, copy and paste this link into your browser:<br/>
+        <a href="{{LoginUrl}}">{{LoginUrl}}</a>
+      </div>
+
+    </div><!-- /card-body -->
+
+    <!-- ── FOOTER ── -->
+    <div class="card-footer">
+      <p class="footer-text">
+        If you weren't expecting this notification, you can safely ignore this message.<br/>
+        &copy; 2025 <a href="https://revolutionmedia.ai">RevolutionMedia.ai</a> ·
+        <a href="https://revolutionmedia.ai/privacy">Privacy Policy</a> ·
+        <a href="https://revolutionmedia.ai/support">Support</a>
+      </p>
+    </div>
+
+  </div><!-- /card -->
+</div><!-- /wrapper -->
+</body>
+</html>
