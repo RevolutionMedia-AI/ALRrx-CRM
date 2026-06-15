@@ -33,6 +33,7 @@ public sealed record UserInfoDto
     public int RoleId { get; init; }
     public string Role { get; init; } = string.Empty;
     public string Status { get; init; } = "Pending";
+    public string PlatformAccess { get; init; } = "None";
     public bool IsActive { get; init; }
     public DateTime? LastLoginAt { get; init; }
     public DateTime CreatedAt { get; init; }

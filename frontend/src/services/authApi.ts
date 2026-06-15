@@ -5,6 +5,8 @@ export interface LoginRequest {
 
 export type UserStatus = 'Pending' | 'Active' | 'Rejected' | 'Suspended';
 
+export type PlatformAccess = 'None' | 'Altrx' | 'Slice' | 'Both';
+
 export interface UserInfo {
   id: number;
   email: string;
@@ -12,6 +14,7 @@ export interface UserInfo {
   roleId: number;
   role: string;
   status: UserStatus;
+  platformAccess: PlatformAccess;
   isActive: boolean;
   lastLoginAt?: string | null;
   createdAt: string;

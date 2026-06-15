@@ -10,8 +10,15 @@ const navItems = [
   { label: 'Real-Time ALTRX', path: '/real-time' },
 ];
 
+// Cross-platform shortcut visible to users with Slice access (admins and
+// 'Both' users). Lets them jump to SLICE without going through /select-platform.
+const sliceNavItem = { label: 'Slice Platform', path: '/slice' };
+
+// Admin Panel is intentionally NOT here — it's a top-level section reachable
+// from /select-platform, not a sub-page of ALTRX. The picker also serves as
+// the only way to enter the Admin Panel, keeping it semantically separate
+// from both ALTRX and SLICE.
 const adminNavItems = [
-  { label: 'Admin Panel', path: '/admin' },
   { label: 'Twilio Costs', path: '/twilio-costs' },
 ];
 
@@ -21,13 +28,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Dual-platform users (slice + altrx) get routed to the platform picker
-  // instead of a full sign-out. The shared JWT is preserved so they can pick
-  // either side without re-authenticating; the modal's "Sign out" link is
-  // the only path that actually clears the token.
-  const hasDualAccess = !!user && getAccessGroup(user.email) === 'both';
+  // Admins and dual-platform users route to the platform picker instead of a
+  // full sign-out. The picker is the only entry point to the Admin Panel.
+  const hasDualAccess = !!user && getAccessGroup(user.platformAccess) === 'both';
   const handleSignOut = () => {
-    if (hasDualAccess) {
+    if (hasDualAccess || isAdmin) {
       navigate('/select-platform');
     } else {
       logout();
@@ -67,6 +72,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 {item.label}
               </button>
             ))}
+            {user?.platformAccess === 'Slice' || user?.platformAccess === 'Both' ? (
+              <button
+                key={sliceNavItem.path}
+                onClick={() => navigate(sliceNavItem.path)}
+                className={
+                  location.pathname.startsWith('/slice')
+                    ? 'text-primary dark:text-gray-100 border-b-2 border-primary dark:border-gray-100 pb-1 h-full flex items-center pt-1 text-sm font-semibold'
+                    : 'text-secondary dark:text-gray-400 hover:text-primary dark:hover:text-gray-200 transition-colors h-full flex items-center text-sm font-medium'
+                }
+                title="Go to Slice platform"
+              >
+                {sliceNavItem.label}
+              </button>
+            ) : null}
             {isAdmin && adminNavItems.map((item) => (
               <button
                 key={item.path}
@@ -90,10 +109,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
           <button
             onClick={handleSignOut}
-            title={hasDualAccess ? 'Switch platform or sign out' : 'Sign out'}
+            title={hasDualAccess || isAdmin ? 'Switch platform or sign out' : 'Sign out'}
             className="bg-primary dark:bg-gray-700 text-on-primary dark:text-gray-100 px-4 py-1.5 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm"
           >
-            Sign Out
+            {hasDualAccess || isAdmin ? 'Switch' : 'Sign Out'}
           </button>
         </div>
       </nav>

@@ -22,6 +22,7 @@ public sealed record AdminUserDto
     public int RoleId { get; init; }
     public string RoleName { get; init; } = string.Empty;
     public string Status { get; init; } = "Pending";
+    public string PlatformAccess { get; init; } = "None";
     public bool IsActive { get; init; }
     public int? ApprovedBy { get; init; }
     public string? ApprovedByName { get; init; }
@@ -33,6 +34,8 @@ public sealed record AdminUserDto
     public DateTime CreatedAt { get; init; }
     public List<string> Permissions { get; init; } = [];
 }
+
+public sealed record SetUserPlatformAccessRequest(string PlatformAccess);
 
 public sealed record AuditLogEntryDto
 {

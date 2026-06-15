@@ -1,3 +1,5 @@
+import type { PlatformAccess } from '../services/authApi';
+
 export type AccessGroup = 'both' | 'slice' | 'altrx' | 'none';
 
 export type AccessDecision =
@@ -5,49 +7,28 @@ export type AccessDecision =
   | { group: 'both'; redirectTo: null }
   | { group: 'none'; redirectTo: null };
 
-const SLICE_ONLY: readonly string[] = [
-  'pedro@revolutionmedia.ai',
-  'ofelia.palomino@revolutionmedia.ai',
-  'victor.ramirez@revolutionmedia.ai',
-  'jose.camacho@revolutionmedia.ai',
-  'luis.mariano@revolutionmedia.ai',
-  'nayeli.novoa@revolutionmedia.ai',
-  'eduardo.hernandez@revolutionmedia.ai',
-  'kenny.santaella@revolutionmedia.ai',
-];
-
-const ALTRX_ONLY: readonly string[] = [
-  'jessica.duarte@revolutionmedia.ai',
-  'silverio.arellano@revolutionmedia.ai',
-];
-
-const BOTH: readonly string[] = [
-  'david@revolutionmedia.ai',
-  'j.lines@revolutionmedia.ai',
-  'cuauhtemoc@revolutionmedia.ai',
-  'kevin.escalante@revolutionmedia.ai',
-];
-
 export const ROUTES = {
   slice: '/slice',
   altrx: '/dashboard',
 } as const;
 
-function normalize(email: string | null | undefined): string {
-  return (email ?? '').trim().toLowerCase();
+/**
+ * Resolves a user's access decision based on their stored PlatformAccess
+ * (data-driven via the Admin Panel). Falls back to 'None' if missing.
+ */
+export function getAccessGroup(platformAccess: PlatformAccess | null | undefined): AccessGroup {
+  switch (platformAccess) {
+    case 'Both':  return 'both';
+    case 'Altrx': return 'altrx';
+    case 'Slice': return 'slice';
+    case 'None':
+    default:
+      return 'none';
+  }
 }
 
-export function getAccessGroup(userEmail: string | null | undefined): AccessGroup {
-  const email = normalize(userEmail);
-  if (!email) return 'none';
-  if (BOTH.includes(email)) return 'both';
-  if (SLICE_ONLY.includes(email)) return 'slice';
-  if (ALTRX_ONLY.includes(email)) return 'altrx';
-  return 'none';
-}
-
-export function resolveAccess(userEmail: string | null | undefined): AccessDecision {
-  const group = getAccessGroup(userEmail);
+export function resolveAccess(platformAccess: PlatformAccess | null | undefined): AccessDecision {
+  const group = getAccessGroup(platformAccess);
   switch (group) {
     case 'slice':
       return { group, redirectTo: ROUTES.slice };

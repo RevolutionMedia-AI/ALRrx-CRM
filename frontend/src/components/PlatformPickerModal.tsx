@@ -1,10 +1,11 @@
-import { Pizza01Icon, MedicineBottle01Icon } from 'hugeicons-react';
+import { Pizza01Icon, MedicineBottle01Icon, Shield01Icon } from 'hugeicons-react';
 import type { ComponentType, SVGProps } from 'react';
 
-type Platform = 'slice' | 'altrx';
+type Platform = 'slice' | 'altrx' | 'admin';
 
 interface PlatformPickerModalProps {
   userEmail: string;
+  isAdmin: boolean;
   onSelect: (platform: Platform) => void;
   onCancel?: () => void;
 }
@@ -19,6 +20,7 @@ interface PlatformOption {
   accent: string;
   iconColor: string;
   hover: string;
+  adminOnly?: boolean;
 }
 
 const OPTIONS: PlatformOption[] = [
@@ -40,13 +42,29 @@ const OPTIONS: PlatformOption[] = [
     iconColor: '#10B981',
     hover: 'hover:border-emerald-signal hover:bg-emerald-signal/10',
   },
+  {
+    id: 'admin',
+    label: 'Admin Panel',
+    Icon: Shield01Icon,
+    description: 'Manage users, roles and platform access',
+    accent: 'border-electric-blue/40 bg-electric-blue/5',
+    iconColor: '#3B82F6',
+    hover: 'hover:border-electric-blue hover:bg-electric-blue/10',
+    adminOnly: true,
+  },
 ];
 
 export default function PlatformPickerModal({
   userEmail,
+  isAdmin,
   onSelect,
   onCancel,
 }: PlatformPickerModalProps) {
+  const visibleOptions = OPTIONS.filter((opt) => !opt.adminOnly || isAdmin);
+  const gridCols = visibleOptions.length >= 3
+    ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+    : 'grid-cols-1 sm:grid-cols-2';
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
@@ -60,8 +78,8 @@ export default function PlatformPickerModal({
         aria-hidden="true"
       />
 
-      <div className="relative z-10 w-full max-w-2xl bg-pure-surface dark:bg-gray-900 diffused-shadow-lg border border-whisper-border dark:border-gray-700 rounded-xl overflow-hidden">
-        <div className="h-1 w-full bg-gradient-to-r from-amber-warmth via-emerald-signal to-electric-blue" />
+      <div className="relative z-10 w-full max-w-3xl bg-pure-surface dark:bg-gray-900 diffused-shadow-lg border border-whisper-border dark:border-gray-700 rounded-xl overflow-hidden">
+        <div className={`h-1 w-full ${isAdmin && visibleOptions.length === 3 ? 'bg-gradient-to-r from-amber-warmth via-emerald-signal to-electric-blue' : 'bg-gradient-to-r from-amber-warmth to-emerald-signal'}`} />
 
         <div className="p-8 md:p-10 text-center">
           <p className="text-metadata-mono uppercase tracking-widest text-electric-blue mb-2">
@@ -75,11 +93,12 @@ export default function PlatformPickerModal({
           </h2>
           <p className="text-secondary dark:text-gray-400 text-sm">
             Signed in as <span className="font-medium text-primary dark:text-gray-200">{userEmail}</span>
+            {isAdmin && <span className="ml-2 text-electric-blue font-medium">· Admin</span>}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 px-8 pb-8 md:px-10 md:pb-10">
-          {OPTIONS.map((opt) => {
+        <div className={`grid ${gridCols} gap-4 px-8 pb-8 md:px-10 md:pb-10`}>
+          {visibleOptions.map((opt) => {
             const { Icon } = opt;
             return (
               <button

@@ -7,6 +7,7 @@ import {
   reactivateUser,
   changeUserRole,
   resetUserPassword,
+  setUserPlatformAccess,
   getRoles,
   getUserDetail,
   type AdminUserDto,
@@ -14,7 +15,7 @@ import {
   type AuditLogEntry,
   type PasswordResetResult,
 } from '../services/adminApi';
-import type { UserStatus } from '../services/authApi';
+import type { PlatformAccess, UserStatus } from '../services/authApi';
 import {
   CheckmarkCircle01Icon,
   Cancel01Icon,
@@ -23,13 +24,21 @@ import {
   Key01Icon,
   Search01Icon,
   Loading03Icon,
+  Globe02Icon,
   UserIcon,
   Shield01Icon,
   ShieldUserIcon,
 } from 'hugeicons-react';
 
 type Tab = 'Pending' | 'Active' | 'Suspended' | 'Rejected';
-type ActionModal = 'approve' | 'reject' | 'suspend' | 'changeRole' | 'resetPassword' | 'detail';
+type ActionModal = 'approve' | 'reject' | 'suspend' | 'changeRole' | 'resetPassword' | 'setAccess' | 'detail';
+
+const PLATFORM_ACCESS_OPTIONS: { value: PlatformAccess; label: string; description: string }[] = [
+  { value: 'Both',  label: 'Both (ALTRX + Slice)',  description: 'Access to both platforms' },
+  { value: 'Altrx', label: 'ALTRX only',           description: 'Pharmacy CRM only' },
+  { value: 'Slice', label: 'Slice only',           description: 'Pizza shop ops only' },
+  { value: 'None',  label: 'No access',            description: 'Block from both platforms' },
+];
 
 const STATUS_COLORS: Record<UserStatus, { bg: string; text: string; label: string }> = {
   Pending:   { bg: 'bg-amber-warmth/10',  text: 'text-amber-warmth',  label: 'Pending' },
@@ -60,6 +69,7 @@ export default function AdminPanelPage() {
   const [actionModal, setActionModal] = useState<ActionModal | null>(null);
   const [actionReason, setActionReason] = useState('');
   const [actionRoleId, setActionRoleId] = useState<number>(0);
+  const [actionPlatformAccess, setActionPlatformAccess] = useState<PlatformAccess>('None');
   const [actionBusy, setActionBusy] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -94,6 +104,7 @@ export default function AdminPanelPage() {
     setActionModal(modal);
     setActionReason('');
     setActionRoleId(u.roleId);
+    setActionPlatformAccess(u.platformAccess);
     setActionMsg(null);
     setResetResult(null);
   };
@@ -144,6 +155,12 @@ export default function AdminPanelPage() {
       } else if (actionModal === 'changeRole') {
         await changeUserRole(actionTarget.id, actionRoleId);
         setActionMsg({ kind: 'ok', text: 'Role updated' });
+      } else if (actionModal === 'setAccess') {
+        await setUserPlatformAccess(actionTarget.id, actionPlatformAccess);
+        setActionMsg({
+          kind: 'ok',
+          text: `Platform access set to ${actionPlatformAccess}. User will be asked to re-login.`,
+        });
       } else if (actionModal === 'resetPassword') {
         const res = await resetUserPassword(actionTarget.id);
         setResetResult(res);
@@ -228,6 +245,7 @@ export default function AdminPanelPage() {
               <th className="p-4 font-medium">User</th>
               <th className="p-4 font-medium">Role</th>
               <th className="p-4 font-medium">Status</th>
+              <th className="p-4 font-medium">Platform</th>
               <th className="p-4 font-medium">Last login</th>
               <th className="p-4 font-medium text-right">Actions</th>
             </tr>
@@ -235,14 +253,14 @@ export default function AdminPanelPage() {
           <tbody className="text-sm">
             {loading ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-secondary dark:text-gray-400">
+                <td colSpan={6} className="p-8 text-center text-secondary dark:text-gray-400">
                   <Loading03Icon size={20} className="inline animate-spin mr-2" />
                   Loading...
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-8 text-center text-muted-slate dark:text-gray-500 text-sm">
+                <td colSpan={6} className="p-8 text-center text-muted-slate dark:text-gray-500 text-sm">
                   No {tab.toLowerCase()} users.
                 </td>
               </tr>
@@ -266,6 +284,12 @@ export default function AdminPanelPage() {
                       {status.label}
                     </span>
                   </td>
+                  <td className="p-4">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border border-whisper-border dark:border-gray-700 bg-card-icon-bg dark:bg-gray-800 text-primary dark:text-gray-200">
+                      <Globe02Icon size={12} />
+                      {u.platformAccess}
+                    </span>
+                  </td>
                   <td className="p-4 text-secondary dark:text-gray-400 text-xs font-metadata-mono">
                     {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '—'}
                   </td>
@@ -283,6 +307,9 @@ export default function AdminPanelPage() {
                       )}
                       {u.status === 'Active' && (
                         <>
+                          <button onClick={() => openAction(u, 'setAccess')} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800" title="Set platform access">
+                            <Globe02Icon size={12} /> Access
+                          </button>
                           <button onClick={() => openAction(u, 'changeRole')} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border border-whisper-border dark:border-gray-700 text-primary dark:text-gray-200 hover:bg-card-icon-bg dark:hover:bg-gray-800">
                             <Shield01Icon size={12} /> Change role
                           </button>
@@ -328,6 +355,7 @@ export default function AdminPanelPage() {
               {actionModal === 'reject' && `Reject ${actionTarget.fullName}`}
               {actionModal === 'suspend' && `Suspend ${actionTarget.fullName}`}
               {actionModal === 'changeRole' && `Change role of ${actionTarget.fullName}`}
+              {actionModal === 'setAccess' && `Platform access for ${actionTarget.fullName}`}
               {actionModal === 'resetPassword' && `Reset password for ${actionTarget.fullName}`}
               {actionModal === 'detail' && `User detail: ${actionTarget.fullName}`}
             </h3>
@@ -360,6 +388,38 @@ export default function AdminPanelPage() {
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {actionModal === 'setAccess' && (
+              <div className="mb-4 space-y-2">
+                <p className="text-xs text-muted-slate dark:text-gray-500 mb-2">
+                  Currently: <span className="font-medium text-primary dark:text-gray-200">{actionTarget.platformAccess}</span>.
+                  Changing this will revoke the user's session and require them to re-login.
+                </p>
+                {PLATFORM_ACCESS_OPTIONS.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      actionPlatformAccess === opt.value
+                        ? 'border-electric-blue bg-electric-blue/5'
+                        : 'border-whisper-border dark:border-gray-700 hover:bg-card-icon-bg dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="platformAccess"
+                      value={opt.value}
+                      checked={actionPlatformAccess === opt.value}
+                      onChange={(e) => setActionPlatformAccess(e.target.value as PlatformAccess)}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-primary dark:text-gray-100">{opt.label}</div>
+                      <div className="text-xs text-muted-slate dark:text-gray-500">{opt.description}</div>
+                    </div>
+                  </label>
+                ))}
               </div>
             )}
 

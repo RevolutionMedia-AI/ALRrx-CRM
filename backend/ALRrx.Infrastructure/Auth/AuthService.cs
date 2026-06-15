@@ -30,6 +30,7 @@ public sealed class AuthService : IAuthService
             new(ClaimTypes.Name, user.FullName),
             new(ClaimTypes.Role, user.RoleName),
             new("status", user.Status.ToString()),
+            new("platform_access", user.PlatformAccess.ToString()),
         };
 
         // Add permissions as a single space-delimited claim

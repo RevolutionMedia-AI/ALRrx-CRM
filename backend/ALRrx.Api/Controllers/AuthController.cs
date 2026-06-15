@@ -308,6 +308,7 @@ public sealed class AuthController : ControllerBase
         var nameClaim = User.FindFirst(ClaimTypes.Name)?.Value;
         var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
         var statusClaim = User.FindFirst("status")?.Value;
+        var platformClaim = User.FindFirst("platform_access")?.Value;
         var permsClaim = User.FindFirst("permissions")?.Value;
 
         if (!string.IsNullOrEmpty(idClaim) && int.TryParse(idClaim, out var id))
@@ -330,6 +331,7 @@ public sealed class AuthController : ControllerBase
                 FullName = nameClaim ?? string.Empty,
                 Role = roleClaim ?? "Admin",
                 Status = statusClaim ?? "Active",
+                PlatformAccess = platformClaim ?? "None",
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 Permissions = string.IsNullOrEmpty(permsClaim) ? [] : permsClaim.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList(),
@@ -343,6 +345,7 @@ public sealed class AuthController : ControllerBase
             FullName = nameClaim ?? string.Empty,
             Role = roleClaim ?? "Admin",
             Status = statusClaim ?? "Active",
+            PlatformAccess = platformClaim ?? "None",
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             Permissions = string.IsNullOrEmpty(permsClaim) ? [] : permsClaim.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList(),
@@ -357,6 +360,7 @@ public sealed class AuthController : ControllerBase
         RoleId = u.RoleId,
         Role = u.RoleName,
         Status = u.Status.ToString(),
+        PlatformAccess = u.PlatformAccess.ToString(),
         IsActive = u.IsActive,
         LastLoginAt = u.LastLoginAt,
         CreatedAt = u.CreatedAt,

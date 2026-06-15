@@ -94,7 +94,7 @@ function SliceProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 function PlatformPickerPage() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get('redirect');
@@ -102,12 +102,20 @@ function PlatformPickerPage() {
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
 
-  const { group, redirectTo } = resolveAccess(user.email);
-  if (group !== 'both' && redirectTo) {
+  const { group, redirectTo } = resolveAccess(user.platformAccess);
+  // Admins always see the picker (to access /admin), even if their email is in
+  // ALTRX_ONLY or SLICE_ONLY. Non-admins in a single-platform group are still
+  // auto-redirected to their platform.
+  if (group !== 'both' && !isAdmin && redirectTo) {
     return <Navigate to={redirectTo} replace />;
   }
 
-  const handleSelect = (platform: 'slice' | 'altrx') => {
+  const handleSelect = (platform: 'slice' | 'altrx' | 'admin') => {
+    if (platform === 'admin') {
+      console.log('[PlatformPicker] navigating to /admin');
+      navigate('/admin', { replace: true });
+      return;
+    }
     const dest = platform === 'slice' ? ROUTES.slice : ROUTES.altrx;
     const final = redirect ?? dest;
     console.log('[PlatformPicker] navigating to', final);
@@ -117,6 +125,7 @@ function PlatformPickerPage() {
   return (
     <PlatformPickerModal
       userEmail={user.email}
+      isAdmin={isAdmin}
       onSelect={handleSelect}
       onCancel={() => {
         logout();

@@ -95,7 +95,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      const { redirectTo, group } = resolveAccess(user.email);
+      const { redirectTo, group } = resolveAccess(user.platformAccess);
       if (group === 'both') {
         navigate('/select-platform', { replace: true });
       } else if (redirectTo) {

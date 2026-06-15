@@ -74,14 +74,15 @@ public sealed class UserRepository : IUserRepository
             }
 
             await using var insertCmd = new MySqlCommand("""
-                INSERT INTO alrrx_users (Email, PasswordHash, FullName, Role, RoleId, IsActive, Status, ApprovedAt)
-                VALUES (@Email, @PasswordHash, @FullName, @Role, @RoleId, 1, 'Active', @ApprovedAt)
+                INSERT INTO alrrx_users (Email, PasswordHash, FullName, Role, RoleId, IsActive, Status, PlatformAccess, ApprovedAt)
+                VALUES (@Email, @PasswordHash, @FullName, @Role, @RoleId, 1, 'Active', @PlatformAccess, @ApprovedAt)
                 """, connection);
             insertCmd.Parameters.AddWithValue("@Email", email);
             insertCmd.Parameters.AddWithValue("@PasswordHash", hash);
             insertCmd.Parameters.AddWithValue("@FullName", name);
             insertCmd.Parameters.AddWithValue("@Role", role);
             insertCmd.Parameters.AddWithValue("@RoleId", roleId);
+            insertCmd.Parameters.AddWithValue("@PlatformAccess", email == "jessica.duarte@revolutionmedia.ai" ? "Altrx" : "Both");
             insertCmd.Parameters.AddWithValue("@ApprovedAt", DateTime.UtcNow);
             await insertCmd.ExecuteNonQueryAsync(ct);
             _logger.LogInformation("Seeded user: {Email} as {Role}", email, role);
@@ -216,6 +217,16 @@ public sealed class UserRepository : IUserRepository
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    public async Task SetPlatformAccessAsync(int userId, PlatformAccess access, int performedBy, CancellationToken ct = default)
+    {
+        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            "UPDATE alrrx_users SET PlatformAccess = @Access WHERE Id = @Id", connection);
+        cmd.Parameters.AddWithValue("@Access", access.ToString());
+        cmd.Parameters.AddWithValue("@Id", userId);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
     public async Task RecordLoginAsync(int userId, bool success, CancellationToken ct = default)
     {
         await using var connection = await GetOpenConnectionAsync(ct);
@@ -272,6 +283,7 @@ public sealed class UserRepository : IUserRepository
             RoleId = roleId,
             RoleName = roleName,
             Status = status,
+            PlatformAccess = Enum.Parse<PlatformAccess>(reader.GetString("PlatformAccess")),
             IsActive = reader.GetBoolean("IsActive"),
             ApprovedBy = reader.IsDBNull(reader.GetOrdinal("ApprovedBy")) ? null : reader.GetInt32("ApprovedBy"),
             ApprovedAt = reader.IsDBNull(reader.GetOrdinal("ApprovedAt")) ? null : reader.GetDateTime("ApprovedAt"),
@@ -299,7 +311,7 @@ public sealed class UserRepository : IUserRepository
     {
         public const string SelectUserBase = """
             SELECT u.Id, u.Email, u.PasswordHash, u.FullName, u.RoleId, r.Name AS Role,
-                   u.Status, u.IsActive, u.ApprovedBy, u.ApprovedAt, u.RejectionReason,
+                   u.Status, u.PlatformAccess, u.IsActive, u.ApprovedBy, u.ApprovedAt, u.RejectionReason,
                    u.LastLoginAt, u.FailedLoginAttempts, u.LockedUntil, u.CreatedBy, u.CreatedAt
             FROM alrrx_users u
             JOIN alrrx_roles r ON r.Id = u.RoleId

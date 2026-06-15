@@ -97,6 +97,11 @@ export async function changeUserRole(id: number, roleId: number): Promise<AdminA
   return data;
 }
 
+export async function setUserPlatformAccess(id: number, platformAccess: string): Promise<AdminActionResult> {
+  const { data } = await client.put<AdminActionResult>(`/admin/users/${id}/platform-access`, { platformAccess });
+  return data;
+}
+
 export async function resetUserPassword(id: number): Promise<PasswordResetResult> {
   const { data } = await client.post<PasswordResetResult>(`/admin/users/${id}/reset-password`);
   return data;

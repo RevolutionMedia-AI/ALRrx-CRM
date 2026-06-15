@@ -11,6 +11,7 @@ public sealed record AuthUser
     public int RoleId { get; init; }
     public string RoleName { get; init; } = string.Empty;
     public UserStatus Status { get; init; } = UserStatus.Pending;
+    public PlatformAccess PlatformAccess { get; init; } = PlatformAccess.None;
     public bool IsActive { get; init; } = true;
     public int? ApprovedBy { get; init; }
     public DateTime? ApprovedAt { get; init; }

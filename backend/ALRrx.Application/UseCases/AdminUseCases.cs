@@ -1,4 +1,4 @@
-﻿using ALRrx.Application.DTOs;
+using ALRrx.Application.DTOs;
 using ALRrx.Application.Interfaces;
 using ALRrx.Domain.Entities;
 using ALRrx.Domain.Enums;
@@ -72,6 +72,7 @@ public sealed class GetAdminUsersUseCase
                 RoleId = u.RoleId,
                 RoleName = u.RoleName,
                 Status = u.Status.ToString(),
+                PlatformAccess = u.PlatformAccess.ToString(),
                 IsActive = u.IsActive,
                 ApprovedBy = u.ApprovedBy,
                 ApprovedAt = u.ApprovedAt,
@@ -210,6 +211,7 @@ public sealed class ApproveUserUseCase
                 RoleId = updated.RoleId,
                 RoleName = updated.RoleName,
                 Status = updated.Status.ToString(),
+                PlatformAccess = updated.PlatformAccess.ToString(),
                 IsActive = updated.IsActive,
                 ApprovedBy = updated.ApprovedBy,
                 ApprovedAt = updated.ApprovedAt,
@@ -245,7 +247,7 @@ public sealed class RejectUserUseCase
         if (userId == performedBy)
             throw new InvalidOperationException("You cannot reject yourself");
         if (user.RoleName == "Admin")
-            throw new InvalidOperationException("Cannot reject an admin — demote them first");
+            throw new InvalidOperationException("Cannot reject an admin � demote them first");
         var oldStatus = user.Status.ToString();
         await _users.SetStatusAsync(userId, UserStatus.Rejected, performedBy, reason, ct);
         _revoked.Revoke(userId, performedBy, $"Rejected: {reason}");
@@ -284,6 +286,7 @@ public sealed class RejectUserUseCase
                 RoleId = updated.RoleId,
                 RoleName = updated.RoleName,
                 Status = updated.Status.ToString(),
+                PlatformAccess = updated.PlatformAccess.ToString(),
                 IsActive = updated.IsActive,
                 ApprovedBy = updated.ApprovedBy,
                 ApprovedAt = updated.ApprovedAt,
@@ -319,7 +322,7 @@ public sealed class SuspendUserUseCase
         if (userId == performedBy)
             throw new InvalidOperationException("You cannot suspend yourself");
         if (user.RoleName == "Admin")
-            throw new InvalidOperationException("Cannot suspend an admin — demote them first");
+            throw new InvalidOperationException("Cannot suspend an admin � demote them first");
         var oldStatus = user.Status.ToString();
         await _users.SetStatusAsync(userId, UserStatus.Suspended, performedBy, reason, ct);
         _revoked.Revoke(userId, performedBy, $"Suspended: {reason}");
@@ -358,6 +361,7 @@ public sealed class SuspendUserUseCase
                 RoleId = updated.RoleId,
                 RoleName = updated.RoleName,
                 Status = updated.Status.ToString(),
+                PlatformAccess = updated.PlatformAccess.ToString(),
                 IsActive = updated.IsActive,
                 ApprovedBy = updated.ApprovedBy,
                 ApprovedAt = updated.ApprovedAt,
@@ -413,6 +417,7 @@ public sealed class ReactivateUserUseCase
                 RoleId = updated.RoleId,
                 RoleName = updated.RoleName,
                 Status = updated.Status.ToString(),
+                PlatformAccess = updated.PlatformAccess.ToString(),
                 IsActive = updated.IsActive,
                 ApprovedBy = updated.ApprovedBy,
                 ApprovedAt = updated.ApprovedAt,
@@ -468,6 +473,7 @@ public sealed class ChangeUserRoleUseCase
             RoleId = updated.RoleId,
             RoleName = updated.RoleName,
             Status = updated.Status.ToString(),
+            PlatformAccess = updated.PlatformAccess.ToString(),
             IsActive = updated.IsActive,
             ApprovedBy = updated.ApprovedBy,
             ApprovedAt = updated.ApprovedAt,
@@ -544,4 +550,85 @@ public sealed class ResetUserPasswordUseCase
 
         return new string(chars.OrderBy(_ => random.Next()).ToArray());
     }
+}
+
+public sealed class SetUserPlatformAccessUseCase
+{
+    private readonly IUserRepository _users;
+    private readonly IAuditLogRepository _audit;
+    private readonly IRevokedUserStore _revoked;
+
+    public SetUserPlatformAccessUseCase(IUserRepository users, IAuditLogRepository audit, IRevokedUserStore revoked)
+    {
+        _users = users;
+        _audit = audit;
+        _revoked = revoked;
+    }
+
+    public async Task<AdminActionResultDto> ExecuteAsync(int userId, string platformAccess, int performedBy, string? ip, CancellationToken ct = default)
+    {
+        if (!Enum.TryParse<PlatformAccess>(platformAccess, true, out var access))
+            throw new InvalidOperationException($"Invalid platform access: '{platformAccess}'. Use None, Altrx, Slice, or Both.");
+
+        var user = await _users.GetByIdAsync(userId, ct) ?? throw new InvalidOperationException("User not found");
+        if (userId == performedBy && access == PlatformAccess.None)
+            throw new InvalidOperationException("You cannot remove your own platform access");
+
+        var oldAccess = user.PlatformAccess;
+        if (oldAccess == access) return ToResult(user);
+
+        await _users.SetPlatformAccessAsync(userId, access, performedBy, ct);
+
+        // Revoke the user's existing token so they re-login with the new access.
+        // BUG-008 immediate revocation � necessary because the platform picker
+        // is gated only by the JWT, and the new access needs to be picked up
+        // on next login.
+        _revoked.Revoke(userId, performedBy, $"PlatformAccess changed from {oldAccess} to {access}");
+
+        await _audit.LogAsync(new UserAuditLog
+        {
+            UserId = userId,
+            Action = nameof(AuditAction.RoleChanged),
+            PerformedBy = performedBy,
+            OldValue = oldAccess.ToString(),
+            NewValue = access.ToString(),
+            Reason = "PlatformAccess changed",
+            IpAddress = ip,
+        }, ct);
+
+        await _audit.LogAsync(new UserAuditLog
+        {
+            UserId = userId,
+            Action = nameof(AuditAction.TokenRevoked),
+            PerformedBy = performedBy,
+            Reason = $"PlatformAccess changed: {oldAccess} -> {access}",
+            IpAddress = ip,
+        }, ct);
+
+        var updated = await _users.GetByIdAsync(userId, ct) ?? throw new InvalidOperationException("User disappeared");
+        return ToResult(updated);
+    }
+
+    private static AdminActionResultDto ToResult(AuthUser u) => new()
+    {
+        User = new AdminUserDto
+        {
+            Id = u.Id,
+            Email = u.Email,
+            FullName = u.FullName,
+            RoleId = u.RoleId,
+            RoleName = u.RoleName,
+            Status = u.Status.ToString(),
+            PlatformAccess = u.PlatformAccess.ToString(),
+            IsActive = u.IsActive,
+            ApprovedBy = u.ApprovedBy,
+            ApprovedAt = u.ApprovedAt,
+            RejectionReason = u.RejectionReason,
+            LastLoginAt = u.LastLoginAt,
+            CreatedAt = u.CreatedAt,
+            Permissions = u.Permissions,
+        },
+        EmailSent = true,
+        EmailError = null,
+    };
 }

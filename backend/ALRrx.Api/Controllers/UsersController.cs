@@ -77,6 +77,7 @@ public sealed class UsersController : ControllerBase
         RoleId = u.RoleId,
         Role = u.RoleName,
         Status = u.Status.ToString(),
+        PlatformAccess = u.PlatformAccess.ToString(),
         IsActive = u.IsActive,
         LastLoginAt = u.LastLoginAt,
         CreatedAt = u.CreatedAt,
