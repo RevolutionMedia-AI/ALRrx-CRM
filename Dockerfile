@@ -27,8 +27,16 @@
 #     de PowerShell Set-Content con encoding incorrecto. Reemplazados
 #     todos los caracteres especiales (—, ·) con ASCII simple (-) para
 #     evitar futuros problemas de encoding entre Windows y Linux.
-# Bump CACHE_BUST a 2026-06-11-bust-33.
-ARG CACHE_BUST=2026-06-11-bust-33
+# 2026-06-15-bust-34: Switch all base images from mcr.microsoft.com
+#     to the Docker Hub mirror (docker.io/microsoft/dotnet). MCR was
+#     returning 401 / 429 for anonymous pulls from the Northflank
+#     build runner, causing the image to fail to resolve. The
+#     Docker Hub repos are Microsoft's own mirrors of the same
+#     images (microsoft/dotnet:8.0 SDK and microsoft/dotnet:8.0-aspnet
+#     runtime), so behavior is identical. Bump CACHE_BUST to
+#     2026-06-15-bust-34.
+# Bump CACHE_BUST a 2026-06-15-bust-34.
+ARG CACHE_BUST=2026-06-15-bust-34
 
 # ─── Stage 1: Build React frontend (ALRrx + Slice) ───────────────────────────
 FROM node:20-alpine AS frontend
@@ -40,7 +48,7 @@ COPY frontend/ .
 RUN npm run build
 
 # ─── Stage 2a: Build ALRrx.Api ────────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS alrrx-api
+FROM docker.io/microsoft/dotnet:8.0 AS alrrx-api
 ARG CACHE_BUST
 WORKDIR /src
 COPY backend/ALRrx.sln ./
@@ -53,7 +61,7 @@ COPY backend/ .
 RUN dotnet publish ALRrx.Api/ALRrx.Api.csproj -c Release -o /publish-alrrx
 
 # ─── Stage 2b: Build Slice.Api ────────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS slice-api
+FROM docker.io/microsoft/dotnet:8.0 AS slice-api
 ARG CACHE_BUST
 WORKDIR /src
 COPY slice-backend/Slice.sln ./
@@ -66,7 +74,7 @@ COPY slice-backend/ .
 RUN dotnet publish Slice.Api/Slice.Api.csproj -c Release -o /publish-slice
 
 # ─── Stage 3: Runtime image (nginx + 2 dotnet apps managed by supervisord) ────
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+FROM docker.io/microsoft/dotnet:8.0-aspnet
 RUN apt-get update && apt-get install -y nginx supervisor && rm -rf /var/lib/apt/lists/*
 # Ensure the SQLite path exists so the slice-api can create /data/slice.db on
 # first boot even if the Northflank volume is mounted slightly later.
