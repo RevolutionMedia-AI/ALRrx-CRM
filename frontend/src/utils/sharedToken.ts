@@ -49,3 +49,50 @@ export function clearSharedToken(): void {
     try { localStorage.removeItem(key); } catch { /* ignore */ }
   }
 }
+
+/**
+ * Decode the JWT payload WITHOUT verifying the signature. The signature
+ * is verified by the backend on every request — this is only used to
+ * read the `exp` claim so the client can decide to refresh before the
+ * next request would 401.
+ *
+ * Returns null if the token is malformed, has no `exp`, or fails to
+ * base64-decode. Returns the expiry as a Unix timestamp in seconds.
+ */
+export function getJwtExp(token: string | null | undefined): number | null {
+  if (!token) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    // atob doesn't handle base64url — convert to standard base64.
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded));
+    return typeof payload.exp === 'number' ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns the milliseconds until the token expires, or null if we
+ * can't determine the expiry. A negative value means the token is
+ * already expired.
+ */
+export function msUntilExpiry(token: string | null | undefined): number | null {
+  const exp = getJwtExp(token);
+  if (exp === null) return null;
+  return exp * 1000 - Date.now();
+}
+
+/**
+ * Whether the token should be refreshed proactively. Returns true when
+ * the token is missing, expired, or will expire within the given
+ * `marginMs` window (default 60s). The margin protects against clock
+ * skew between client and server.
+ */
+export function shouldRefreshToken(token: string | null | undefined, marginMs = 60_000): boolean {
+  const ms = msUntilExpiry(token);
+  if (ms === null) return true;
+  return ms <= marginMs;
+}

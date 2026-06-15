@@ -43,7 +43,11 @@ public sealed class AuthService : IAuthService
             issuer: _config["Jwt:Issuer"] ?? "ALRrx",
             audience: _config["Jwt:Audience"] ?? "ALRrx",
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(12),
+            // Access token lifetime: 1 hour. The frontend proactively
+            // refreshes via POST /api/auth/refresh when < 60s remain, so
+            // an active user has a rolling session. An inactive user is
+            // signed out after 1h and must log in again.
+            expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
@@ -66,7 +70,11 @@ public sealed class AuthService : IAuthService
                 ValidateAudience = true,
                 ValidAudience = _config["Jwt:Audience"] ?? "ALRrx",
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
+                // 30s tolerance for clock drift between client and server.
+                // The frontend proactively refreshes 60s before expiry, so
+                // this skew window is a backstop for when the proactive
+                // refresh fails (network blip, race condition).
+                ClockSkew = TimeSpan.FromSeconds(30)
             }, out _);
 
             var id = result.FindFirst(ClaimTypes.NameIdentifier)?.Value;

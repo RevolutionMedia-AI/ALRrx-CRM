@@ -418,6 +418,66 @@ public sealed class AuthController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Issue a fresh JWT for an already-authenticated user. The current
+    /// token must still be valid (not expired, signature OK). The new
+    /// token replaces the old one in the client's storage; the old
+    /// token is not blacklisted because JWTs are stateless and any
+    /// further use of the old one would still pass the signature check
+    /// — instead we rely on the short access-token lifetime to limit
+    /// the window of opportunity for a stolen token.
+    ///
+    /// Re-validates the user's status from the DB so a suspended user
+    /// who somehow still has a valid token cannot keep refreshing.
+    /// </summary>
+    [Authorize]
+    [HttpPost("refresh")]
+    [EnableRateLimiting("authCheck")]
+    public async Task<ActionResult<LoginResponse>> Refresh(CancellationToken ct = default) {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(idClaim, out var userId)) {
+            return Unauthorized(new { error = "Invalid token" });
+        }
+
+        Domain.Entities.AuthUser? user;
+        try {
+            user = await _users.GetByIdAsync(userId, ct);
+        } catch {
+            // BUG-11 fix: same as /auth/me — if the DB is down, refuse
+            // to mint a new token (we can't re-validate the user's
+            // current status).
+            return StatusCode(503, new { error = "User service temporarily unavailable. Please try again." });
+        }
+
+        if (user is null) {
+            return Unauthorized(new { error = "User no longer exists" });
+        }
+        if (user.Status == UserStatus.Pending) {
+            return StatusCode(403, new { error = "Account pending approval", code = "USER_PENDING" });
+        }
+        if (user.Status == UserStatus.Suspended) {
+            return StatusCode(403, new { error = "Account suspended", code = "USER_SUSPENDED" });
+        }
+        if (user.Status == UserStatus.Rejected) {
+            return StatusCode(403, new { error = "Account rejected", code = "USER_REJECTED" });
+        }
+        if (!user.IsActive) {
+            return Unauthorized(new { error = "Account is deactivated" });
+        }
+        if (user.LockedUntil.HasValue && user.LockedUntil > DateTime.UtcNow) {
+            return StatusCode(423, new { error = "Account temporarily locked. Try again later.", code = "USER_LOCKED" });
+        }
+
+        // Mint a fresh token. The new token is independent of the old
+        // one — both will pass signature validation until the old one
+        // expires. This is the trade-off we accept for stateless JWTs.
+        var token = _auth.GenerateToken(user);
+        return Ok(new LoginResponse {
+            Token = token,
+            User = MapUser(user),
+        });
+    }
+
     private static UserInfoDto MapUser(Domain.Entities.AuthUser u) => new()
     {
         Id = u.Id,

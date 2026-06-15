@@ -69,6 +69,17 @@ export async function logoutRequest(): Promise<void> {
   }
 }
 
+// Refresh-token rotation: ask the backend to mint a new JWT using the
+// current valid one. The new token replaces the old one in localStorage;
+// the old one remains technically valid until it expires (stateless
+// JWT), but the proactive refresh keeps the window small. If the
+// backend is unreachable or the user is no longer allowed, the call
+// rejects and the caller decides what to do (typically force-logout).
+export async function refreshRequest(): Promise<LoginResponse> {
+  const { data } = await client.post<LoginResponse>('/auth/refresh', null, { timeout: 10000 });
+  return data;
+}
+
 export async function getUsers(): Promise<UserInfo[]> {
   const { data } = await client.get<UserInfo[]>('/users');
   return data;

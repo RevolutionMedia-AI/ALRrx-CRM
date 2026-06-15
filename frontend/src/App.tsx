@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useSe
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { SliceAuthProvider, useSliceAuth } from './slice/context/SliceAuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AnalyticsPage from './pages/AnalyticsPage';
@@ -313,14 +314,16 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <SliceAuthProvider>
-          <ThemeProvider>
-            <div className="grain-overlay" aria-hidden="true" />
-            <AppRoutes />
-          </ThemeProvider>
-        </SliceAuthProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <SliceAuthProvider>
+            <ThemeProvider>
+              <div className="grain-overlay" aria-hidden="true" />
+              <AppRoutes />
+            </ThemeProvider>
+          </SliceAuthProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

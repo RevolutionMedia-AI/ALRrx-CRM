@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, logoutRequest, type UserInfo, type UserStatus } from '../services/authApi';
+import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, logoutRequest, refreshRequest, type UserInfo, type UserStatus, type LoginResponse } from '../services/authApi';
 import { getGoogleAccessToken, setGoogleAccessToken } from '../utils/googleTokenStore';
-import { SHARED_TOKEN_KEY, readSharedToken, writeSharedToken, clearSharedToken } from '../utils/sharedToken';
-import { AUTH_FORBIDDEN_EVENT, AUTH_UNAUTHORIZED_EVENT } from '../services/httpClient';
+import { SHARED_TOKEN_KEY, readSharedToken, writeSharedToken, clearSharedToken, getJwtExp, msUntilExpiry, shouldRefreshToken } from '../utils/sharedToken';
+import { AUTH_FORBIDDEN_EVENT, AUTH_UNAUTHORIZED_EVENT, refreshOnce } from '../services/httpClient';
 import { resolveAccess, ROUTES } from '../utils/accessControl';
 
 const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS === 'true';
@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   pathnameRef.current = location.pathname;
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
+  navigateRef.current = navigate;
 
   const applyUserAndRedirect = useCallback((u: UserInfo | null, tok: string | null) => {
     setUser(u);
@@ -96,11 +97,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (stored) {
       setAuthToken(stored);
       setToken(stored);
-      getMe()
+      // If the token is already expired or about to expire, refresh
+      // first. getMe() would 401 and the interceptor would refresh
+      // and retry, but doing it here avoids the extra round-trip
+      // and keeps the user from seeing a brief 401 flash.
+      const bootstrap = shouldRefreshToken(stored)
+        ? ensureFreshToken().catch(() => stored)
+        : Promise.resolve(stored);
+      bootstrap
+        .then((token) => {
+          setAuthToken(token);
+          setToken(token);
+          return getMe();
+        })
         .then((u) => {
           // Successful /auth/me clears the BUG-26 banner.
           setAuthUnavailable(false);
-          applyUserAndRedirect(u, stored);
+          applyUserAndRedirect(u, readSharedToken() ?? stored);
         })
         .catch((err: unknown) => {
           const status = err && typeof err === 'object' && 'response' in err
@@ -188,6 +201,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, unauthorizedHandler);
     };
   }, [applyUserAndRedirect, navigate, user, token]);
+
+  // Proactive JWT refresh: when the current token is within 60s of
+  // expiry, ask the backend for a new one. Uses the shared mutex from
+  // the httpClient (refreshOnce) so reactive 401 retries and proactive
+  // refreshes coalesce into a single backend call. Returns the new
+  // token (or the same one if no refresh was needed).
+  const ensureFreshToken = useCallback(async (): Promise<string | null> => {
+    const current = readSharedToken();
+    if (current && !shouldRefreshToken(current)) return current;
+    return refreshOnce();
+  }, []);
+
+  // Cross-tab sync: the `storage` event fires in OTHER tabs when
+  // localStorage changes. Listen for the shared token and the Google
+  // access token being added/removed so the current tab mirrors the
+  // state of the tab that originated the change. Without this, logging
+  // out in tab A leaves tab B with a phantom authenticated session
+  // (the React state still shows the user, and the next API call
+  // would 401 → dispatch the unauthorized event, but only after a
+  // visible flash of authenticated UI).
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === SHARED_TOKEN_KEY) {
+        if (e.newValue) {
+          // Another tab logged in. Adopt the new token + re-fetch
+          // the user so this tab's state matches.
+          setAuthToken(e.newValue);
+          setToken(e.newValue);
+          getMe()
+            .then((u) => applyUserAndRedirect(u, e.newValue!))
+            .catch(() => { /* ignore — will be handled by interceptor */ });
+        } else {
+          // Another tab logged out. Mirror the logout here.
+          clearSharedToken();
+          setAuthToken(null);
+          setToken(null);
+          setUser(null);
+          setGoogleAccessToken(null);
+          navigate('/login', { replace: true });
+        }
+      } else if (e.key === 'google_access_token') {
+        // Mirror Google-token lifecycle so the slice rehydrate in
+        // this tab uses the same credentials as the originating tab.
+        if (e.newValue) {
+          setGoogleAccessToken(e.newValue);
+        } else {
+          setGoogleAccessToken(null);
+        }
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, [applyUserAndRedirect, navigate]);
 
   const login = async (email: string, password: string) => {
     const res = await apiLogin({ email, password });

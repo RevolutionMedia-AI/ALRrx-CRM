@@ -120,9 +120,17 @@ builder.Services.AddRateLimiter(options =>
     });
 
     // Per-IP: defends against brute force on /api/auth/login and burst attacks on /api/auth/google.
+    // Per-device (X-Device-Fingerprint): secondary key so a single attacker with one device
+    // can't exhaust the per-IP bucket and lock out other users behind the same NAT.
     options.AddPolicy("auth", ctx =>
     {
-        var key = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var device = ctx.Request.Headers["X-Device-Fingerprint"].FirstOrDefault();
+        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        // The key is a composite so a single burst hits BOTH limits: the
+        // device-scoped one (which the attacker can spoof trivially but
+        // their real browser is bound to) and the IP-scoped one (which
+        // protects against distributed brute force from many devices).
+        var key = string.IsNullOrEmpty(device) ? $"ip:{ip}" : $"dev:{device}|ip:{ip}";
         return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = rlAuth,

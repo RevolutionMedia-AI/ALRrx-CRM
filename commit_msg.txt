@@ -1,0 +1,69 @@
+feat: refresh-token rotation, error boundary, cross-tab sync, device fingerprint rate limit
+
+#5 Error boundary (App-level):
+  New components/ErrorBoundary.tsx wraps <AppRoutes />. Any uncaught
+  render error from descendants now shows a recovery UI (Reload /
+  Sign out and go to login) instead of unmounting the whole React
+  tree to a blank white page. The boundary logs the error to the
+  browser console (production would forward to Sentry/Datadog).
+
+#3 JWT expiration proactive detection (utils/sharedToken.ts):
+  New helpers getJwtExp, msUntilExpiry, shouldRefreshToken(token,
+  marginMs=60s) read the JWT payload client-side (base64-decode the
+  middle segment, no signature verification needed since the backend
+  re-validates on every request). Used by the bootstrap path in
+  AuthContext to decide whether to refresh before calling getMe().
+
+#4 Refresh-token rotation (the dangerous one):
+  Backend:
+    - Shortened access-token lifetime from 12h to 1h in AuthService.
+    - New POST /api/auth/refresh endpoint ([Authorize]+authCheck
+      rate limit). Validates the current token, re-validates the
+      user against the DB (so a suspended user who somehow still has
+      a valid token cannot keep refreshing), and mints a fresh JWT.
+      Returns 503 if the user DB is down, 423 if locked, 403 with
+      USER_PENDING/SUSPENDED/REJECTED codes, 401 if invalid. The
+      new token is independent of the old one (stateless JWT
+      trade-off; old token stays valid until its exp).
+    - Relaxed ClockSkew from Zero to 30s in ValidateToken so small
+      client/server clock drift doesn't reject a freshly-refreshed
+      token.
+  Frontend:
+    - new authApi.refreshRequest() function.
+    - httpClient exports a module-level refreshOnce() that
+      coalesces all refresh attempts into one inflight promise.
+      On 401 with a non-revoked token, the response interceptor
+      calls refreshOnce() and retries the original request with
+      the new token (marked _retryAfterRefresh so the retry
+      itself cannot trigger another refresh loop). If refresh
+      fails, the standard BUG-21/22 cleanup runs (clear token,
+      dispatch AUTH_UNAUTHORIZED_EVENT).
+    - AuthContext.ensureFreshToken uses the same refreshOnce so
+      proactive and reactive refreshes share the mutex. The
+      bootstrap useEffect now calls ensureFreshToken before
+      getMe() when the token is within 60s of expiry, avoiding
+      a visible 401 flash for users with long sessions.
+
+#2 Cross-tab session sync (AuthContext useEffect):
+  Listener for the browser 'storage' event, which fires in OTHER
+  tabs when localStorage changes. When another tab logs out
+  (auth_token removed), this tab mirrors the logout: clears token,
+  Google token, axios header, and user state, and navigates to
+  /login. When another tab logs in (auth_token added), this tab
+  adopts the new token and re-fetches the user so the state
+  matches. The Google access token is also mirrored so the Slice
+  rehydration uses the same credentials across tabs.
+
+#6 Rate limit per device (Program.cs + deviceFingerprint.ts):
+  New utils/deviceFingerprint.ts computes a coarse fingerprint from
+  navigator.userAgent + screen dimensions + timezone + language +
+  hardwareConcurrency, hashed with djb2. NOT a security-grade
+  identifier — the goal is to discriminate "10 employees behind a
+  corporate NAT" from "1 attacker spinning up 100 tabs", not to
+  fingerprint devices across browsers. The backend 'auth' policy
+  now uses a composite key of (X-Device-Fingerprint, IP), so a
+  single attacker with one device hits BOTH the device-scoped and
+  IP-scoped limit, while 10 legitimate users behind a shared NAT
+  each get their own per-device bucket. The frontend
+  httpClient.request interceptor sends the header on every
+  request.
