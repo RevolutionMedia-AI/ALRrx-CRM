@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { login as apiLogin, googleLogin as apiGoogleLogin, getMe, setAuthToken, type UserInfo, type UserStatus } from '../services/authApi';
 import { getGoogleAccessToken, setGoogleAccessToken } from '../utils/googleTokenStore';
 import { SHARED_TOKEN_KEY, readSharedToken, writeSharedToken, clearSharedToken } from '../utils/sharedToken';
 import { AUTH_FORBIDDEN_EVENT } from '../services/httpClient';
+import { resolveAccess, ROUTES } from '../utils/accessControl';
 
 const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS === 'true';
 
@@ -31,23 +32,42 @@ function routeForStatus(status: UserStatus | undefined): string {
   return '/';
 }
 
+function routeForActiveUser(user: UserInfo): string {
+  // BUG-1 fix: Active users with Slice or Both access must NOT be sent to '/'
+  // (ALTRX dashboard). Respect their platformAccess to land them on the
+  // correct platform, and send dual-platform users to the picker.
+  const { group, redirectTo } = resolveAccess(user.platformAccess);
+  if (group === 'both') return '/select-platform';
+  if (group === 'slice') return ROUTES.slice;
+  if (group === 'altrx') return ROUTES.altrx;
+  return '/';
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  // BUG-5 fix: useRef for the current pathname so applyUserAndRedirect does NOT
+  // get recreated on every navigation. Without this, the bootstrap useEffect
+  // re-fires on every route change, causing N concurrent getMe() calls in
+  // flight and a race where whichever resolves last wins the user state.
+  const pathnameRef = useRef(location.pathname);
+  pathnameRef.current = location.pathname;
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
 
   const applyUserAndRedirect = useCallback((u: UserInfo | null, tok: string | null) => {
     setUser(u);
     setToken(tok);
     if (u && (u.status === 'Pending' || u.status === 'Suspended' || u.status === 'Rejected')) {
       const target = routeForStatus(u.status);
-      if (location.pathname !== target && !location.pathname.startsWith(target)) {
-        navigate(target, { replace: true });
+      if (pathnameRef.current !== target && !pathnameRef.current.startsWith(target)) {
+        navigateRef.current(target, { replace: true });
       }
     }
-  }, [location.pathname, navigate]);
+  }, []);
 
   useEffect(() => {
     if (DEV_BYPASS) {
@@ -127,7 +147,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(res.token);
     setToken(res.token);
     setUser(res.user);
-    navigate(routeForStatus(res.user.status), { replace: true });
+    // BUG-1 fix: route based on user.status first, then platformAccess for Active.
+    const target = res.user.status === 'Active'
+      ? routeForActiveUser(res.user)
+      : routeForStatus(res.user.status);
+    navigate(target, { replace: true });
   };
 
   const loginWithGoogle = async (credential: string) => {
@@ -137,7 +161,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthToken(res.token);
     setToken(res.token);
     setUser(res.user);
-    navigate(routeForStatus(res.user.status), { replace: true });
+    // BUG-1 fix: same platform-aware routing for Google login.
+    const target = res.user.status === 'Active'
+      ? routeForActiveUser(res.user)
+      : routeForStatus(res.user.status);
+    navigate(target, { replace: true });
   };
 
   const logout = () => {

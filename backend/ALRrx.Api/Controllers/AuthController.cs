@@ -114,13 +114,24 @@ public sealed class AuthController : ControllerBase
         if (userInfo is null || string.IsNullOrEmpty(userInfo.Email))
             return Unauthorized(new { error = "Invalid Google token" });
 
-        if (!userInfo.Email.EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
+        // BUG-6 fix: trim whitespace before the domain check, otherwise
+        // emails like "  user@revolutionmedia.ai  " fail the EndsWith test
+        // and the user is wrongly told their domain is not allowed.
+        var email = userInfo.Email.Trim();
+        if (!email.EndsWith("@revolutionmedia.ai", StringComparison.OrdinalIgnoreCase))
             return Unauthorized(new { error = "Only @revolutionmedia.ai emails are allowed" });
+        userInfo = userInfo with { Email = email };
 
         var (user, dbPersisted) = await TryUpsertUserAsync(userInfo, ct);
 
         if (user is null)
-            return Unauthorized(new { error = "Login failed" });
+        {
+            // BUG-10 fix: TryUpsertUserAsync returns null when the user DB is
+            // unreachable. We refuse to issue a JWT in that case (it would
+            // carry Id=0 and break every downstream check), so we surface a
+            // 503 to the client and let them retry.
+            return StatusCode(503, new { error = "User service temporarily unavailable. Please try again." });
+        }
 
         if (user.Status == UserStatus.Pending)
             return StatusCode(403, new { error = "Account pending approval", code = "USER_PENDING" });
@@ -128,6 +139,12 @@ public sealed class AuthController : ControllerBase
             return StatusCode(403, new { error = "Account suspended", code = "USER_SUSPENDED" });
         if (user.Status == UserStatus.Rejected)
             return StatusCode(403, new { error = "Account rejected", code = "USER_REJECTED" });
+        // BUG-9 fix: GoogleLogin now respects the same IsActive flag as Login.
+        if (!user.IsActive)
+            return Unauthorized(new { error = "Account is deactivated" });
+        // BUG-8 fix: GoogleLogin now respects the same account lockout as Login.
+        if (user.LockedUntil.HasValue && user.LockedUntil > DateTime.UtcNow)
+            return StatusCode(423, new { error = "Account temporarily locked. Try again later.", code = "USER_LOCKED" });
 
         if (dbPersisted)
         {
@@ -196,22 +213,15 @@ public sealed class AuthController : ControllerBase
         }
         catch
         {
-            // DB is down/slow — synthesize from Google claims so login still works
-            // (we still need a sensible role/status so JWT is valid)
-            var isBootstrap = IsBootstrapAdmin(userInfo.Email);
-            var synthesized = new Domain.Entities.AuthUser
-            {
-                Id = 0,
-                Email = userInfo.Email,
-                PasswordHash = string.Empty,
-                FullName = userInfo.Name ?? userInfo.Email.Split('@')[0],
-                RoleId = isBootstrap ? 1 : 0,
-                RoleName = isBootstrap ? "Admin" : "Employee",
-                Status = isBootstrap ? UserStatus.Active : UserStatus.Pending,
-                IsActive = isBootstrap,
-                CreatedAt = DateTime.UtcNow,
-            };
-            return (synthesized, false);
+            // BUG-10 fix: do NOT synthesize a fake user with Id=0. That JWT
+            // would carry NameIdentifier=0 and RoleId=0/1, which would break
+            // every downstream operation that uses those values (audit log FKs,
+            // user queries, role checks). Returning null here causes the
+            // controller to respond 503, which the frontend will surface as
+            // "service unavailable — try again" instead of giving the user a
+            // broken session.
+            _logger.LogError("User DB unavailable during Google login for {Email}", userInfo.Email);
+            return (null, false);
         }
     }
 
@@ -315,45 +325,32 @@ public sealed class AuthController : ControllerBase
         var platformClaim = User.FindFirst("platform_access")?.Value;
         var permsClaim = User.FindFirst("permissions")?.Value;
 
-        if (!string.IsNullOrEmpty(idClaim) && int.TryParse(idClaim, out var id))
+        if (string.IsNullOrEmpty(idClaim) || !int.TryParse(idClaim, out var id))
         {
-            try
-            {
-                var user = await _users.GetByIdAsync(id, ct);
-                if (user is not null)
-                    return Ok(MapUser(user));
-            }
-            catch
-            {
-                // Fall through
-            }
-
-            return Ok(new UserInfoDto
-            {
-                Id = id,
-                Email = emailClaim ?? string.Empty,
-                FullName = nameClaim ?? string.Empty,
-                Role = roleClaim ?? "Admin",
-                Status = statusClaim ?? "Active",
-                PlatformAccess = platformClaim ?? "None",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow,
-                Permissions = string.IsNullOrEmpty(permsClaim) ? [] : permsClaim.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList(),
-            });
+            // Token has no usable user id — treat as unauthenticated.
+            return Unauthorized(new { error = "Invalid token" });
         }
 
-        return Ok(new UserInfoDto
+        try
         {
-            Id = 0,
-            Email = emailClaim ?? string.Empty,
-            FullName = nameClaim ?? string.Empty,
-            Role = roleClaim ?? "Admin",
-            Status = statusClaim ?? "Active",
-            PlatformAccess = platformClaim ?? "None",
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            Permissions = string.IsNullOrEmpty(permsClaim) ? [] : permsClaim.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList(),
-        });
+            var user = await _users.GetByIdAsync(id, ct);
+            if (user is not null)
+                return Ok(MapUser(user));
+        }
+        catch
+        {
+            // BUG-11 fix: do NOT fall back to JWT-claim data when the DB is
+            // down. A suspended/rejected user would otherwise still see
+            // `status: Active` in the frontend (from the stale claim) and
+            // try to navigate, only to be rejected by UserStatusMiddleware
+            // with a 403. Returning 503 makes the frontend show "service
+            // unavailable" and the user can retry once the DB recovers.
+            _logger.LogWarning("User DB unavailable for /auth/me userId={Id}", id);
+            return StatusCode(503, new { error = "User service temporarily unavailable. Please try again." });
+        }
+
+        // Token references a userId that no longer exists in the DB.
+        return Unauthorized(new { error = "User no longer exists" });
     }
 
     private static UserInfoDto MapUser(Domain.Entities.AuthUser u) => new()

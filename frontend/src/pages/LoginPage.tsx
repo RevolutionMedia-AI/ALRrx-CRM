@@ -1,7 +1,7 @@
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import logoSrc from '../images/RevolutionLogo.png';
 import { resolveAccess } from '../utils/accessControl';
 
@@ -93,9 +93,17 @@ export default function LoginPage() {
   const [envVarName, setEnvVarName] = useState<string>('Google__ClientId');
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  // BUG-3 fix: track if we already triggered a redirect for this mount, so
+  // the back button can't create an infinite redirect loop. Without this, if
+  // the user reaches /login via a manual URL entry, every re-render or
+  // navigation event would re-fire the redirect, and browser back could
+  // bounce between /login and the target indefinitely.
+  const didRedirectRef = useRef(false);
 
   useEffect(() => {
+    if (didRedirectRef.current) return;
     if (user) {
+      didRedirectRef.current = true;
       const { redirectTo, group } = resolveAccess(user.platformAccess);
       if (group === 'both') {
         navigate('/select-platform', { replace: true });
@@ -106,15 +114,23 @@ export default function LoginPage() {
       }
       return;
     }
+    setLoading(false);
     fetch('/api/config/google-client-id')
       .then((r) => r.json())
       .then((d) => {
+        // Race-safe: only set clientId if we haven't redirected away.
+        if (didRedirectRef.current) return;
         setClientId(d.clientId || null);
         if (d.envVarName) setEnvVarName(d.envVarName);
       })
-      .catch(() => setClientId(null))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!didRedirectRef.current) setClientId(null);
+      });
   }, [user, navigate]);
+
+  // Reset the ref when the component unmounts so a fresh /login visit
+  // (e.g. after logout) gets a clean slate.
+  useEffect(() => () => { didRedirectRef.current = false; }, []);
 
   useEffect(() => {
     setMounted(true);

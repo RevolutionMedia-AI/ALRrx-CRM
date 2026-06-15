@@ -33,7 +33,16 @@ export default function PendingApprovalPage() {
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.status === 'Active') return <Navigate to="/" replace />;
+  // BUG-4+18 fix: when the admin flips this user to Active, the frontend
+  // knows the new status from /api/auth/me, BUT the JWT in localStorage
+  // still carries the old `status: Pending` claim. UserStatusMiddleware would
+  // then reject every subsequent API call with 403 USER_PENDING, leaving
+  // the user stuck on this page. Force a full sign-out so the user gets a
+  // fresh JWT on next login.
+  if (user.status === 'Active') {
+    logout();
+    return null;
+  }
   if (user.status === 'Rejected' || user.status === 'Suspended') return <Navigate to="/access-denied" replace />;
 
   return (
