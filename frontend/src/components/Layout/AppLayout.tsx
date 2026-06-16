@@ -14,13 +14,9 @@ const navItems = [
 // 'Both' users). Lets them jump to SLICE without going through /select-platform.
 const sliceNavItem = { label: 'Slice Platform', path: '/slice' };
 
-// Admin Panel is intentionally NOT here — it's a top-level section reachable
-// from /select-platform, not a sub-page of ALTRX. The picker also serves as
-// the only way to enter the Admin Panel, keeping it semantically separate
-// from both ALTRX and SLICE.
-const adminNavItems = [
-  { label: 'Twilio Costs', path: '/twilio-costs' },
-];
+// Twilio Costs is part of the Admin Panel. It is intentionally NOT linked
+// from the ALTRX navbar — admins must go through the platform picker to
+// reach the Admin Panel, keeping it semantically separate from ALTRX/Slice.
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout, isAdmin, authUnavailable } = useAuth();
@@ -100,20 +96,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 </button>
               )
             ) : null}
-            {isAdmin && adminNavItems.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={
-                  location.pathname === item.path
-                    ? 'text-primary dark:text-gray-100 border-b-2 border-primary dark:border-gray-100 pb-1 h-full flex items-center pt-1 text-sm font-semibold'
-                    : 'text-secondary dark:text-gray-400 hover:text-primary dark:hover:text-gray-200 transition-colors h-full flex items-center text-sm font-medium'
-                }
-                title="Solo visible para administradores"
-              >
-                {item.label}
-              </button>
-            ))}
           </div>
         </div>
         <div className="flex items-center gap-3">

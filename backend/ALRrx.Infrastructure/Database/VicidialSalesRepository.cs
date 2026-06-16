@@ -412,6 +412,135 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         return affected > 0;
     }
 
+    public async Task<List<VicidialCallTypeSalesRow>> GetCallTypeSalesByAgentAsync(
+        string fromDate, string toDate, CancellationToken ct = default)
+    {
+        // fromDate / toDate are YYYY-MM-DD strings in the business tz (America/Tijuana).
+        // We compare DATE(call_date) which strips the time component on the MySQL side,
+        // so the filter is day-based and timezone-independent from the call_date column.
+        if (!IsValidDateString(fromDate) || !IsValidDateString(toDate))
+            throw new ArgumentException("from/to must be YYYY-MM-DD strings");
+
+        const string sql = """
+            SELECT
+                agent_id AS Agent_Id,
+                agent_name AS Agent_Name,
+                SUM(CASE WHEN call_type = 'OUTBOUND' THEN 1 ELSE 0 END) AS Outbound_Sales,
+                SUM(CASE WHEN call_type = 'INBOUND' THEN 1 ELSE 0 END) AS Inbound_Sales,
+                ROUND(SUM(CASE WHEN call_type = 'OUTBOUND' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS Outbound_Pct,
+                ROUND(SUM(CASE WHEN call_type = 'INBOUND' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS Inbound_Pct
+            FROM (
+                SELECT
+                    'OUTBOUND' AS call_type,
+                    vl.user AS agent_id,
+                    COALESCE(vu.full_name, '') AS agent_name
+                FROM vicidial_log vl
+                LEFT JOIN vicidial_users vu
+                    ON vl.user = vu.user
+                WHERE vl.status = 'SALE'
+                  AND COALESCE(vu.full_name, '') <> 'TEST DUMMY'
+                  AND DATE(vl.call_date) BETWEEN @From AND @To
+
+                UNION ALL
+
+                SELECT
+                    'INBOUND' AS call_type,
+                    vcl.user AS agent_id,
+                    COALESCE(vu.full_name, '') AS agent_name
+                FROM vicidial_closer_log vcl
+                LEFT JOIN vicidial_users vu
+                    ON vcl.user = vu.user
+                WHERE vcl.status = 'SALE'
+                  AND COALESCE(vu.full_name, '') <> 'TEST DUMMY'
+                  AND DATE(vcl.call_date) BETWEEN @From AND @To
+            ) AS combined
+            GROUP BY agent_id, agent_name
+            ORDER BY (Outbound_Sales + Inbound_Sales) DESC, agent_name ASC
+            """;
+
+        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.Add("@From", MySqlDbType.VarChar).Value = fromDate;
+        cmd.Parameters.Add("@To", MySqlDbType.VarChar).Value = toDate;
+
+        _logger.LogInformation("Vicidial call-type sales: from={From} to={To}", fromDate, toDate);
+
+        var results = new List<VicidialCallTypeSalesRow>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            results.Add(new VicidialCallTypeSalesRow
+            {
+                AgentId = reader.IsDBNull(reader.GetOrdinal("Agent_Id")) ? string.Empty : reader.GetString(reader.GetOrdinal("Agent_Id")),
+                AgentName = reader.IsDBNull(reader.GetOrdinal("Agent_Name")) ? string.Empty : reader.GetString(reader.GetOrdinal("Agent_Name")),
+                OutboundSales = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("Outbound_Sales"))),
+                InboundSales = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("Inbound_Sales"))),
+                OutboundPct = Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("Outbound_Pct"))),
+                InboundPct = Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("Inbound_Pct"))),
+            });
+        }
+        _logger.LogInformation("Vicidial call-type sales returned {Count} agents", results.Count);
+        return results;
+    }
+
+    public async Task<VicidialCallCountsDto> GetCallCountsAsync(
+        string fromDate, string toDate, CancellationToken ct = default)
+    {
+        if (!IsValidDateString(fromDate) || !IsValidDateString(toDate))
+            throw new ArgumentException("from/to must be YYYY-MM-DD strings");
+
+        // Day-based counts: DATE(call_date) strips the hour so the filter is
+        // independent of the time component stored in the call_date column.
+        const string sql = """
+            SELECT
+                (SELECT COUNT(*) FROM vicidial_log vl
+                    LEFT JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE DATE(vl.call_date) BETWEEN @From AND @To
+                      AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Outbound_Calls,
+                (SELECT COUNT(*) FROM vicidial_closer_log vcl
+                    LEFT JOIN vicidial_users vu ON vcl.user = vu.user
+                    WHERE DATE(vcl.call_date) BETWEEN @From AND @To
+                      AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Inbound_Calls,
+                (SELECT COUNT(*) FROM vicidial_log vl
+                    LEFT JOIN vicidial_users vu ON vl.user = vu.user
+                    WHERE vl.status = 'SALE'
+                      AND DATE(vl.call_date) BETWEEN @From AND @To
+                      AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Outbound_Sales,
+                (SELECT COUNT(*) FROM vicidial_closer_log vcl
+                    LEFT JOIN vicidial_users vu ON vcl.user = vu.user
+                    WHERE vcl.status = 'SALE'
+                      AND DATE(vcl.call_date) BETWEEN @From AND @To
+                      AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Inbound_Sales
+            """;
+
+        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(sql, connection);
+        cmd.Parameters.Add("@From", MySqlDbType.VarChar).Value = fromDate;
+        cmd.Parameters.Add("@To", MySqlDbType.VarChar).Value = toDate;
+
+        _logger.LogInformation("Vicidial call counts: from={From} to={To}", fromDate, toDate);
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        if (!await reader.ReadAsync(ct))
+            return new VicidialCallCountsDto();
+
+        return new VicidialCallCountsDto
+        {
+            OutboundCalls = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("Outbound_Calls"))),
+            InboundCalls = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("Inbound_Calls"))),
+            OutboundSales = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("Outbound_Sales"))),
+            InboundSales = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("Inbound_Sales"))),
+        };
+    }
+
+    private static bool IsValidDateString(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        return DateTime.TryParseExact(value, "yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out _);
+    }
+
     private static VicidialSaleDto MapSale(MySqlDataReader reader)
     {
         var leadIdOrdinal = reader.GetOrdinal("LeadId");

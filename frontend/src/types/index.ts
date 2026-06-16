@@ -128,3 +128,19 @@ export interface VicidialLeadDto {
   phoneNumber: string;
   email: string;
 }
+
+export interface VicidialCallTypeSalesRow {
+  agentId: string;
+  agentName: string;
+  outboundSales: number;
+  inboundSales: number;
+  outboundPct: number;
+  inboundPct: number;
+}
+
+export interface VicidialCallCounts {
+  outboundCalls: number;
+  inboundCalls: number;
+  outboundSales: number;
+  inboundSales: number;
+}

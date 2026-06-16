@@ -8,6 +8,13 @@ const platformItems = [
   { label: 'Slice Platform', path: '/slice' },
 ];
 
+// Admin-only sections reachable from the Admin Panel nav. These live under
+// /admin/* so they are exclusive to the Admin Panel and cannot be reached
+// from ALTRX or Slice.
+const adminSectionItems = [
+  { label: 'Twilio Costs', path: '/admin/twilio' },
+];
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, logout, isAdmin } = useAuth();
   const { isDark, toggle } = useTheme();
@@ -63,6 +70,23 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       : 'text-secondary dark:text-gray-400 hover:text-primary dark:hover:text-gray-200 transition-colors h-full flex items-center text-sm font-medium'
                   }
                   title={`Go to ${item.label}`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+            {adminSectionItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={
+                    isActive
+                      ? 'text-primary dark:text-gray-100 border-b-2 border-primary dark:border-gray-100 pb-1 h-full flex items-center pt-1 text-sm font-semibold'
+                      : 'text-secondary dark:text-gray-400 hover:text-primary dark:hover:text-gray-200 transition-colors h-full flex items-center text-sm font-medium'
+                  }
+                  title="Admin section"
                 >
                   {item.label}
                 </button>

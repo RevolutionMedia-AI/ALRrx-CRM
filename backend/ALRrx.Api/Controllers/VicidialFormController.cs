@@ -22,6 +22,7 @@ public sealed class VicidialFormController : ControllerBase
     private readonly IActiveAgentsRepository _agentRepo;
     private readonly GetVicidialLeadByIdUseCase _leadLookup;
     private readonly GetEnrichedSalesUseCase _enrichedSales;
+    private readonly IVicidialSalesRepository _sales;
     private readonly ILogger<VicidialFormController> _logger;
 
     public VicidialFormController(
@@ -33,6 +34,7 @@ public sealed class VicidialFormController : ControllerBase
         IActiveAgentsRepository agentRepo,
         GetVicidialLeadByIdUseCase leadLookup,
         GetEnrichedSalesUseCase enrichedSales,
+        IVicidialSalesRepository sales,
         ILogger<VicidialFormController> logger)
     {
         _submit = submit;
@@ -43,6 +45,7 @@ public sealed class VicidialFormController : ControllerBase
         _agentRepo = agentRepo;
         _leadLookup = leadLookup;
         _enrichedSales = enrichedSales;
+        _sales = sales;
         _logger = logger;
     }
 
@@ -241,6 +244,50 @@ public sealed class VicidialFormController : ControllerBase
         {
             _logger.LogError(ex, "Failed to load sales for lead #{LeadId}", leadId);
             return StatusCode(500, new { error = "Could not load sales for lead" });
+        }
+    }
+
+    [HttpGet("call-type-sales")]
+    public async Task<ActionResult<List<VicidialCallTypeSalesRow>>> GetCallTypeSales(
+        [FromQuery] string from,
+        [FromQuery] string to,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var rows = await _sales.GetCallTypeSalesByAgentAsync(from, to, ct);
+            return Ok(rows);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load call-type sales");
+            return StatusCode(500, new { error = "Could not load call-type sales" });
+        }
+    }
+
+    [HttpGet("call-counts")]
+    public async Task<ActionResult<VicidialCallCountsDto>> GetCallCounts(
+        [FromQuery] string from,
+        [FromQuery] string to,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var dto = await _sales.GetCallCountsAsync(from, to, ct);
+            return Ok(dto);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load call counts");
+            return StatusCode(500, new { error = "Could not load call counts" });
         }
     }
 }

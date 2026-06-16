@@ -2,6 +2,8 @@ interface FunnelBlockProps {
   dialed: number | null;
   contacted: number | null;
   sales: number;
+  outboundCalls?: number | null;
+  inboundCalls?: number | null;
   loading?: boolean;
 }
 
@@ -73,7 +75,7 @@ function safePctDetailed(numerator: number, denominator: number): string | null 
   return `${((numerator / denominator) * 100).toFixed(2)}%`;
 }
 
-export default function FunnelBlock({ dialed, contacted, sales, loading }: FunnelBlockProps) {
+export default function FunnelBlock({ dialed, contacted, sales, outboundCalls, inboundCalls, loading }: FunnelBlockProps) {
   const allZero = (dialed ?? 0) === 0 && (contacted ?? 0) === 0 && sales === 0;
 
   return (
@@ -87,7 +89,7 @@ export default function FunnelBlock({ dialed, contacted, sales, loading }: Funne
         </div>
         <span className="material-symbols-outlined text-electric-blue text-2xl">filter_alt</span>
       </div>
-      <div className="p-6">
+      <div className="p-6 space-y-5">
         {allZero && !loading ? (
           <div className="h-24 rounded-lg border border-dashed border-whisper-border bg-surface-container-low flex flex-col items-center justify-center text-muted-slate text-sm gap-1">
             <span className="material-symbols-outlined text-3xl text-muted-slate/50">phone_disabled</span>
@@ -134,14 +136,87 @@ export default function FunnelBlock({ dialed, contacted, sales, loading }: Funne
           </div>
         )}
         {contacted !== null && contacted > 0 && sales > 0 && (
-          <div className="mt-4 pt-4 border-t border-whisper-border flex items-center justify-between text-xs">
+          <div className="pt-4 border-t border-whisper-border flex items-center justify-between text-xs">
             <span className="text-secondary">Overall conversion</span>
             <span className="font-bold text-emerald-signal font-metadata-mono">
               {safePctDetailed(sales, dialed ?? 0)} (dialed → sale)
             </span>
           </div>
         )}
+
+        <div className="pt-4 border-t border-whisper-border">
+          <p className="text-[10px] sm:text-xs font-semibold text-secondary uppercase tracking-wider mb-3">
+            Call direction
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <DirectionCard
+              kind="outbound"
+              label="Outbound Calls"
+              value={outboundCalls ?? null}
+              loading={loading}
+            />
+            <DirectionCard
+              kind="inbound"
+              label="Inbound Calls"
+              value={inboundCalls ?? null}
+              loading={loading}
+            />
+          </div>
+        </div>
       </div>
     </section>
+  );
+}
+
+function DirectionCard({
+  kind,
+  label,
+  value,
+  loading,
+}: {
+  kind: 'outbound' | 'inbound';
+  label: string;
+  value: number | null;
+  loading?: boolean;
+}) {
+  const isOutbound = kind === 'outbound';
+  const isEmpty = value === null || value === 0;
+  const icon = isOutbound ? 'call_made' : 'call_received';
+  const palette = isOutbound
+    ? {
+        gradient: 'bg-gradient-to-br from-emerald-signal/10 via-emerald-signal/5 to-transparent',
+        ringColor: 'border-emerald-signal/30',
+        textColor: 'text-emerald-signal',
+        iconColor: 'text-emerald-signal',
+      }
+    : {
+        gradient: 'bg-gradient-to-br from-electric-blue/10 via-electric-blue/5 to-transparent',
+        ringColor: 'border-electric-blue/30',
+        textColor: 'text-electric-blue',
+        iconColor: 'text-electric-blue',
+      };
+
+  return (
+    <div className={`flex items-center gap-3 rounded-xl border ${palette.ringColor} ${palette.gradient} p-4 shadow-sm`}>
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-pure-surface/60 ${palette.iconColor}`}>
+        <span className="material-symbols-outlined text-xl">{icon}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] sm:text-xs font-semibold text-secondary uppercase tracking-wider">
+          {label}
+        </p>
+        {loading ? (
+          <div className="h-7 w-16 bg-pure-surface/60 rounded animate-pulse mt-1" />
+        ) : isEmpty ? (
+          <p className={`text-xl sm:text-2xl font-bold ${palette.textColor} opacity-40 font-metadata-mono leading-none tracking-tight`}>
+            0
+          </p>
+        ) : (
+          <p className={`text-2xl sm:text-3xl font-bold ${palette.textColor} leading-none tracking-tight font-metadata-mono`}>
+            {value!.toLocaleString('en-US')}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

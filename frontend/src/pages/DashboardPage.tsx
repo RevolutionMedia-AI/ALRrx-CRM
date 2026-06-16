@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardSummary, getReport, getStaffing, getVicidialCallTypeSales } from '../services/api';
-import { getVicidialSalesSummary } from '../services/vicidialFormApi';
-import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto, SalesSummary } from '../types';
+import { getDashboardSummary, getReport, getStaffing } from '../services/api';
+import { getVicidialSalesSummary, getVicidialCallTypeSales, getVicidialCallCounts } from '../services/vicidialFormApi';
+import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto, SalesSummary, VicidialCallTypeSalesRow, VicidialCallCounts } from '../types';
 import FunnelBlock from '../components/dashboard/FunnelBlock';
 import DispositionLegend, { type DispositionItem } from '../components/dashboard/DispositionLegend';
 import ProductivityCard from '../components/dashboard/ProductivityCard';
@@ -92,7 +92,8 @@ export default function DashboardPage() {
   const [agentReport, setAgentReport] = useState<ReportDto | null>(null);
   const [staffingReport, setStaffingReport] = useState<ReportDto | null>(null);
   const [callsReport, setCallsReport] = useState<ReportDto | null>(null);
-  const [callTypeSalesReport, setCallTypeSalesReport] = useState<ReportDto | null>(null);
+  const [callTypeSalesReport, setCallTypeSalesReport] = useState<VicidialCallTypeSalesRow[] | null>(null);
+  const [callCounts, setCallCounts] = useState<VicidialCallCounts | null>(null);
   const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null);
 
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -100,6 +101,7 @@ export default function DashboardPage() {
   const [staffingLoading, setStaffingLoading] = useState(false);
   const [callsLoading, setCallsLoading] = useState(false);
   const [callTypeSalesLoading, setCallTypeSalesLoading] = useState(false);
+  const [callCountsLoading, setCallCountsLoading] = useState(false);
   const [salesLoading, setSalesLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
@@ -116,24 +118,33 @@ export default function DashboardPage() {
     setStaffingLoading(true);
     setCallsLoading(true);
     setCallTypeSalesLoading(true);
+    setCallCountsLoading(true);
     setSalesLoading(true);
     setError(null);
     try {
       const filterResult = filter(p, customStart, customEnd);
       const vicidialParams = buildVicidialParams(p, customStart, customEnd);
+      const dayFrom = vicidialParams.from?.split(' ')[0] ?? '';
+      const dayTo = vicidialParams.to?.split(' ')[0] ?? '';
       const s = await getDashboardSummary(filterResult);
       setSummary(s);
-      const [a, st, c, cts, sales] = await Promise.all([
+      const [a, st, c, cts, cc, sales] = await Promise.all([
         getReport('agent_performance', filterResult).catch(() => null),
         getStaffing().catch(() => null),
         getReport('all_calls', filterResult).catch(() => null),
-        getVicidialCallTypeSales(filterResult).catch(() => null),
+        dayFrom && dayTo
+          ? getVicidialCallTypeSales(dayFrom, dayTo).catch(() => null)
+          : Promise.resolve(null),
+        dayFrom && dayTo
+          ? getVicidialCallCounts(dayFrom, dayTo).catch(() => null)
+          : Promise.resolve(null),
         getVicidialSalesSummary(vicidialParams.from, vicidialParams.to, 500).catch(() => null),
       ]);
       setAgentReport(a);
       setStaffingReport(st);
       setCallsReport(c);
       setCallTypeSalesReport(cts);
+      setCallCounts(cc);
       setSalesSummary(sales);
     } catch {
       setError('Failed to load dashboard data');
@@ -143,6 +154,7 @@ export default function DashboardPage() {
       setStaffingLoading(false);
       setCallsLoading(false);
       setCallTypeSalesLoading(false);
+      setCallCountsLoading(false);
       setSalesLoading(false);
     }
   }, [customStart, customEnd, filter]);
@@ -186,12 +198,12 @@ export default function DashboardPage() {
   const calls = callsReport?.rows ?? [];
   const staffRows = staffingReport?.rows ?? [];
 
-  const totalOutbound = (callTypeSalesReport?.rows ?? []).reduce(
-    (sum, r) => sum + Number(r.Outbound_Sales ?? r.outbound_sales ?? 0),
+  const totalOutbound = (callTypeSalesReport ?? []).reduce(
+    (sum, r) => sum + Number(r.outboundSales ?? 0),
     0,
   );
-  const totalInbound = (callTypeSalesReport?.rows ?? []).reduce(
-    (sum, r) => sum + Number(r.Inbound_Sales ?? r.inbound_sales ?? 0),
+  const totalInbound = (callTypeSalesReport ?? []).reduce(
+    (sum, r) => sum + Number(r.inboundSales ?? 0),
     0,
   );
 
@@ -347,7 +359,9 @@ export default function DashboardPage() {
             dialed={parseMetricNumber(leadsDialed?.value) || null}
             contacted={parseMetricNumber(leadsContacted?.value) || null}
             sales={parseMetricNumber(salesToday?.value)}
-            loading={summaryLoading}
+            outboundCalls={callCounts?.outboundCalls ?? null}
+            inboundCalls={callCounts?.inboundCalls ?? null}
+            loading={summaryLoading || callCountsLoading}
           />
 
           {/* 2. Agent Performance Trend + Legend */}
@@ -583,7 +597,7 @@ export default function DashboardPage() {
               Per-agent SALE breakdown by call direction — {period}
             </p>
           </div>
-          {callTypeSalesReport?.rows && callTypeSalesReport.rows.length > 0 && (
+          {callTypeSalesReport && callTypeSalesReport.length > 0 && (
             <div className="flex items-center gap-2 text-xs text-secondary font-metadata-mono">
               <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-signal/10 text-emerald-signal">
                 <span className="material-symbols-outlined text-[14px]">call_made</span>
@@ -595,7 +609,7 @@ export default function DashboardPage() {
               </span>
               <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-surface-container text-primary">
                 <span className="material-symbols-outlined text-[14px]">group</span>
-                {callTypeSalesReport.rows.length} agents
+                {callTypeSalesReport.length} agents
               </span>
             </div>
           )}
@@ -606,7 +620,7 @@ export default function DashboardPage() {
               <div key={i} className="h-8 bg-surface-container rounded" />
             ))}
           </div>
-        ) : callTypeSalesReport?.rows && callTypeSalesReport.rows.length > 0 ? (
+        ) : callTypeSalesReport && callTypeSalesReport.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -621,13 +635,13 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {callTypeSalesReport.rows.map((row, i) => {
-                  const agentName = String(row.Agent_Name ?? row.agent_name ?? '');
-                  const agentId = String(row.Agent_Id ?? row.agent_id ?? row.User ?? '');
-                  const outboundSales = Number(row.Outbound_Sales ?? row.outbound_sales ?? 0);
-                  const inboundSales = Number(row.Inbound_Sales ?? row.inbound_sales ?? 0);
-                  const outboundPct = Number(row.Outbound_Pct ?? row.outbound_pct ?? 0);
-                  const inboundPct = Number(row.Inbound_Pct ?? row.inbound_pct ?? 0);
+                {callTypeSalesReport.map((row, i) => {
+                  const agentName = row.agentName ?? '';
+                  const agentId = row.agentId ?? '';
+                  const outboundSales = Number(row.outboundSales ?? 0);
+                  const inboundSales = Number(row.inboundSales ?? 0);
+                  const outboundPct = Number(row.outboundPct ?? 0);
+                  const inboundPct = Number(row.inboundPct ?? 0);
                   const totalSales = outboundSales + inboundSales;
                   return (
                     <tr

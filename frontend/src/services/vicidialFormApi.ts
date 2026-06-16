@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { VicidialSaleRequest, VicidialSaleDto, ActiveAltrxAgentDto, SalesSummary, VicidialLeadDto } from '../types';
+import type { VicidialSaleRequest, VicidialSaleDto, ActiveAltrxAgentDto, SalesSummary, VicidialLeadDto, VicidialCallTypeSalesRow, VicidialCallCounts } from '../types';
 
 export const vicidialClient = axios.create({ baseURL: '/api', timeout: 30000 });
 
@@ -45,6 +45,25 @@ export async function getVicidialSalesSummary(from?: string, to?: string, limit 
   if (from) params.from = from;
   if (to) params.to = to;
   const { data } = await vicidialClient.get<SalesSummary>('/vicidial-form/sales/summary', { params });
+  return data;
+}
+
+// Day-based call counts (Outbound vs Inbound, all statuses + SALE only).
+// The from/to strings are interpreted as YYYY-MM-DD in the business timezone
+// (America/Tijuana) on the MySQL side, so the result is independent of the
+// server clock and of the user's local timezone.
+export async function getVicidialCallCounts(from: string, to: string): Promise<VicidialCallCounts> {
+  const { data } = await vicidialClient.get<VicidialCallCounts>('/vicidial-form/call-counts', {
+    params: { from, to },
+  });
+  return data;
+}
+
+// Per-agent OUTBOUND/INBOUND SALE breakdown, day-based filter in the business tz.
+export async function getVicidialCallTypeSales(from: string, to: string): Promise<VicidialCallTypeSalesRow[]> {
+  const { data } = await vicidialClient.get<VicidialCallTypeSalesRow[]>('/vicidial-form/call-type-sales', {
+    params: { from, to },
+  });
   return data;
 }
 

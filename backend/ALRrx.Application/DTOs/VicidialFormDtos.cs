@@ -126,6 +126,24 @@ public sealed record VicidialSaleEnrichedDto
     public bool LeadFound { get; init; }
 }
 
+public sealed record VicidialCallTypeSalesRow
+{
+    public string AgentId { get; init; } = string.Empty;
+    public string AgentName { get; init; } = string.Empty;
+    public int OutboundSales { get; init; }
+    public int InboundSales { get; init; }
+    public decimal OutboundPct { get; init; }
+    public decimal InboundPct { get; init; }
+}
+
+public sealed record VicidialCallCountsDto
+{
+    public int OutboundCalls { get; init; }
+    public int InboundCalls { get; init; }
+    public int OutboundSales { get; init; }
+    public int InboundSales { get; init; }
+}
+
 public static class BundleTypeExtensions
 {
     public static string ToDisplayName(this BundleType bundle) => bundle switch

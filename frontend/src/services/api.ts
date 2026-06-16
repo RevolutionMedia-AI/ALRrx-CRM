@@ -41,14 +41,6 @@ export async function getStaffing(): Promise<ReportDto> {
   return data;
 }
 
-export async function getVicidialCallTypeSales(filter: TimeFilterDto): Promise<ReportDto> {
-  const params: Record<string, string> = { period: filter.period };
-  if (filter.customStart) params.customStart = filter.customStart;
-  if (filter.customEnd) params.customEnd = filter.customEnd;
-  const { data } = await client.get<ReportDto>('/reports/vicidial_call_type_sales', { params });
-  return data;
-}
-
 export async function getLeaderboard(filter: TimeFilterDto): Promise<ReportDto> {
   const params: Record<string, string> = { period: filter.period };
   if (filter.customStart) params.customStart = filter.customStart;

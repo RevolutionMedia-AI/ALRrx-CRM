@@ -293,6 +293,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/admin/twilio"
+        element={
+          <AdminRoute>
+            <TwilioCostsPage />
+          </AdminRoute>
+        }
+      />
+      <Route
         path="/pending-approval"
         element={<PendingApprovalPage />}
       />
@@ -303,14 +311,6 @@ function AppRoutes() {
       <Route
         path="/no-access"
         element={<NoAccessPage />}
-      />
-      <Route
-        path="/twilio-costs"
-        element={
-          <AdminRoute>
-            <TwilioCostsPage />
-          </AdminRoute>
-        }
       />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
