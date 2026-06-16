@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { getDashboardSummary, getReport, getStaffing } from '../services/api';
+import { getDashboardSummary, getReport, getStaffing, getVicidialCallTypeSales } from '../services/api';
 import { getVicidialSalesSummary } from '../services/vicidialFormApi';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto, SalesSummary } from '../types';
 import FunnelBlock from '../components/dashboard/FunnelBlock';
@@ -92,12 +92,14 @@ export default function DashboardPage() {
   const [agentReport, setAgentReport] = useState<ReportDto | null>(null);
   const [staffingReport, setStaffingReport] = useState<ReportDto | null>(null);
   const [callsReport, setCallsReport] = useState<ReportDto | null>(null);
+  const [callTypeSalesReport, setCallTypeSalesReport] = useState<ReportDto | null>(null);
   const [salesSummary, setSalesSummary] = useState<SalesSummary | null>(null);
 
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [agentLoading, setAgentLoading] = useState(false);
   const [staffingLoading, setStaffingLoading] = useState(false);
   const [callsLoading, setCallsLoading] = useState(false);
+  const [callTypeSalesLoading, setCallTypeSalesLoading] = useState(false);
   const [salesLoading, setSalesLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +115,7 @@ export default function DashboardPage() {
     setAgentLoading(true);
     setStaffingLoading(true);
     setCallsLoading(true);
+    setCallTypeSalesLoading(true);
     setSalesLoading(true);
     setError(null);
     try {
@@ -120,15 +123,17 @@ export default function DashboardPage() {
       const vicidialParams = buildVicidialParams(p, customStart, customEnd);
       const s = await getDashboardSummary(filterResult);
       setSummary(s);
-      const [a, st, c, sales] = await Promise.all([
+      const [a, st, c, cts, sales] = await Promise.all([
         getReport('agent_performance', filterResult).catch(() => null),
         getStaffing().catch(() => null),
         getReport('all_calls', filterResult).catch(() => null),
+        getVicidialCallTypeSales(filterResult).catch(() => null),
         getVicidialSalesSummary(vicidialParams.from, vicidialParams.to, 500).catch(() => null),
       ]);
       setAgentReport(a);
       setStaffingReport(st);
       setCallsReport(c);
+      setCallTypeSalesReport(cts);
       setSalesSummary(sales);
     } catch {
       setError('Failed to load dashboard data');
@@ -137,6 +142,7 @@ export default function DashboardPage() {
       setAgentLoading(false);
       setStaffingLoading(false);
       setCallsLoading(false);
+      setCallTypeSalesLoading(false);
       setSalesLoading(false);
     }
   }, [customStart, customEnd, filter]);
@@ -179,6 +185,15 @@ export default function DashboardPage() {
   const agents = agentReport?.rows ?? [];
   const calls = callsReport?.rows ?? [];
   const staffRows = staffingReport?.rows ?? [];
+
+  const totalOutbound = (callTypeSalesReport?.rows ?? []).reduce(
+    (sum, r) => sum + Number(r.Outbound_Sales ?? r.outbound_sales ?? 0),
+    0,
+  );
+  const totalInbound = (callTypeSalesReport?.rows ?? []).reduce(
+    (sum, r) => sum + Number(r.Inbound_Sales ?? r.inbound_sales ?? 0),
+    0,
+  );
 
   const liveStatus = {
     available: staffRows.filter((r) => String(r.Status ?? '').toUpperCase() === 'READY').length,
@@ -407,7 +422,7 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* 3. Recent Calls Log */}
+          {/* 3. Recent Calls Log (moved to full-width below) */}
         </div>
 
         {/* RIGHT SIDEBAR (4/12) */}
@@ -556,69 +571,94 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 3. Recent Calls Log (full width) */}
+      {/* 3. VICIdial OUTBOUND and INBOUND Sales (full width) */}
       <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused overflow-hidden">
-        <div className="p-6 border-b border-whisper-border flex justify-between items-center bg-canvas-white">
-          <h3 className="font-bold text-lg text-primary flex items-center gap-2">
-            <span className="material-symbols-outlined text-secondary text-xl">list_alt</span>
-            Recent Calls Log
-          </h3>
+        <div className="p-6 border-b border-whisper-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-canvas-white">
+          <div>
+            <h3 className="font-bold text-lg text-primary flex items-center gap-2">
+              <span className="material-symbols-outlined text-electric-blue text-xl">swap_horiz</span>
+              VICIdial OUTBOUND and INBOUND Sales
+            </h3>
+            <p className="text-[11px] text-secondary mt-0.5 font-metadata-mono uppercase tracking-wider">
+              Per-agent SALE breakdown by call direction — {period}
+            </p>
+          </div>
+          {callTypeSalesReport?.rows && callTypeSalesReport.rows.length > 0 && (
+            <div className="flex items-center gap-2 text-xs text-secondary font-metadata-mono">
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-signal/10 text-emerald-signal">
+                <span className="material-symbols-outlined text-[14px]">call_made</span>
+                {totalOutbound} outbound
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-electric-blue/10 text-electric-blue">
+                <span className="material-symbols-outlined text-[14px]">call_received</span>
+                {totalInbound} inbound
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-surface-container text-primary">
+                <span className="material-symbols-outlined text-[14px]">group</span>
+                {callTypeSalesReport.rows.length} agents
+              </span>
+            </div>
+          )}
         </div>
-        {callsLoading ? (
+        {callTypeSalesLoading ? (
           <div className="p-6 space-y-3 animate-pulse">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="h-8 bg-surface-container rounded" />
             ))}
           </div>
-        ) : calls.length > 0 ? (
+        ) : callTypeSalesReport?.rows && callTypeSalesReport.rows.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-surface-container-low border-b border-whisper-border text-xs uppercase tracking-wider text-secondary font-metadata-mono">
-                  <th className="p-4 font-medium">Call ID</th>
-                  <th className="p-4 font-medium">Agent</th>
-                  <th className="p-4 font-medium">Duration</th>
-                  <th className="p-4 font-medium">Disposition</th>
-                  <th className="p-4 font-medium">Status</th>
+                  <th className="p-4 font-medium">Agent Name</th>
+                  <th className="p-4 font-medium">Agent ID</th>
+                  <th className="p-4 font-medium text-right">Outbound Sales</th>
+                  <th className="p-4 font-medium text-right">Inbound Sales</th>
+                  <th className="p-4 font-medium text-right">Outbound %</th>
+                  <th className="p-4 font-medium text-right">Inbound %</th>
+                  <th className="p-4 font-medium text-right">Total</th>
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {calls.slice(0, 10).map((call, i) => {
-                  const status = String(call.status ?? 'completed').toLowerCase();
-                  const sc = getCallStatusColor(status);
+                {callTypeSalesReport.rows.map((row, i) => {
+                  const agentName = String(row.Agent_Name ?? row.agent_name ?? '');
+                  const agentId = String(row.Agent_Id ?? row.agent_id ?? row.User ?? '');
+                  const outboundSales = Number(row.Outbound_Sales ?? row.outbound_sales ?? 0);
+                  const inboundSales = Number(row.Inbound_Sales ?? row.inbound_sales ?? 0);
+                  const outboundPct = Number(row.Outbound_Pct ?? row.outbound_pct ?? 0);
+                  const inboundPct = Number(row.Inbound_Pct ?? row.inbound_pct ?? 0);
+                  const totalSales = outboundSales + inboundSales;
                   return (
                     <tr
-                      key={i}
+                      key={`${agentId}-${i}`}
                       className="border-b border-whisper-border hover:bg-surface-container-lowest dark:hover:bg-gray-800 transition-colors"
                     >
-                      <td className="p-4 font-metadata-mono text-primary">
-                        #{String(call.call_id ?? call.id ?? i + 1)}
-                      </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold">
-                            {getInitials(String(call.Name ?? call.agent_name ?? call.user ?? ''))}
+                          <div className="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-[10px] font-bold text-primary">
+                            {getInitials(agentName)}
                           </div>
-                          <span className="font-medium text-primary">
-                            {String(call.Name ?? call.agent_name ?? call.user ?? '')}
-                          </span>
+                          <span className="font-medium text-primary">{agentName || '--'}</span>
                         </div>
                       </td>
-                      <td className="p-4 font-metadata-mono text-secondary">
-                        {formatDuration(Number(call.length_in_sec ?? 0))}
+                      <td className="p-4 font-metadata-mono text-secondary text-xs">
+                        {agentId || '--'}
                       </td>
-                      <td className="p-4">
-                        <span className="px-2 py-1 bg-surface-container rounded text-xs text-primary font-medium border border-whisper-border font-metadata-mono">
-                          {String(call.disposition ?? call.status ?? '')}
-                        </span>
+                      <td className="p-4 font-metadata-mono font-bold text-right text-emerald-signal">
+                        {outboundSales}
                       </td>
-                      <td className="p-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
-                          {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </span>
+                      <td className="p-4 font-metadata-mono font-bold text-right text-electric-blue">
+                        {inboundSales}
+                      </td>
+                      <td className="p-4 text-right">
+                        <PercentageCell pct={outboundPct} kind="outbound" />
+                      </td>
+                      <td className="p-4 text-right">
+                        <PercentageCell pct={inboundPct} kind="inbound" />
+                      </td>
+                      <td className="p-4 font-metadata-mono text-right text-primary font-bold">
+                        {totalSales}
                       </td>
                     </tr>
                   );
@@ -628,13 +668,29 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="p-10 flex flex-col items-center justify-center text-center">
-            <span className="material-symbols-outlined text-4xl text-muted-slate/40 mb-2">call_end</span>
-            <p className="text-sm font-medium text-primary">No calls yet</p>
+            <span className="material-symbols-outlined text-4xl text-muted-slate/40 mb-2">swap_horiz</span>
+            <p className="text-sm font-medium text-primary">No SALE dispositions in this period</p>
             <p className="text-xs text-muted-slate mt-1">Click refresh to load data</p>
           </div>
         )}
       </section>
     </>
+  );
+}
+
+function PercentageCell({ pct, kind }: { pct: number; kind: 'outbound' | 'inbound' }) {
+  const safe = Number.isFinite(pct) ? pct : 0;
+  const palette =
+    kind === 'outbound'
+      ? { bar: 'bg-emerald-signal', text: 'text-emerald-signal' }
+      : { bar: 'bg-electric-blue', text: 'text-electric-blue' };
+  return (
+    <div className="inline-flex flex-col items-end gap-1 min-w-[110px]">
+      <span className={`font-metadata-mono text-xs font-bold ${palette.text}`}>{safe.toFixed(1)}%</span>
+      <div className="w-[100px] h-1.5 bg-surface-container rounded-full overflow-hidden">
+        <div className={`${palette.bar} h-full rounded-full`} style={{ width: `${Math.max(0, Math.min(100, safe))}%` }} />
+      </div>
+    </div>
   );
 }
 

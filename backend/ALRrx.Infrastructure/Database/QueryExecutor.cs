@@ -347,6 +347,49 @@ public sealed class QueryExecutor : IQueryService
                     WHERE DATE(call_date) BETWEEN @Start AND @End
                 ) calls
                 """
+        },
+        ["vicidial_call_type_sales"] = new QueryDefinition
+        {
+            Id = "vicidial_call_type_sales",
+            Name = "VICIdial OUTBOUND and INBOUND Sales",
+            Description = "Per-agent breakdown of SALE dispositions by call direction (OUTBOUND from vicidial_log, INBOUND from vicidial_closer_log). Excludes TEST DUMMY.",
+            Category = "Calls",
+            SqlTemplate = """
+                SELECT
+                    agent_id AS Agent_Id,
+                    agent_name AS Agent_Name,
+                    SUM(CASE WHEN call_type = 'OUTBOUND' THEN 1 ELSE 0 END) AS Outbound_Sales,
+                    SUM(CASE WHEN call_type = 'INBOUND' THEN 1 ELSE 0 END) AS Inbound_Sales,
+                    ROUND(SUM(CASE WHEN call_type = 'OUTBOUND' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS Outbound_Pct,
+                    ROUND(SUM(CASE WHEN call_type = 'INBOUND' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS Inbound_Pct
+                FROM (
+                    SELECT
+                        'OUTBOUND' AS call_type,
+                        vl.user AS agent_id,
+                        vu.full_name AS agent_name
+                    FROM vicidial_log vl
+                    LEFT JOIN vicidial_users vu
+                        ON vl.user = vu.user
+                    WHERE vl.status = 'SALE'
+                      AND vu.full_name <> 'TEST DUMMY'
+                      AND DATE(vl.call_date) BETWEEN @Start AND @End
+
+                    UNION ALL
+
+                    SELECT
+                        'INBOUND' AS call_type,
+                        vcl.user AS agent_id,
+                        vu.full_name AS agent_name
+                    FROM vicidial_closer_log vcl
+                    LEFT JOIN vicidial_users vu
+                        ON vcl.user = vu.user
+                    WHERE vcl.status = 'SALE'
+                      AND vu.full_name <> 'TEST DUMMY'
+                      AND DATE(vcl.call_date) BETWEEN @Start AND @End
+                ) AS combined
+                GROUP BY agent_id, agent_name
+                ORDER BY (Outbound_Sales + Inbound_Sales) DESC, agent_name ASC
+                """
         }
     };
 
