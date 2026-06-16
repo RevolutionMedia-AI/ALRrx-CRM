@@ -431,7 +431,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         // For "Custom" the caller must pass fromDate/toDate as YYYY-MM-DD.
         var (rangePredicate, customParams) = BuildCallTypeRange(period, fromDate, toDate);
 
-        var sql = $$"""
+        var sql = $"""
             SELECT
                 t.agent_id AS Agent_Id,
                 t.agent_name AS Agent_Name,
@@ -455,7 +455,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
                     ON vl.user = vu.user
                 WHERE vl.status = 'SALES'
                   AND vu.full_name <> 'TEST DUMMY'
-                  AND {{rangePredicate}}
+                  AND {rangePredicate}
 
                 UNION ALL
 
@@ -468,7 +468,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
                     ON vcl.user = vu.user
                 WHERE vcl.status = 'SALES'
                   AND vu.full_name <> 'TEST DUMMY'
-                  AND {{rangePredicate}}
+                  AND {rangePredicate}
             ) t
             GROUP BY t.agent_id, t.agent_name
             ORDER BY t.agent_name
@@ -504,26 +504,26 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
     {
         var (rangePredicate, customParams) = BuildCallTypeRange(period, fromDate, toDate);
 
-        var sql = $$"""
+        var sql = $"""
             SELECT
                 (SELECT COUNT(*) FROM vicidial_log vl
                     LEFT JOIN vicidial_users vu ON vl.user = vu.user
                     WHERE vu.full_name <> 'TEST DUMMY'
-                      AND {{rangePredicate}}) AS Outbound_Calls,
+                      AND {rangePredicate}) AS Outbound_Calls,
                 (SELECT COUNT(*) FROM vicidial_closer_log vcl
                     LEFT JOIN vicidial_users vu ON vcl.user = vu.user
                     WHERE vu.full_name <> 'TEST DUMMY'
-                      AND {{rangePredicate}}) AS Inbound_Calls,
+                      AND {rangePredicate}) AS Inbound_Calls,
                 (SELECT COUNT(*) FROM vicidial_log vl
                     LEFT JOIN vicidial_users vu ON vl.user = vu.user
                     WHERE vl.status = 'SALES'
                       AND vu.full_name <> 'TEST DUMMY'
-                      AND {{rangePredicate}}) AS Outbound_Sales,
+                      AND {rangePredicate}) AS Outbound_Sales,
                 (SELECT COUNT(*) FROM vicidial_closer_log vcl
                     LEFT JOIN vicidial_users vu ON vcl.user = vu.user
                     WHERE vcl.status = 'SALES'
                       AND vu.full_name <> 'TEST DUMMY'
-                      AND {{rangePredicate}}) AS Inbound_Sales
+                      AND {rangePredicate}) AS Inbound_Sales
             """;
 
         await using var connection = await GetOpenVicidialConnectionAsync(ct);
