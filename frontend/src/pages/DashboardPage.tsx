@@ -124,20 +124,17 @@ export default function DashboardPage() {
     try {
       const filterResult = filter(p, customStart, customEnd);
       const vicidialParams = buildVicidialParams(p, customStart, customEnd);
-      const dayFrom = vicidialParams.from?.split(' ')[0] ?? '';
-      const dayTo = vicidialParams.to?.split(' ')[0] ?? '';
+      const isCustom = p === 'Custom';
+      const dayFrom = isCustom ? customStart : undefined;
+      const dayTo = isCustom ? customEnd : undefined;
       const s = await getDashboardSummary(filterResult);
       setSummary(s);
       const [a, st, c, cts, cc, sales] = await Promise.all([
         getReport('agent_performance', filterResult).catch(() => null),
         getStaffing().catch(() => null),
         getReport('all_calls', filterResult).catch(() => null),
-        dayFrom && dayTo
-          ? getVicidialCallTypeSales(dayFrom, dayTo).catch(() => null)
-          : Promise.resolve(null),
-        dayFrom && dayTo
-          ? getVicidialCallCounts(dayFrom, dayTo).catch(() => null)
-          : Promise.resolve(null),
+        getVicidialCallTypeSales(p, dayFrom, dayTo).catch(() => null),
+        getVicidialCallCounts(p, dayFrom, dayTo).catch(() => null),
         getVicidialSalesSummary(vicidialParams.from, vicidialParams.to, 500).catch(() => null),
       ]);
       setAgentReport(a);

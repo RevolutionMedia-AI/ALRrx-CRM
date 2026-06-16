@@ -249,13 +249,14 @@ public sealed class VicidialFormController : ControllerBase
 
     [HttpGet("call-type-sales")]
     public async Task<ActionResult<List<VicidialCallTypeSalesRow>>> GetCallTypeSales(
-        [FromQuery] string from,
-        [FromQuery] string to,
+        [FromQuery] string period = "Today",
+        [FromQuery] string? from = null,
+        [FromQuery] string? to = null,
         CancellationToken ct = default)
     {
         try
         {
-            var rows = await _sales.GetCallTypeSalesByAgentAsync(from, to, ct);
+            var rows = await _sales.GetCallTypeSalesByAgentAsync(period, from, to, ct);
             return Ok(rows);
         }
         catch (ArgumentException ex)
@@ -271,13 +272,14 @@ public sealed class VicidialFormController : ControllerBase
 
     [HttpGet("call-counts")]
     public async Task<ActionResult<VicidialCallCountsDto>> GetCallCounts(
-        [FromQuery] string from,
-        [FromQuery] string to,
+        [FromQuery] string period = "Today",
+        [FromQuery] string? from = null,
+        [FromQuery] string? to = null,
         CancellationToken ct = default)
     {
         try
         {
-            var dto = await _sales.GetCallCountsAsync(from, to, ct);
+            var dto = await _sales.GetCallCountsAsync(period, from, to, ct);
             return Ok(dto);
         }
         catch (ArgumentException ex)

@@ -15,6 +15,6 @@ public interface IVicidialSalesRepository
     Task<Dictionary<string, FormSalesByAgentRow>> GetFormSalesByAgentAsync(string? from, string? to, CancellationToken ct = default);
     Task<bool> UpdateAsync(int id, VicidialSaleUpdateRequest request, string bundleDisplayName, CancellationToken ct = default);
     Task<bool> DeleteAsync(int id, CancellationToken ct = default);
-    Task<List<VicidialCallTypeSalesRow>> GetCallTypeSalesByAgentAsync(string fromDate, string toDate, CancellationToken ct = default);
-    Task<VicidialCallCountsDto> GetCallCountsAsync(string fromDate, string toDate, CancellationToken ct = default);
+    Task<List<VicidialCallTypeSalesRow>> GetCallTypeSalesByAgentAsync(string period, string? fromDate, string? toDate, CancellationToken ct = default);
+    Task<VicidialCallCountsDto> GetCallCountsAsync(string period, string? fromDate, string? toDate, CancellationToken ct = default);
 }

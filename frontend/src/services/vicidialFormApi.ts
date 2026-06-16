@@ -48,22 +48,33 @@ export async function getVicidialSalesSummary(from?: string, to?: string, limit 
   return data;
 }
 
-// Day-based call counts (Outbound vs Inbound, all statuses + SALE only).
-// The from/to strings are interpreted as YYYY-MM-DD in the business timezone
-// (America/Tijuana) on the MySQL side, so the result is independent of the
-// server clock and of the user's local timezone.
-export async function getVicidialCallCounts(from: string, to: string): Promise<VicidialCallCounts> {
-  const { data } = await vicidialClient.get<VicidialCallCounts>('/vicidial-form/call-counts', {
-    params: { from, to },
-  });
+// Day-based call counts (Outbound vs Inbound, all statuses + SALES only).
+// The date range is computed in MySQL using CURDATE() so the result is
+// independent of the application's timezone handling. For 'Custom' the
+// caller must also pass from/to as YYYY-MM-DD strings.
+export async function getVicidialCallCounts(
+  period: 'Today' | 'Week' | 'Month' | 'Custom',
+  from?: string,
+  to?: string,
+): Promise<VicidialCallCounts> {
+  const params: Record<string, string> = { period };
+  if (period === 'Custom' && from) params.from = from;
+  if (period === 'Custom' && to) params.to = to;
+  const { data } = await vicidialClient.get<VicidialCallCounts>('/vicidial-form/call-counts', { params });
   return data;
 }
 
-// Per-agent OUTBOUND/INBOUND SALE breakdown, day-based filter in the business tz.
-export async function getVicidialCallTypeSales(from: string, to: string): Promise<VicidialCallTypeSalesRow[]> {
-  const { data } = await vicidialClient.get<VicidialCallTypeSalesRow[]>('/vicidial-form/call-type-sales', {
-    params: { from, to },
-  });
+// Per-agent OUTBOUND/INBOUND SALE breakdown. Same period semantics as
+// getVicidialCallCounts.
+export async function getVicidialCallTypeSales(
+  period: 'Today' | 'Week' | 'Month' | 'Custom',
+  from?: string,
+  to?: string,
+): Promise<VicidialCallTypeSalesRow[]> {
+  const params: Record<string, string> = { period };
+  if (period === 'Custom' && from) params.from = from;
+  if (period === 'Custom' && to) params.to = to;
+  const { data } = await vicidialClient.get<VicidialCallTypeSalesRow[]>('/vicidial-form/call-type-sales', { params });
   return data;
 }
 

@@ -413,57 +413,63 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
     }
 
     public async Task<List<VicidialCallTypeSalesRow>> GetCallTypeSalesByAgentAsync(
-        string fromDate, string toDate, CancellationToken ct = default)
+        string period, string? fromDate, string? toDate, CancellationToken ct = default)
     {
-        // fromDate / toDate are YYYY-MM-DD strings in the business tz (America/Tijuana).
-        // We compare DATE(call_date) which strips the time component on the MySQL side,
-        // so the filter is day-based and timezone-independent from the call_date column.
-        if (!IsValidDateString(fromDate) || !IsValidDateString(toDate))
-            throw new ArgumentException("from/to must be YYYY-MM-DD strings");
+        // Period is "Today" | "Week" | "Month" | "Custom". The date range is
+        // built in MySQL using CURDATE() (server-local "today"), so the query
+        // is timezone-independent from the application's perspective.
+        // For "Custom" the caller must pass fromDate/toDate as YYYY-MM-DD.
+        var (rangePredicate, customParams) = BuildCallTypeRange(period, fromDate, toDate);
 
-        const string sql = """
+        var sql = $$"""
             SELECT
-                agent_id AS Agent_Id,
-                agent_name AS Agent_Name,
-                SUM(CASE WHEN call_type = 'OUTBOUND' THEN 1 ELSE 0 END) AS Outbound_Sales,
-                SUM(CASE WHEN call_type = 'INBOUND' THEN 1 ELSE 0 END) AS Inbound_Sales,
-                ROUND(SUM(CASE WHEN call_type = 'OUTBOUND' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS Outbound_Pct,
-                ROUND(SUM(CASE WHEN call_type = 'INBOUND' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS Inbound_Pct
+                t.agent_id AS Agent_Id,
+                t.agent_name AS Agent_Name,
+                SUM(CASE WHEN t.call_type = 'OUTBOUND' THEN 1 ELSE 0 END) AS Outbound_Sales,
+                SUM(CASE WHEN t.call_type = 'INBOUND' THEN 1 ELSE 0 END) AS Inbound_Sales,
+                ROUND(
+                    SUM(CASE WHEN t.call_type = 'OUTBOUND' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0),
+                    2
+                ) AS Outbound_Pct,
+                ROUND(
+                    SUM(CASE WHEN t.call_type = 'INBOUND' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0),
+                    2
+                ) AS Inbound_Pct
             FROM (
                 SELECT
-                    'OUTBOUND' AS call_type,
                     vl.user AS agent_id,
-                    COALESCE(vu.full_name, '') AS agent_name
+                    COALESCE(vu.full_name, '') AS agent_name,
+                    'OUTBOUND' AS call_type
                 FROM vicidial_log vl
                 LEFT JOIN vicidial_users vu
                     ON vl.user = vu.user
                 WHERE vl.status = 'SALES'
-                  AND COALESCE(vu.full_name, '') <> 'TEST DUMMY'
-                  AND DATE(vl.call_date) BETWEEN @From AND @To
+                  AND vu.full_name <> 'TEST DUMMY'
+                  AND {{rangePredicate}}
 
                 UNION ALL
 
                 SELECT
-                    'INBOUND' AS call_type,
                     vcl.user AS agent_id,
-                    COALESCE(vu.full_name, '') AS agent_name
+                    COALESCE(vu.full_name, '') AS agent_name,
+                    'INBOUND' AS call_type
                 FROM vicidial_closer_log vcl
                 LEFT JOIN vicidial_users vu
                     ON vcl.user = vu.user
                 WHERE vcl.status = 'SALES'
-                  AND COALESCE(vu.full_name, '') <> 'TEST DUMMY'
-                  AND DATE(vcl.call_date) BETWEEN @From AND @To
-            ) AS combined
-            GROUP BY agent_id, agent_name
-            ORDER BY (Outbound_Sales + Inbound_Sales) DESC, agent_name ASC
+                  AND vu.full_name <> 'TEST DUMMY'
+                  AND {{rangePredicate}}
+            ) t
+            GROUP BY t.agent_id, t.agent_name
+            ORDER BY t.agent_name
             """;
 
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(sql, connection);
-        cmd.Parameters.Add("@From", MySqlDbType.VarChar).Value = fromDate;
-        cmd.Parameters.Add("@To", MySqlDbType.VarChar).Value = toDate;
+        foreach (var (name, value) in customParams)
+            cmd.Parameters.AddWithValue(name, value);
 
-        _logger.LogInformation("Vicidial call-type sales: from={From} to={To}", fromDate, toDate);
+        _logger.LogInformation("Vicidial call-type sales: period={Period} from={From} to={To}", period, fromDate, toDate);
 
         var results = new List<VicidialCallTypeSalesRow>();
         await using var reader = await cmd.ExecuteReaderAsync(ct);
@@ -484,41 +490,38 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
     }
 
     public async Task<VicidialCallCountsDto> GetCallCountsAsync(
-        string fromDate, string toDate, CancellationToken ct = default)
+        string period, string? fromDate, string? toDate, CancellationToken ct = default)
     {
-        if (!IsValidDateString(fromDate) || !IsValidDateString(toDate))
-            throw new ArgumentException("from/to must be YYYY-MM-DD strings");
+        var (rangePredicate, customParams) = BuildCallTypeRange(period, fromDate, toDate);
 
-        // Day-based counts: DATE(call_date) strips the hour so the filter is
-        // independent of the time component stored in the call_date column.
-        const string sql = """
+        var sql = $$"""
             SELECT
                 (SELECT COUNT(*) FROM vicidial_log vl
                     LEFT JOIN vicidial_users vu ON vl.user = vu.user
-                    WHERE DATE(vl.call_date) BETWEEN @From AND @To
-                      AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Outbound_Calls,
+                    WHERE vu.full_name <> 'TEST DUMMY'
+                      AND {{rangePredicate}}) AS Outbound_Calls,
                 (SELECT COUNT(*) FROM vicidial_closer_log vcl
                     LEFT JOIN vicidial_users vu ON vcl.user = vu.user
-                    WHERE DATE(vcl.call_date) BETWEEN @From AND @To
-                      AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Inbound_Calls,
+                    WHERE vu.full_name <> 'TEST DUMMY'
+                      AND {{rangePredicate}}) AS Inbound_Calls,
                 (SELECT COUNT(*) FROM vicidial_log vl
                     LEFT JOIN vicidial_users vu ON vl.user = vu.user
                     WHERE vl.status = 'SALES'
-                      AND DATE(vl.call_date) BETWEEN @From AND @To
-                      AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Outbound_Sales,
+                      AND vu.full_name <> 'TEST DUMMY'
+                      AND {{rangePredicate}}) AS Outbound_Sales,
                 (SELECT COUNT(*) FROM vicidial_closer_log vcl
                     LEFT JOIN vicidial_users vu ON vcl.user = vu.user
                     WHERE vcl.status = 'SALES'
-                      AND DATE(vcl.call_date) BETWEEN @From AND @To
-                      AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Inbound_Sales
+                      AND vu.full_name <> 'TEST DUMMY'
+                      AND {{rangePredicate}}) AS Inbound_Sales
             """;
 
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand(sql, connection);
-        cmd.Parameters.Add("@From", MySqlDbType.VarChar).Value = fromDate;
-        cmd.Parameters.Add("@To", MySqlDbType.VarChar).Value = toDate;
+        foreach (var (name, value) in customParams)
+            cmd.Parameters.AddWithValue(name, value);
 
-        _logger.LogInformation("Vicidial call counts: from={From} to={To}", fromDate, toDate);
+        _logger.LogInformation("Vicidial call counts: period={Period} from={From} to={To}", period, fromDate, toDate);
 
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         if (!await reader.ReadAsync(ct))
@@ -531,6 +534,49 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
             OutboundSales = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("Outbound_Sales"))),
             InboundSales = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("Inbound_Sales"))),
         };
+    }
+
+    /// <summary>
+    /// Returns the SQL fragment that should be AND-ed into the WHERE clause to
+    /// filter call_date by the requested period, plus any custom @FromDate /
+    /// @ToDate parameters the caller must add. The date range is computed in
+    /// MySQL using CURDATE() so it always matches the server's local "today".
+    /// </summary>
+    private static (string Predicate, List<(string Name, object Value)> Parameters) BuildCallTypeRange(
+        string period, string? fromDate, string? toDate)
+    {
+        var normalized = period?.Trim() ?? string.Empty;
+        var p = normalized.Equals("today", StringComparison.OrdinalIgnoreCase) ? "Today"
+              : normalized.Equals("week", StringComparison.OrdinalIgnoreCase) ? "Week"
+              : normalized.Equals("thisweek", StringComparison.OrdinalIgnoreCase) ? "Week"
+              : normalized.Equals("month", StringComparison.OrdinalIgnoreCase) ? "Month"
+              : normalized.Equals("thismonth", StringComparison.OrdinalIgnoreCase) ? "Month"
+              : normalized.Equals("custom", StringComparison.OrdinalIgnoreCase) ? "Custom"
+              : "Today";
+
+        switch (p)
+        {
+            case "Today":
+                return ("call_date >= CURDATE() AND call_date < CURDATE() + INTERVAL 1 DAY", new());
+            case "Week":
+                // Last 7 days including today
+                return ("call_date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND call_date < CURDATE() + INTERVAL 1 DAY", new());
+            case "Month":
+                // Last 30 days including today
+                return ("call_date >= DATE_SUB(CURDATE(), INTERVAL 29 DAY) AND call_date < CURDATE() + INTERVAL 1 DAY", new());
+            case "Custom":
+                if (!IsValidDateString(fromDate) || !IsValidDateString(toDate))
+                    throw new ArgumentException("from/to must be YYYY-MM-DD strings for Custom period");
+                return (
+                    "call_date >= @FromDate AND call_date < DATE_ADD(@ToDate, INTERVAL 1 DAY)",
+                    new List<(string, object)>
+                    {
+                        ("@FromDate", fromDate!),
+                        ("@ToDate", toDate!),
+                    });
+            default:
+                return ("call_date >= CURDATE() AND call_date < CURDATE() + INTERVAL 1 DAY", new());
+        }
     }
 
     private static bool IsValidDateString(string? value)
