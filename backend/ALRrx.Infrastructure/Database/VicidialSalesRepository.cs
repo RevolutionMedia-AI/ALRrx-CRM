@@ -8,17 +8,27 @@ namespace ALRrx.Infrastructure.Database;
 public sealed class VicidialSalesRepository : IVicidialSalesRepository
 {
     private readonly CrmDbConnectionFactory _dbConnection;
+    private readonly IDatabaseConnection _vicidialConnection;
     private readonly ILogger<VicidialSalesRepository> _logger;
 
-    public VicidialSalesRepository(CrmDbConnectionFactory dbConnection, ILogger<VicidialSalesRepository> logger)
+    public VicidialSalesRepository(
+        CrmDbConnectionFactory dbConnection,
+        IDatabaseConnection vicidialConnection,
+        ILogger<VicidialSalesRepository> logger)
     {
         _dbConnection = dbConnection;
+        _vicidialConnection = vicidialConnection;
         _logger = logger;
     }
 
     private async Task<MySqlConnection> GetOpenConnectionAsync(CancellationToken ct)
     {
         return (MySqlConnection)await _dbConnection.GetConnectionAsync(ct);
+    }
+
+    private async Task<MySqlConnection> GetOpenVicidialConnectionAsync(CancellationToken ct)
+    {
+        return (MySqlConnection)await _vicidialConnection.GetConnectionAsync(ct);
     }
 
     private const string SalesColumns =
@@ -464,7 +474,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
             ORDER BY t.agent_name
             """;
 
-        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var connection = await GetOpenVicidialConnectionAsync(ct);
         await using var cmd = new MySqlCommand(sql, connection);
         foreach (var (name, value) in customParams)
             cmd.Parameters.AddWithValue(name, value);
@@ -516,7 +526,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
                       AND {{rangePredicate}}) AS Inbound_Sales
             """;
 
-        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var connection = await GetOpenVicidialConnectionAsync(ct);
         await using var cmd = new MySqlCommand(sql, connection);
         foreach (var (name, value) in customParams)
             cmd.Parameters.AddWithValue(name, value);
