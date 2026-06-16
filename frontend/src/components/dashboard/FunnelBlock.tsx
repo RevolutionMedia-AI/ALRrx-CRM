@@ -2,8 +2,8 @@ interface FunnelBlockProps {
   dialed: number | null;
   contacted: number | null;
   sales: number;
-  outboundCalls?: number | null;
-  inboundCalls?: number | null;
+  outboundSalesCalls?: number | null;
+  inboundSalesCalls?: number | null;
   loading?: boolean;
 }
 
@@ -75,7 +75,7 @@ function safePctDetailed(numerator: number, denominator: number): string | null 
   return `${((numerator / denominator) * 100).toFixed(2)}%`;
 }
 
-export default function FunnelBlock({ dialed, contacted, sales, outboundCalls, inboundCalls, loading }: FunnelBlockProps) {
+export default function FunnelBlock({ dialed, contacted, sales, outboundSalesCalls, inboundSalesCalls, loading }: FunnelBlockProps) {
   const allZero = (dialed ?? 0) === 0 && (contacted ?? 0) === 0 && sales === 0;
 
   return (
@@ -151,14 +151,14 @@ export default function FunnelBlock({ dialed, contacted, sales, outboundCalls, i
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <DirectionCard
               kind="outbound"
-              label="Outbound Calls"
-              value={outboundCalls ?? null}
+              label="Outbound Calls Sales"
+              value={outboundSalesCalls ?? null}
               loading={loading}
             />
             <DirectionCard
               kind="inbound"
-              label="Inbound Calls"
-              value={inboundCalls ?? null}
+              label="Inbound Calls Sales"
+              value={inboundSalesCalls ?? null}
               loading={loading}
             />
           </div>

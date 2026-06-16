@@ -359,8 +359,8 @@ export default function DashboardPage() {
             dialed={parseMetricNumber(leadsDialed?.value) || null}
             contacted={parseMetricNumber(leadsContacted?.value) || null}
             sales={parseMetricNumber(salesToday?.value)}
-            outboundCalls={callCounts?.outboundCalls ?? null}
-            inboundCalls={callCounts?.inboundCalls ?? null}
+            outboundSalesCalls={callCounts?.outboundSales ?? null}
+            inboundSalesCalls={callCounts?.inboundSales ?? null}
             loading={summaryLoading || callCountsLoading}
           />
 
