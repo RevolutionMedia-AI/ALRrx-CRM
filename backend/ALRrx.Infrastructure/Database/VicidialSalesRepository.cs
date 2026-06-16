@@ -437,7 +437,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
                 FROM vicidial_log vl
                 LEFT JOIN vicidial_users vu
                     ON vl.user = vu.user
-                WHERE vl.status = 'SALE'
+                WHERE vl.status = 'SALES'
                   AND COALESCE(vu.full_name, '') <> 'TEST DUMMY'
                   AND DATE(vl.call_date) BETWEEN @From AND @To
 
@@ -450,7 +450,7 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
                 FROM vicidial_closer_log vcl
                 LEFT JOIN vicidial_users vu
                     ON vcl.user = vu.user
-                WHERE vcl.status = 'SALE'
+                WHERE vcl.status = 'SALES'
                   AND COALESCE(vu.full_name, '') <> 'TEST DUMMY'
                   AND DATE(vcl.call_date) BETWEEN @From AND @To
             ) AS combined
@@ -503,12 +503,12 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
                       AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Inbound_Calls,
                 (SELECT COUNT(*) FROM vicidial_log vl
                     LEFT JOIN vicidial_users vu ON vl.user = vu.user
-                    WHERE vl.status = 'SALE'
+                    WHERE vl.status = 'SALES'
                       AND DATE(vl.call_date) BETWEEN @From AND @To
                       AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Outbound_Sales,
                 (SELECT COUNT(*) FROM vicidial_closer_log vcl
                     LEFT JOIN vicidial_users vu ON vcl.user = vu.user
-                    WHERE vcl.status = 'SALE'
+                    WHERE vcl.status = 'SALES'
                       AND DATE(vcl.call_date) BETWEEN @From AND @To
                       AND COALESCE(vu.full_name, '') <> 'TEST DUMMY') AS Inbound_Sales
             """;
