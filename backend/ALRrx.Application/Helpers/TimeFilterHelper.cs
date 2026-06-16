@@ -15,8 +15,12 @@ public static class TimeFilterHelper
             if (!filter.CustomStart.HasValue || !filter.CustomEnd.HasValue)
                 throw new ArgumentException("CustomStart and CustomEnd are required when period is Custom");
 
+            // Custom dates are already wall-clock dates picked by the user in
+            // the dashboard; we use them as-is (no UTC conversion) so the
+            // "Today" semantics are consistent with the business timezone
+            // used by TimeRange.FromPeriod.
             var startDate = filter.CustomStart.Value.Date;
-            var endDate = filter.CustomEnd.Value.Date.AddDays(1).AddSeconds(-1);
+            var endDate = filter.CustomEnd.Value.Date;
 
             return TimeRange.FromCustom(startDate, endDate);
         }

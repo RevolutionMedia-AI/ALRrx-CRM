@@ -216,7 +216,7 @@ public sealed class QueryExecutor : IQueryService
                 SELECT
                     ROUND(AVG(talk_sec + dispo_sec + dead_sec) / 60, 1) AS AHT_Minutes
                 FROM vicidial_agent_log
-                WHERE event_time >= @Start AND event_time < @End
+                WHERE DATE(event_time) BETWEEN DATE(@Start) AND DATE(@End)
                 """
         },
         ["occupancy_rate"] = new QueryDefinition
@@ -232,7 +232,7 @@ public sealed class QueryExecutor : IQueryService
                          NULLIF(SUM(pause_sec + wait_sec + talk_sec + dispo_sec + dead_sec), 0)) * 100
                     , 1) AS Occupancy_Pct
                 FROM vicidial_agent_log
-                WHERE event_time >= @Start AND event_time < @End
+                WHERE DATE(event_time) BETWEEN DATE(@Start) AND DATE(@End)
                 """
         },
         ["all_calls"] = new QueryDefinition
@@ -463,7 +463,7 @@ public sealed class QueryExecutor : IQueryService
                 vl.comments
             FROM vicidial_log vl
             WHERE vl.user = @User
-              AND vl.call_date >= @Start AND vl.call_date < @End
+              AND DATE(vl.call_date) BETWEEN DATE(@Start) AND DATE(@End)
 
             UNION ALL
 
@@ -476,7 +476,7 @@ public sealed class QueryExecutor : IQueryService
                 cl.comments
             FROM vicidial_closer_log cl
             WHERE cl.user = @User
-              AND cl.call_date >= @Start AND cl.call_date < @End
+              AND DATE(cl.call_date) BETWEEN DATE(@Start) AND DATE(@End)
 
             ORDER BY call_date DESC
             LIMIT 200
