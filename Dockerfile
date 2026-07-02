@@ -41,8 +41,13 @@
 #     against the seed. Fixes cold-start 502s ("upstream
 #     connect error / Connection refused") seen on first
 #     request after each deploy.
-# Bump CACHE_BUST a 2026-07-02-bust-38.
-ARG CACHE_BUST=2026-07-02-bust-38
+# 2026-07-02-bust-39: Force fresh image after Tailscale OAuth
+#     credential was rotated in Northflank → project integration.
+#     Previous build kept reusing cached layers that didn't carry
+#     the new TS_AUTHKEY. Bumping here invalidates the cache so
+#     the new env vars are baked into the runtime image.
+# Bump CACHE_BUST a 2026-07-02-bust-39.
+ARG CACHE_BUST=2026-07-02-bust-39
 
 # ─── Stage 0: Install .NET 8 SDK + ASP.NET Core 8 runtime ───────────────────
 # Single shared installer stage. Pulls both the SDK (needed by the
