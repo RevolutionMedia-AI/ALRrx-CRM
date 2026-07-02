@@ -35,8 +35,14 @@
 #     runtime needs ICU to load timezones for globalization.
 #     libicu-dev is the package name in Debian 12 / bookworm.
 #     Bump CACHE_BUST to 2026-06-15-bust-37.
-# Bump CACHE_BUST a 2026-06-15-bust-37.
-ARG CACHE_BUST=2026-06-15-bust-37
+# 2026-07-02-bust-38: Move DB seed out of Program.cs into
+#     DatabaseSeedHostedService so app.Run() binds to :5000
+#     immediately and the Northflank healthcheck stops racing
+#     against the seed. Fixes cold-start 502s ("upstream
+#     connect error / Connection refused") seen on first
+#     request after each deploy.
+# Bump CACHE_BUST a 2026-07-02-bust-38.
+ARG CACHE_BUST=2026-07-02-bust-38
 
 # ─── Stage 0: Install .NET 8 SDK + ASP.NET Core 8 runtime ───────────────────
 # Single shared installer stage. Pulls both the SDK (needed by the

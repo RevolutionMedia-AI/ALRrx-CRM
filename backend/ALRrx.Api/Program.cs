@@ -1,5 +1,6 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using ALRrx.Api.HostedServices;
 using ALRrx.Api.Hubs;
 using ALRrx.Api.Middleware;
 using ALRrx.Application.DependencyInjection;
@@ -216,6 +217,7 @@ builder.Services.AddInfrastructure(connectionConfig, crmConnectionConfig);
 builder.Services.AddApplication();
 
 builder.Services.AddSingleton<IAuthService, ALRrx.Infrastructure.Auth.AuthService>();
+builder.Services.AddHostedService<DatabaseSeedHostedService>();
 builder.Services.AddScoped<ALRrx.Application.Interfaces.ITwilioService, ALRrx.Infrastructure.Twilio.TwilioService>();
 
 var app = builder.Build();
@@ -239,32 +241,5 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 
 app.MapControllers();
 app.MapHub<DashboardHub>("/hubs/dashboard");
-
-using (var scope = app.Services.CreateScope())
-{
-    var userRepo = scope.ServiceProvider.GetRequiredService<IUserRepository>();
-    var vicidialRepo = scope.ServiceProvider.GetRequiredService<ALRrx.Application.Interfaces.IVicidialSalesRepository>();
-    var seedLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    try
-    {
-        await userRepo.EnsureAdminSeededAsync();
-        seedLogger.LogInformation("Admin seed completed successfully.");
-    }
-    catch (Exception ex)
-    {
-        seedLogger.LogWarning(ex, "No se pudo crear/verificar tabla alrrx_users. " +
-            "El usuario de BD no tiene permisos CREATE. La app continuará sin seed.");
-    }
-    try
-    {
-        await vicidialRepo.EnsureTableAsync();
-        seedLogger.LogInformation("Vicidial form sales table ready.");
-    }
-    catch (Exception ex)
-    {
-        seedLogger.LogWarning(ex, "No se pudo crear/verificar tabla vicidial_form_sales. " +
-            "El usuario de BD no tiene permisos CREATE. La app continuará sin esa tabla.");
-    }
-}
 
 app.Run();
