@@ -716,7 +716,79 @@ export default function AnalyticsPage() {
             )}
           </section>
 
-          {/* 3. Agent Performance table - movida a seccion full-width abajo */}
+          {/* 3. Agent Performance table */}
+          <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused overflow-hidden">
+            <div className="p-6 border-b border-whisper-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 className="font-bold text-lg text-primary">Agent Performance <span className="text-sm font-normal text-secondary">(VICIdial + Form Sales)</span></h3>
+                <p className="text-[11px] text-secondary mt-0.5 font-metadata-mono uppercase tracking-wider">
+                  Click column headers to sort
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportAgentExcel}
+                  disabled={loading || exportingAgentExcel || sortedAgents.length === 0}
+                  className="text-xs px-2.5 py-1 border border-whisper-border dark:border-gray-700 rounded text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-gray-100 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Export current view to Excel"
+                >
+                  <span className={`material-symbols-outlined text-sm ${exportingAgentExcel ? 'animate-spin' : ''}`}>
+                    {exportingAgentExcel ? 'progress_activity' : 'download'}
+                  </span>
+                  <span>{exportingAgentExcel ? 'Generating...' : 'Export Excel'}</span>
+                </button>
+                <span className="material-symbols-outlined text-electric-blue text-2xl">groups</span>
+              </div>
+            </div>
+            {loading ? (
+              <div className="p-6 space-y-3 animate-pulse">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="h-10 bg-surface-container rounded" />
+                ))}
+              </div>
+            ) : sortedAgents.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-surface-container-low border-b border-whisper-border text-xs uppercase tracking-wider text-secondary font-metadata-mono">
+                      {sortableTh('Agent', 'user')}
+                      {sortableTh('Calls Handled', 'calls')}
+                      {sortableTh('VICI Sales', 'sales')}
+                      {sortableTh('Form Sales', 'formSales')}
+                      {sortableTh('Form Revenue', 'formRevenue')}
+                      {sortableTh('Contacts', 'contacts')}
+                      {sortableTh('Conversion %', 'conv')}
+                      {sortableTh('AHT', 'aht')}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedAgents.map((agent, i) => (
+                      <tr key={i} className="border-b border-whisper-border hover:bg-surface-container-lowest dark:hover:bg-gray-800 transition-colors">
+                        <td className="p-3 font-medium text-primary">{String(agent.Name ?? agent.User ?? '')}</td>
+                        <td className="p-3 font-metadata-mono">{String(agent.Calls_Handled ?? '0')}</td>
+                        <td className="p-3 font-metadata-mono text-emerald-signal font-medium">{String(agent.Sales_Made ?? '0')}</td>
+                        <td className="p-3 font-metadata-mono text-emerald-signal font-semibold" title="Sales registered through the ALTRX Sales Form">
+                          {String(agent.Form_Sales_Count ?? '0')}
+                        </td>
+                        <td className="p-3 font-metadata-mono text-emerald-signal font-semibold" title="Total revenue from sales registered through the ALTRX Sales Form">
+                          {formatCurrency(Number(agent.Form_Sales_Amount ?? 0))}
+                        </td>
+                        <td className="p-3 font-metadata-mono">{String(agent.Contacts ?? '0')}</td>
+                        <td className="p-3 font-metadata-mono font-medium">
+                          {agent.Conversion_Percentage != null ? `${Number(agent.Conversion_Percentage).toFixed(1)}%` : '--'}
+                        </td>
+                        <td className="p-3 font-metadata-mono text-secondary">
+                          {agent.AHT ? formatDuration(parseInt(String(agent.AHT).split(':').reduce((acc, t) => acc * 60 + parseInt(t), 0).toString())) : '--:--'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-12 text-sm text-muted-slate text-center">No agent data available for this period</div>
+            )}
+          </section>
         </div>
 
         {/* RIGHT SIDEBAR (4/12) */}
@@ -834,80 +906,6 @@ export default function AnalyticsPage() {
           {/* Quick actions */}
         </div>
       </div>
-
-      {/* Agent Performance table - seccion full-width para tener el mismo ancho que Vicidial Form Sales */}
-      <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused overflow-hidden">
-        <div className="p-6 border-b border-whisper-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <h3 className="font-bold text-lg text-primary">Agent Performance <span className="text-sm font-normal text-secondary">(VICIdial + Form Sales)</span></h3>
-            <p className="text-[11px] text-secondary mt-0.5 font-metadata-mono uppercase tracking-wider">
-              Click column headers to sort
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportAgentExcel}
-              disabled={loading || exportingAgentExcel || sortedAgents.length === 0}
-              className="text-xs px-2.5 py-1 border border-whisper-border dark:border-gray-700 rounded text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-gray-100 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Export current view to Excel"
-            >
-              <span className={`material-symbols-outlined text-sm ${exportingAgentExcel ? 'animate-spin' : ''}`}>
-                {exportingAgentExcel ? 'progress_activity' : 'download'}
-              </span>
-              <span>{exportingAgentExcel ? 'Generating...' : 'Export Excel'}</span>
-            </button>
-            <span className="material-symbols-outlined text-electric-blue text-2xl">groups</span>
-          </div>
-        </div>
-        {loading ? (
-          <div className="p-6 space-y-3 animate-pulse">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-14 bg-surface-container rounded" />
-            ))}
-          </div>
-        ) : sortedAgents.length > 0 ? (
-          <div className="overflow-x-auto max-h-[600px] overflow-y-auto scrollbar-thin">
-            <table className="w-full text-left text-lg border-collapse">
-              <thead className="text-sm uppercase tracking-wider text-secondary dark:text-gray-400 font-metadata-mono bg-surface-container-low dark:bg-gray-800 sticky top-0">
-                <tr>
-                  {sortableTh('Agent', 'user')}
-                  {sortableTh('Calls Handled', 'calls')}
-                  {sortableTh('VICI Sales', 'sales')}
-                  {sortableTh('Form Sales', 'formSales')}
-                  {sortableTh('Form Revenue', 'formRevenue')}
-                  {sortableTh('Contacts', 'contacts')}
-                  {sortableTh('Conversion %', 'conv')}
-                  {sortableTh('AHT', 'aht')}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedAgents.map((agent, i) => (
-                  <tr key={i} className="border-b border-whisper-border dark:border-gray-700 hover:bg-surface-container-lowest dark:hover:bg-gray-800/50">
-                    <td className="px-5 py-4 text-primary dark:text-gray-200 font-medium whitespace-nowrap">{String(agent.Name ?? agent.User ?? '')}</td>
-                    <td className="px-5 py-4 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Calls_Handled ?? '0')}</td>
-                    <td className="px-5 py-4 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Sales_Made ?? '0')}</td>
-                    <td className="px-5 py-4 font-metadata-mono text-emerald-signal font-semibold whitespace-nowrap" title="Sales registered through the ALTRX Sales Form">
-                      {String(agent.Form_Sales_Count ?? '0')}
-                    </td>
-                    <td className="px-5 py-4 text-emerald-signal font-semibold whitespace-nowrap" title="Total revenue from sales registered through the ALTRX Sales Form">
-                      {formatCurrency(Number(agent.Form_Sales_Amount ?? 0))}
-                    </td>
-                    <td className="px-5 py-4 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Contacts ?? '0')}</td>
-                    <td className="px-5 py-4 font-metadata-mono font-medium text-primary dark:text-gray-200 whitespace-nowrap">
-                      {agent.Conversion_Percentage != null ? `${Number(agent.Conversion_Percentage).toFixed(1)}%` : '--'}
-                    </td>
-                    <td className="px-5 py-4 font-metadata-mono text-secondary dark:text-gray-400 whitespace-nowrap">
-                      {agent.AHT ? formatDuration(parseInt(String(agent.AHT).split(':').reduce((acc, t) => acc * 60 + parseInt(t), 0).toString())) : '--:--'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-12 text-sm text-muted-slate text-center">No agent data available for this period</div>
-        )}
-      </section>
 
       {/* Vicidial Sales Section (full width) */}
       <VicidialSalesSection
