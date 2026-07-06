@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { getDashboardSummary, getReport, exportDashboardPdf, exportDashboardExcel, getStaffing, getAgentPerformanceWithSales } from '../services/api';
 import { getVicidialSalesSummary } from '../services/vicidialFormApi';
+import { exportAgentPerformanceExcel } from '../utils/agentPerformanceExcel';
 import type { DashboardSummaryDto, ReportDto, TimeFilterDto, MetricCardDto, SalesSummary } from '../types';
 import DispositionLegend, { type DispositionItem } from '../components/dashboard/DispositionLegend';
 import PeriodComparisonModal from '../components/PeriodComparisonModal';
@@ -192,6 +193,7 @@ export default function AnalyticsPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingAgentExcel, setExportingAgentExcel] = useState(false);
   const [showPeriodComparison, setShowPeriodComparison] = useState(false);
   const [vicidialRefreshKey, setVicidialRefreshKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -243,6 +245,26 @@ export default function AnalyticsPage() {
       setLastUpdated(new Date().toLocaleTimeString());
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handleExportAgentExcel = async () => {
+    if (sortedAgents.length === 0 || exportingAgentExcel) return;
+    setExportingAgentExcel(true);
+    try {
+      const stamp = new Date().toISOString().split('T')[0];
+      const filename = `ALTRX_AgentPerformance_${period}_${stamp}.xlsx`;
+      const range = buildVicidialParams(period, customStart, customEnd);
+      await exportAgentPerformanceExcel(sortedAgents, filename, {
+        period,
+        from: range.from,
+        to: range.to,
+      });
+    } catch (err) {
+      console.error('[AnalyticsPage] Agent Performance export failed', err);
+      setError('Failed to export Agent Performance to Excel');
+    } finally {
+      setExportingAgentExcel(false);
     }
   };
 
@@ -647,14 +669,27 @@ export default function AnalyticsPage() {
 
           {/* 3. Agent Performance table */}
           <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused overflow-hidden">
-            <div className="p-6 border-b border-whisper-border flex justify-between items-center">
+            <div className="p-6 border-b border-whisper-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
                 <h3 className="font-bold text-lg text-primary">Agent Performance <span className="text-sm font-normal text-secondary">(VICIdial + Form Sales)</span></h3>
                 <p className="text-[11px] text-secondary mt-0.5 font-metadata-mono uppercase tracking-wider">
                   Click column headers to sort
                 </p>
               </div>
-              <span className="material-symbols-outlined text-electric-blue text-2xl">groups</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportAgentExcel}
+                  disabled={loading || exportingAgentExcel || sortedAgents.length === 0}
+                  className="text-xs px-2.5 py-1 border border-whisper-border dark:border-gray-700 rounded text-secondary dark:text-gray-300 hover:text-primary dark:hover:text-gray-100 hover:bg-surface-container-low dark:hover:bg-gray-800 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Export current view to Excel"
+                >
+                  <span className={`material-symbols-outlined text-sm ${exportingAgentExcel ? 'animate-spin' : ''}`}>
+                    {exportingAgentExcel ? 'progress_activity' : 'download'}
+                  </span>
+                  <span>{exportingAgentExcel ? 'Generating...' : 'Export Excel'}</span>
+                </button>
+                <span className="material-symbols-outlined text-electric-blue text-2xl">groups</span>
+              </div>
             </div>
             {loading ? (
               <div className="p-6 space-y-3 animate-pulse">
