@@ -359,7 +359,7 @@ export default function AnalyticsPage() {
 
   const sortableTh = (label: string, key: SortKey) => (
     <th
-      className="p-3 font-medium cursor-pointer select-none hover:text-primary dark:hover:text-white transition-colors whitespace-nowrap"
+      className="px-4 py-3 font-medium cursor-pointer select-none hover:text-primary dark:hover:text-white transition-colors whitespace-nowrap"
       onClick={() => handleSort(key)}
     >
       <div className="flex items-center gap-1">
@@ -397,50 +397,43 @@ export default function AnalyticsPage() {
             </span>
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap items-end">
-          <div className="bg-surface-container-low border border-whisper-border rounded flex text-sm overflow-hidden">
-            {periodBtn('Today')}
-            {periodBtn('Week')}
-            {periodBtn('Month')}
-            {periodBtn('Custom')}
-          </div>
-          {period === 'Custom' && (
-            <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1">
-              <input
-                type="date"
-                value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
-              />
-              <span className="text-muted-slate text-xs">to</span>
-              <input
-                type="date"
-                value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
-              />
+        <div className="flex flex-col gap-2 items-end">
+          <div className="flex gap-2 flex-wrap items-center">
+            <div className="bg-surface-container-low border border-whisper-border rounded flex text-sm overflow-hidden">
+              {periodBtn('Today')}
+              {periodBtn('Week')}
+              {periodBtn('Month')}
+              {periodBtn('Custom')}
             </div>
-          )}
-          <button
-            onClick={handleManualRefresh}
-            disabled={refreshing || loading}
-            className="flex items-center gap-2 px-3 py-1.5 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Refresh analytics data"
-          >
-            <span className={`material-symbols-outlined text-[20px] ${refreshing ? 'animate-spin' : ''}`}>sync</span>
-            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Export Analytics ALTRX - debajo de los botones de periodo */}
-      <div className="flex justify-end -mt-2 mb-4">
-        <div className="bg-pure-surface border border-whisper-border rounded-xl p-4 shadow-card w-full md:w-auto md:min-w-[260px]">
-          <h3 className="font-bold text-sm text-primary flex items-center gap-2 mb-3">
-            <span className="material-symbols-outlined text-emerald-signal text-[18px]">download</span>
-            Export Analytics ALTRX
-          </h3>
-          <div className="flex flex-col gap-2">
+            {period === 'Custom' && (
+              <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1">
+                <input
+                  type="date"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+                />
+                <span className="text-muted-slate text-xs">to</span>
+                <input
+                  type="date"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+                />
+              </div>
+            )}
+            <button
+              onClick={handleManualRefresh}
+              disabled={refreshing || loading}
+              className="flex items-center gap-2 px-3 py-1.5 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh analytics data"
+            >
+              <span className={`material-symbols-outlined text-[20px] ${refreshing ? 'animate-spin' : ''}`}>sync</span>
+              <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
+          </div>
+          {/* Export Analytics ALTRX - botones horizontales justo debajo del periodo */}
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={async () => {
                 setExportingExcel(true);
@@ -458,10 +451,10 @@ export default function AnalyticsPage() {
                 finally { setExportingExcel(false); }
               }}
               disabled={exportingExcel}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-emerald-signal text-white rounded-lg font-medium text-sm hover:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-3 py-1.5 bg-emerald-signal text-white rounded-lg font-medium text-sm hover:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span className="material-symbols-outlined text-base">table_chart</span>
-              {exportingExcel ? 'Generating...' : 'Export Excel'}
+              <span className="material-symbols-outlined text-[18px]">table_chart</span>
+              {exportingExcel ? 'Generating...' : 'Export Analytics ALTRX Excel'}
             </button>
             <button
               onClick={async () => {
@@ -480,10 +473,10 @@ export default function AnalyticsPage() {
                 finally { setExportingPdf(false); }
               }}
               disabled={exportingPdf}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-deep-rose text-white rounded-lg font-medium text-sm hover:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-3 py-1.5 bg-deep-rose text-white rounded-lg font-medium text-sm hover:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span className="material-symbols-outlined text-base">picture_as_pdf</span>
-              {exportingPdf ? 'Generating...' : 'Export PDF'}
+              <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+              {exportingPdf ? 'Generating...' : 'Export Analytics ALTRX PDF'}
             </button>
           </div>
         </div>
@@ -750,12 +743,12 @@ export default function AnalyticsPage() {
             {loading ? (
               <div className="p-6 space-y-3 animate-pulse">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="h-10 bg-surface-container rounded" />
+                  <div key={i} className="h-12 bg-surface-container rounded" />
                 ))}
               </div>
             ) : sortedAgents.length > 0 ? (
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto scrollbar-thin">
-                <table className="w-full text-left text-sm border-collapse">
+                <table className="w-full text-left text-base border-collapse">
                   <thead className="text-xs uppercase tracking-wider text-secondary dark:text-gray-400 font-metadata-mono bg-surface-container-low dark:bg-gray-800 sticky top-0">
                     <tr>
                       {sortableTh('Agent', 'user')}
@@ -771,20 +764,20 @@ export default function AnalyticsPage() {
                   <tbody>
                     {sortedAgents.map((agent, i) => (
                       <tr key={i} className="border-b border-whisper-border dark:border-gray-700 hover:bg-surface-container-lowest dark:hover:bg-gray-800/50">
-                        <td className="p-3 text-primary dark:text-gray-200 font-medium whitespace-nowrap">{String(agent.Name ?? agent.User ?? '')}</td>
-                        <td className="p-3 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Calls_Handled ?? '0')}</td>
-                        <td className="p-3 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Sales_Made ?? '0')}</td>
-                        <td className="p-3 font-metadata-mono text-emerald-signal font-semibold whitespace-nowrap" title="Sales registered through the ALTRX Sales Form">
+                        <td className="px-4 py-3.5 text-primary dark:text-gray-200 font-medium whitespace-nowrap">{String(agent.Name ?? agent.User ?? '')}</td>
+                        <td className="px-4 py-3.5 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Calls_Handled ?? '0')}</td>
+                        <td className="px-4 py-3.5 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Sales_Made ?? '0')}</td>
+                        <td className="px-4 py-3.5 font-metadata-mono text-emerald-signal font-semibold whitespace-nowrap" title="Sales registered through the ALTRX Sales Form">
                           {String(agent.Form_Sales_Count ?? '0')}
                         </td>
-                        <td className="p-3 text-emerald-signal font-semibold whitespace-nowrap" title="Total revenue from sales registered through the ALTRX Sales Form">
+                        <td className="px-4 py-3.5 text-emerald-signal font-semibold whitespace-nowrap" title="Total revenue from sales registered through the ALTRX Sales Form">
                           {formatCurrency(Number(agent.Form_Sales_Amount ?? 0))}
                         </td>
-                        <td className="p-3 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Contacts ?? '0')}</td>
-                        <td className="p-3 font-metadata-mono font-medium text-primary dark:text-gray-200 whitespace-nowrap">
+                        <td className="px-4 py-3.5 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Contacts ?? '0')}</td>
+                        <td className="px-4 py-3.5 font-metadata-mono font-medium text-primary dark:text-gray-200 whitespace-nowrap">
                           {agent.Conversion_Percentage != null ? `${Number(agent.Conversion_Percentage).toFixed(1)}%` : '--'}
                         </td>
-                        <td className="p-3 font-metadata-mono text-secondary dark:text-gray-400 whitespace-nowrap">
+                        <td className="px-4 py-3.5 font-metadata-mono text-secondary dark:text-gray-400 whitespace-nowrap">
                           {agent.AHT ? formatDuration(parseInt(String(agent.AHT).split(':').reduce((acc, t) => acc * 60 + parseInt(t), 0).toString())) : '--:--'}
                         </td>
                       </tr>
