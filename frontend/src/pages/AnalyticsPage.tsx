@@ -359,7 +359,7 @@ export default function AnalyticsPage() {
 
   const sortableTh = (label: string, key: SortKey) => (
     <th
-      className="px-4 py-3 font-medium cursor-pointer select-none hover:text-primary dark:hover:text-white transition-colors whitespace-nowrap"
+      className="px-5 py-4 font-medium cursor-pointer select-none hover:text-primary dark:hover:text-white transition-colors whitespace-nowrap"
       onClick={() => handleSort(key)}
     >
       <div className="flex items-center gap-1">
@@ -743,13 +743,13 @@ export default function AnalyticsPage() {
             {loading ? (
               <div className="p-6 space-y-3 animate-pulse">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="h-12 bg-surface-container rounded" />
+                  <div key={i} className="h-14 bg-surface-container rounded" />
                 ))}
               </div>
             ) : sortedAgents.length > 0 ? (
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto scrollbar-thin">
-                <table className="w-full text-left text-base border-collapse">
-                  <thead className="text-xs uppercase tracking-wider text-secondary dark:text-gray-400 font-metadata-mono bg-surface-container-low dark:bg-gray-800 sticky top-0">
+                <table className="w-full text-left text-lg border-collapse">
+                  <thead className="text-sm uppercase tracking-wider text-secondary dark:text-gray-400 font-metadata-mono bg-surface-container-low dark:bg-gray-800 sticky top-0">
                     <tr>
                       {sortableTh('Agent', 'user')}
                       {sortableTh('Calls Handled', 'calls')}
@@ -764,20 +764,20 @@ export default function AnalyticsPage() {
                   <tbody>
                     {sortedAgents.map((agent, i) => (
                       <tr key={i} className="border-b border-whisper-border dark:border-gray-700 hover:bg-surface-container-lowest dark:hover:bg-gray-800/50">
-                        <td className="px-4 py-3.5 text-primary dark:text-gray-200 font-medium whitespace-nowrap">{String(agent.Name ?? agent.User ?? '')}</td>
-                        <td className="px-4 py-3.5 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Calls_Handled ?? '0')}</td>
-                        <td className="px-4 py-3.5 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Sales_Made ?? '0')}</td>
-                        <td className="px-4 py-3.5 font-metadata-mono text-emerald-signal font-semibold whitespace-nowrap" title="Sales registered through the ALTRX Sales Form">
+                        <td className="px-5 py-4 text-primary dark:text-gray-200 font-medium whitespace-nowrap">{String(agent.Name ?? agent.User ?? '')}</td>
+                        <td className="px-5 py-4 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Calls_Handled ?? '0')}</td>
+                        <td className="px-5 py-4 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Sales_Made ?? '0')}</td>
+                        <td className="px-5 py-4 font-metadata-mono text-emerald-signal font-semibold whitespace-nowrap" title="Sales registered through the ALTRX Sales Form">
                           {String(agent.Form_Sales_Count ?? '0')}
                         </td>
-                        <td className="px-4 py-3.5 text-emerald-signal font-semibold whitespace-nowrap" title="Total revenue from sales registered through the ALTRX Sales Form">
+                        <td className="px-5 py-4 text-emerald-signal font-semibold whitespace-nowrap" title="Total revenue from sales registered through the ALTRX Sales Form">
                           {formatCurrency(Number(agent.Form_Sales_Amount ?? 0))}
                         </td>
-                        <td className="px-4 py-3.5 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Contacts ?? '0')}</td>
-                        <td className="px-4 py-3.5 font-metadata-mono font-medium text-primary dark:text-gray-200 whitespace-nowrap">
+                        <td className="px-5 py-4 font-metadata-mono text-primary dark:text-gray-200 whitespace-nowrap">{String(agent.Contacts ?? '0')}</td>
+                        <td className="px-5 py-4 font-metadata-mono font-medium text-primary dark:text-gray-200 whitespace-nowrap">
                           {agent.Conversion_Percentage != null ? `${Number(agent.Conversion_Percentage).toFixed(1)}%` : '--'}
                         </td>
-                        <td className="px-4 py-3.5 font-metadata-mono text-secondary dark:text-gray-400 whitespace-nowrap">
+                        <td className="px-5 py-4 font-metadata-mono text-secondary dark:text-gray-400 whitespace-nowrap">
                           {agent.AHT ? formatDuration(parseInt(String(agent.AHT).split(':').reduce((acc, t) => acc * 60 + parseInt(t), 0).toString())) : '--:--'}
                         </td>
                       </tr>
