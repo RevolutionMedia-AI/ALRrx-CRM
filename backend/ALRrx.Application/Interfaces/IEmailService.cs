@@ -5,6 +5,11 @@ namespace ALRrx.Application.Interfaces;
 public interface IEmailService
 {
     Task<EmailResult> SendAccountPendingAsync(string toEmail, string toName, CancellationToken ct = default);
+    Task<EmailResult> SendAdminNewUserNotificationAsync(
+        string newUserEmail,
+        string newUserName,
+        string newUserId,
+        CancellationToken ct = default);
     Task<EmailResult> SendAccountApprovedAsync(string toEmail, string toName, string roleName, CancellationToken ct = default);
     Task<EmailResult> SendAccountRejectedAsync(string toEmail, string toName, string reason, CancellationToken ct = default);
     Task<EmailResult> SendAccountSuspendedAsync(string toEmail, string toName, string reason, CancellationToken ct = default);

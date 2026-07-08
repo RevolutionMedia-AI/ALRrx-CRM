@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>New user pending approval</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #060b18;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(22, 100, 220, 0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 90%, rgba(14, 60, 140, 0.12) 0%, transparent 70%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #e6ecf5;
+      line-height: 1.6;
+      padding: 40px 16px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: linear-gradient(180deg, #0e162a 0%, #0a1020 100%);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+    }
+
+    .header {
+      padding: 32px 32px 20px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .header img { width: 56px; height: 56px; margin-bottom: 12px; }
+    .header h1 { font-size: 22px; font-weight: 600; color: #f59e0b; letter-spacing: -0.01em; }
+    .header p  { font-size: 13px; color: #8b9bb4; margin-top: 4px; }
+
+    .body { padding: 32px; }
+    .body p { margin-bottom: 16px; font-size: 15px; color: #c5d0e0; }
+    .body strong { color: #f1f5fb; font-weight: 600; }
+
+    .alert-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .user-card {
+      background: rgba(22, 100, 220, 0.08);
+      border: 1px solid rgba(22, 100, 220, 0.2);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 24px 0;
+    }
+    .user-card .label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #93b3e0; margin-bottom: 4px; }
+    .user-card .value { font-size: 16px; color: #f1f5fb; font-weight: 500; word-break: break-all; }
+    .user-card .row + .row { margin-top: 12px; }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin: 28px 0 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      flex: 1 1 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      transition: transform 0.15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      box-shadow: 0 6px 20px -8px rgba(16, 185, 129, 0.6);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #c5d0e0;
+    }
+
+    .footer {
+      padding: 20px 32px 32px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      text-align: center;
+      font-size: 12px;
+      color: #5a6a85;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{LogoUrl}}" alt="ALRrx" />
+      <h1>New user needs review</h1>
+      <p>RevolutionMedia.ai — Admin notification</p>
+    </div>
+    <div class="body">
+      <p style="text-align:center;">
+        <span class="alert-badge">⚠ Action required</span>
+      </p>
+      <p>Hi Kevin,</p>
+      <p>A new user just signed in to ALRrx CRM with their <strong>@revolutionmedia.ai</strong> Google account and is waiting for you to assign role, platform access, and review permissions.</p>
+
+      <div class="user-card">
+        <div class="row">
+          <div class="label">User</div>
+          <div class="value">{{UserFullName}}</div>
+        </div>
+        <div class="row">
+          <div class="label">Email</div>
+          <div class="value">{{UserEmail}}</div>
+        </div>
+        <div class="row">
+          <div class="label">User ID</div>
+          <div class="value">#{{NewUserId}}</div>
+        </div>
+        <div class="row">
+          <div class="label">Signed in at</div>
+          <div class="value">{{SignedInAt}}</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a class="btn btn-primary" href="{{AdminPanelUrl}}">Open admin panel</a>
+        <a class="btn btn-secondary" href="{{UserAdminUrl}}">User details</a>
+      </div>
+
+      <p style="font-size: 13px; color: #8b9bb4;">Until you approve them, this user gets a 403 on every login and can only see the "pending approval" page.</p>
+    </div>
+    <div class="footer">
+      <p>Sent by ALRrx CRM — automated admin notification</p>
+    </div>
+  </div>
+</body>
+</html>

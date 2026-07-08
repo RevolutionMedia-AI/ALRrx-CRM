@@ -169,18 +169,30 @@ public sealed class AuthController : ControllerBase
                 IpAddress = ClientIp,
             }, ct);
 
-            // First-time signup: notify the user their account is pending review.
-            // Without this, a new user just gets a silent 403 "Account pending
-            // approval" with no idea what's going on or that the admin has been
-            // notified. Best-effort: a failure here does not block login.
+            // First-time signup: notify BOTH the user and the admin.
+            //  - User: "your account is pending review" so they know what
+            //    the 403 they're about to get means.
+            //  - Admin: "new user needs review" so the admin doesn't have to
+            //    poll the user list to know when someone is waiting. Without
+            //    this, new users sit in Pending until someone manually checks.
+            // Best-effort: a failure here does not block login.
             if (user.Status == UserStatus.Pending)
             {
-                var emailResult = await _email.SendAccountPendingAsync(user.Email, user.FullName, ct);
-                if (!emailResult.Sent)
+                var userEmailResult = await _email.SendAccountPendingAsync(user.Email, user.FullName, ct);
+                if (!userEmailResult.Sent)
                 {
                     _logger.LogWarning(
                         "[GoogleLogin] pending-account email failed for {Email}: {Error}",
-                        user.Email, emailResult.Error);
+                        user.Email, userEmailResult.Error);
+                }
+
+                var adminEmailResult = await _email.SendAdminNewUserNotificationAsync(
+                    user.Email, user.FullName, user.Id.ToString(), ct);
+                if (!adminEmailResult.Sent)
+                {
+                    _logger.LogWarning(
+                        "[GoogleLogin] admin-new-user email failed for {Email}: {Error}",
+                        user.Email, adminEmailResult.Error);
                 }
             }
         }

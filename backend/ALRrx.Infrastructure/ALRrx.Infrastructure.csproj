@@ -10,6 +10,7 @@
     <EmbeddedResource Include="Templates\account-rejected.html" />
     <EmbeddedResource Include="Templates\account-suspended.html" />
     <EmbeddedResource Include="Templates\account-pending.html" />
+    <EmbeddedResource Include="Templates\admin-new-user.html" />
   </ItemGroup>
 
   <ItemGroup>

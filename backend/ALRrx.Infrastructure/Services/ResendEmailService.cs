@@ -19,6 +19,8 @@ public sealed class ResendEmailService : IEmailService
     private readonly string _apiKey;
     private readonly string _loginUrl;
     private readonly string _logoUrl;
+    private readonly string _adminEmail;
+    private readonly string _adminPanelUrl;
     private readonly bool _enabled;
 
     // All four transactional templates are loaded once at startup from
@@ -36,6 +38,8 @@ public sealed class ResendEmailService : IEmailService
         _fromName = config["Resend:FromName"] ?? "RevolutionMedia.ai";
         _loginUrl = config["Resend:LoginUrl"] ?? "https://alrrx.ai/login";
         _logoUrl = config["Resend:LogoUrl"] ?? "https://alrrx.ai/logo.png";
+        _adminEmail = config["Resend:AdminEmail"] ?? "kevin.escalante@revolutionmedia.ai";
+        _adminPanelUrl = config["Resend:AdminPanelUrl"] ?? "https://reports.revolutionmedia.ai/usuarios";
         _enabled = !string.IsNullOrEmpty(_apiKey);
 
         if (_enabled)
@@ -95,12 +99,13 @@ public sealed class ResendEmailService : IEmailService
         string templateKey,
         string subject,
         IReadOnlyDictionary<string, string?> values,
-        string fallbackBody)
+        string fallbackBody,
+        string? overrideToEmail = null)
     {
         if (!_templates.TryGetValue(templateKey, out var template))
         {
             _logger.LogWarning("[Resend] template '{Key}' not found — using plain-text fallback", templateKey);
-            return SendAsync(values["UserEmail"] ?? "", values["UserFullName"] ?? "", subject, fallbackBody, default);
+            return SendAsync(overrideToEmail ?? values["UserEmail"] ?? "", values["UserFullName"] ?? "", subject, fallbackBody, default);
         }
 
         var body = Regex.Replace(template, @"\{\{(\w+)\}\}", match =>
@@ -109,7 +114,7 @@ public sealed class ResendEmailService : IEmailService
             return values.TryGetValue(key, out var v) ? HtmlEncode(v ?? string.Empty) : match.Value;
         });
 
-        return SendAsync(values["UserEmail"] ?? "", values["UserFullName"] ?? "", subject, body, default);
+        return SendAsync(overrideToEmail ?? values["UserEmail"] ?? "", values["UserFullName"] ?? "", subject, body, default);
     }
 
     public Task<EmailResult> SendAccountApprovedAsync(string toEmail, string toName, string roleName, CancellationToken ct = default)
@@ -139,6 +144,34 @@ public sealed class ResendEmailService : IEmailService
             $"<p>Hello {HtmlEncode(toName)},</p>" +
             $"<p>Your account on RevolutionMedia.ai has been created and is <strong>pending administrator approval</strong>.</p>" +
             $"<p>An administrator will review your request and send you another email when a decision is made.</p>");
+
+    public Task<EmailResult> SendAdminNewUserNotificationAsync(
+        string newUserEmail,
+        string newUserName,
+        string newUserId,
+        CancellationToken ct = default)
+    {
+        var userAdminUrl = $"{_adminPanelUrl}/{newUserId}";
+        return RenderOrFallback("admin-new-user",
+            $"New user waiting for review: {newUserEmail}",
+            new Dictionary<string, string?>
+            {
+                ["UserEmail"]      = newUserEmail,
+                ["UserFullName"]   = newUserName,
+                ["NewUserId"]      = newUserId,
+                ["SignedInAt"]     = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") + " UTC",
+                ["AdminPanelUrl"]  = _adminPanelUrl,
+                ["UserAdminUrl"]   = userAdminUrl,
+                ["LogoUrl"]        = _logoUrl,
+            },
+            $"<p>A new user signed in to ALRrx CRM:</p>" +
+            $"<ul><li><strong>Name:</strong> {HtmlEncode(newUserName)}</li>" +
+            $"<li><strong>Email:</strong> {HtmlEncode(newUserEmail)}</li>" +
+            $"<li><strong>ID:</strong> #{HtmlEncode(newUserId)}</li></ul>" +
+            $"<p>Open the admin panel to assign role and platform access: " +
+            $"<a href=\"{_adminPanelUrl}\">{_adminPanelUrl}</a></p>",
+            overrideToEmail: _adminEmail);
+    }
 
     public Task<EmailResult> SendAccountRejectedAsync(string toEmail, string toName, string reason, CancellationToken ct = default)
         => RenderOrFallback("account-rejected",
