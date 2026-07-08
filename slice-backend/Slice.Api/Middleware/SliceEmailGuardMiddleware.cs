@@ -1,41 +1,34 @@
 using System.Security.Claims;
+using Slice.Api.Auth;
 
 namespace Slice.Api.Middleware;
 
 /// <summary>
 /// Rejects authenticated requests from emails not in the Slice allowlist.
 /// Applied after the authentication middleware so the email claim is already populated.
-/// The allowlist is cached at construction time (middleware instances are singletons in ASP.NET Core).
+/// Uses the shared EmailAllowList singleton (also used by AuthController), so the
+/// allowlist can be mutated at runtime via the InternalController without restarting.
 /// </summary>
 public sealed class SliceEmailGuardMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly HashSet<string> _allowedEmails;
-    private readonly HashSet<string> _allowedDomains;
+    private readonly EmailAllowList _allowList;
 
-    public SliceEmailGuardMiddleware(RequestDelegate next, IConfiguration config)
+    public SliceEmailGuardMiddleware(RequestDelegate next, EmailAllowList allowList)
     {
         _next = next;
-        _allowedEmails  = new HashSet<string>(
-            config.GetSection("Slice:AllowedEmails").Get<string[]>() ?? [],
-            StringComparer.OrdinalIgnoreCase);
-        _allowedDomains = new HashSet<string>(
-            config.GetSection("Slice:AllowedDomains").Get<string[]>() ?? [],
-            StringComparer.OrdinalIgnoreCase);
+        _allowList = allowList;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
-            var email  = context.User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
-            var domain = email.Contains('@') ? email.Split('@')[1] : string.Empty;
+            var email = context.User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
 
-            bool isAllowed = _allowedEmails.Contains(email) || _allowedDomains.Contains(domain);
-
-            if (!isAllowed)
+            if (!_allowList.IsAllowed(email))
             {
-                context.Response.StatusCode  = 403;
+                context.Response.StatusCode = 403;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsync("{\"error\":\"Access restricted to authorized Slice accounts.\"}");
                 return;

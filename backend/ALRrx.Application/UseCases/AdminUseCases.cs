@@ -526,12 +526,18 @@ public sealed class SetUserPlatformAccessUseCase
     private readonly IUserRepository _users;
     private readonly IAuditLogRepository _audit;
     private readonly IRevokedUserStore _revoked;
+    private readonly ALRrx.Application.Interfaces.ISliceInternalClient _slice;
 
-    public SetUserPlatformAccessUseCase(IUserRepository users, IAuditLogRepository audit, IRevokedUserStore revoked)
+    public SetUserPlatformAccessUseCase(
+        IUserRepository users,
+        IAuditLogRepository audit,
+        IRevokedUserStore revoked,
+        ALRrx.Application.Interfaces.ISliceInternalClient slice)
     {
         _users = users;
         _audit = audit;
         _revoked = revoked;
+        _slice = slice;
     }
 
     public async Task<AdminActionResultDto> ExecuteAsync(int userId, string platformAccess, int performedBy, string? ip, CancellationToken ct = default)
@@ -547,6 +553,22 @@ public sealed class SetUserPlatformAccessUseCase
         if (oldAccess == access) return ToResult(user);
 
         await _users.SetPlatformAccessAsync(userId, access, performedBy, ct);
+
+        // Keep the Slice allow list in sync with the admin panel. Without this,
+        // granting Slice access from the admin panel would still leave the
+        // user blocked by Slice's AllowedEmails config and the admin would
+        // have to manually edit appsettings.json. Best-effort: a failure to
+        // reach the Slice internal API does not abort the access change.
+        var hadSlice = oldAccess is PlatformAccess.Slice or PlatformAccess.Both;
+        var hasSlice = access is PlatformAccess.Slice or PlatformAccess.Both;
+        if (!hasSlice && hadSlice)
+        {
+            await _slice.RemoveAllowedEmailAsync(user.Email, ct);
+        }
+        else if (hasSlice && !hadSlice)
+        {
+            await _slice.AddAllowedEmailAsync(user.Email, ct);
+        }
 
         // Revoke the user's existing token so they re-login with the new access.
         // BUG-008 immediate revocation � necessary because the platform picker

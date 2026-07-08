@@ -37,6 +37,7 @@ public static class InfrastructureServiceRegistration
         services.AddSingleton<IVicidialSalesRepository, VicidialSalesRepository>();
         services.AddSingleton<IActiveAgentsRepository, ActiveAgentsRepository>();
         services.AddSingleton<IVicidialLeadRepository, VicidialLeadRepository>();
+        services.AddHttpClient<ISliceInternalClient, ALRrx.Infrastructure.Slice.SliceInternalClient>();
 
         services.AddSingleton<IReportExportService, ExcelExportService>();
         services.AddSingleton<IReportExportService, CsvExportService>();

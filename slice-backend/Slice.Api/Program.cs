@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 using Slice.Application.DependencyInjection;
+using Slice.Api.Auth;
 using Slice.Api.Middleware;
 using Slice.Infrastructure.Auth;
 using Slice.Infrastructure.DependencyInjection;
@@ -101,6 +102,11 @@ builder.Services.AddSingleton<JwtKeyCache>();
 var bootstrapMetrics = new SlicePerformanceMetrics();
 var bootstrapKeyCache = new JwtKeyCache(bootstrapMetrics);
 builder.Services.AddSingleton(_ => bootstrapKeyCache.GetValidationParameters(jwtKey, jwtIssuer, jwtAudience));
+
+// Shared mutable allow list used by the email-guard middleware and the
+// auth controller. Pre-populated from Slice:AllowedEmails/Domains config
+// by the AuthController constructor.
+builder.Services.AddSingleton<EmailAllowList>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

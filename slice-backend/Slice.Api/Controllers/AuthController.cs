@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Slice.Api.Auth;
 using Slice.Application.DTOs;
 using Slice.Application.Interfaces;
 using Slice.Domain.Entities;
@@ -24,9 +25,8 @@ public sealed class AuthController : ControllerBase
     private readonly IValidator<RegisterRequest> _registerValidator;
     private readonly ILogger<AuthController> _logger;
 
-    // Cached at construction time to avoid re-parsing config on every request.
-    private readonly HashSet<string> _allowedEmails;
-    private readonly HashSet<string> _allowedDomains;
+    // Shared with SliceEmailGuardMiddleware so both check the same mutable list.
+    private readonly EmailAllowList _allowList;
     private readonly UserConfig[] _userConfigs;
 
     public AuthController(
@@ -34,6 +34,7 @@ public sealed class AuthController : ControllerBase
         IUserRepository users,
         IHttpClientFactory httpClientFactory,
         IConfiguration config,
+        EmailAllowList allowList,
         IValidator<LoginRequest> loginValidator,
         IValidator<RegisterRequest> registerValidator,
         ILogger<AuthController> logger)
@@ -41,16 +42,17 @@ public sealed class AuthController : ControllerBase
         _auth = auth;
         _users = users;
         _httpClientFactory = httpClientFactory;
+        _allowList = allowList;
         _loginValidator = loginValidator;
         _registerValidator = registerValidator;
         _logger = logger;
 
-        _allowedEmails = new HashSet<string>(
-            config.GetSection("Slice:AllowedEmails").Get<string[]>() ?? [],
-            StringComparer.OrdinalIgnoreCase);
-        _allowedDomains = new HashSet<string>(
-            config.GetSection("Slice:AllowedDomains").Get<string[]>() ?? [],
-            StringComparer.OrdinalIgnoreCase);
+        // Seed the shared allow list from config (only on first construction;
+        // subsequent re-registrations are no-ops since the dict already has them).
+        _allowList.LoadFromConfig(
+            config.GetSection("Slice:AllowedEmails").Get<string[]>(),
+            config.GetSection("Slice:AllowedDomains").Get<string[]>());
+
         _userConfigs = config.GetSection("Slice:Users").Get<UserConfig[]>() ?? [];
     }
 
@@ -184,12 +186,7 @@ public sealed class AuthController : ControllerBase
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    private bool IsEmailAllowed(string email)
-    {
-        if (_allowedEmails.Contains(email)) return true;
-        var domain = email.Contains('@') ? email.Split('@')[1] : string.Empty;
-        return _allowedDomains.Contains(domain);
-    }
+    private bool IsEmailAllowed(string email) => _allowList.IsAllowed(email);
 
     private string ResolveRole(string email)
     {

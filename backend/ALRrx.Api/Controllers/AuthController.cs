@@ -20,6 +20,7 @@ public sealed class AuthController : ControllerBase
     private readonly IAuditLogRepository _audit;
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
+    private readonly ALRrx.Application.Interfaces.IRevokedUserStore _revoked;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
@@ -29,6 +30,7 @@ public sealed class AuthController : ControllerBase
         IAuditLogRepository audit,
         IConfiguration config,
         IWebHostEnvironment env,
+        ALRrx.Application.Interfaces.IRevokedUserStore revoked,
         ILogger<AuthController> logger)
     {
         _users = users;
@@ -37,6 +39,7 @@ public sealed class AuthController : ControllerBase
         _audit = audit;
         _config = config;
         _env = env;
+        _revoked = revoked;
         _logger = logger;
     }
 
@@ -165,6 +168,18 @@ public sealed class AuthController : ControllerBase
         }
 
         var token = _auth.GenerateToken(user);
+
+        // BUG-FIX: clear any previous token revocation on a fresh login.
+        // SetUserPlatformAccessUseCase revokes the user's token when their
+        // platform access changes, but until the user re-logs in the
+        // InMemoryRevokedUserStore still flags them as revoked — so every
+        // request returned 401 even with a brand-new JWT. Clearing the
+        // revocation here makes any successful re-login actually work.
+        if (_revoked.IsRevoked(user.Id))
+        {
+            _revoked.Clear(user.Id);
+            _logger.LogInformation("Cleared token revocation for user {Email} on fresh login", user.Email);
+        }
 
         return Ok(new LoginResponse
         {
