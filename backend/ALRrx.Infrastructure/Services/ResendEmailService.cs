@@ -127,6 +127,19 @@ public sealed class ResendEmailService : IEmailService
             $"<p>Your account on RevolutionMedia.ai has been approved with the role <strong>{HtmlEncode(roleName)}</strong>.</p>" +
             $"<p>Sign in here: <a href=\"{_loginUrl}\">{_loginUrl}</a></p>");
 
+    public Task<EmailResult> SendAccountPendingAsync(string toEmail, string toName, CancellationToken ct = default)
+        => RenderOrFallback("account-pending",
+            "Your account is pending approval — RevolutionMedia.ai",
+            new Dictionary<string, string?>
+            {
+                ["UserEmail"]    = toEmail,
+                ["UserFullName"] = toName,
+                ["LogoUrl"]      = _logoUrl,
+            },
+            $"<p>Hello {HtmlEncode(toName)},</p>" +
+            $"<p>Your account on RevolutionMedia.ai has been created and is <strong>pending administrator approval</strong>.</p>" +
+            $"<p>An administrator will review your request and send you another email when a decision is made.</p>");
+
     public Task<EmailResult> SendAccountRejectedAsync(string toEmail, string toName, string reason, CancellationToken ct = default)
         => RenderOrFallback("account-rejected",
             "Your account application has been rejected — RevolutionMedia.ai",

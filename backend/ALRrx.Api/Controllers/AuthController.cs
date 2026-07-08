@@ -18,6 +18,7 @@ public sealed class AuthController : ControllerBase
     private readonly IRoleRepository _roles;
     private readonly IAuthService _auth;
     private readonly IAuditLogRepository _audit;
+    private readonly IEmailService _email;
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
     private readonly ALRrx.Application.Interfaces.IRevokedUserStore _revoked;
@@ -28,6 +29,7 @@ public sealed class AuthController : ControllerBase
         IRoleRepository roles,
         IAuthService auth,
         IAuditLogRepository audit,
+        IEmailService email,
         IConfiguration config,
         IWebHostEnvironment env,
         ALRrx.Application.Interfaces.IRevokedUserStore revoked,
@@ -37,6 +39,7 @@ public sealed class AuthController : ControllerBase
         _roles = roles;
         _auth = auth;
         _audit = audit;
+        _email = email;
         _config = config;
         _env = env;
         _revoked = revoked;
@@ -165,6 +168,21 @@ public sealed class AuthController : ControllerBase
                 Action = "Login",
                 IpAddress = ClientIp,
             }, ct);
+
+            // First-time signup: notify the user their account is pending review.
+            // Without this, a new user just gets a silent 403 "Account pending
+            // approval" with no idea what's going on or that the admin has been
+            // notified. Best-effort: a failure here does not block login.
+            if (user.Status == UserStatus.Pending)
+            {
+                var emailResult = await _email.SendAccountPendingAsync(user.Email, user.FullName, ct);
+                if (!emailResult.Sent)
+                {
+                    _logger.LogWarning(
+                        "[GoogleLogin] pending-account email failed for {Email}: {Error}",
+                        user.Email, emailResult.Error);
+                }
+            }
         }
 
         var token = _auth.GenerateToken(user);

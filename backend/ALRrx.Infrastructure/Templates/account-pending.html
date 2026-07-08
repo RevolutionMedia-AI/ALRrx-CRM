@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Your account is pending approval</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #060b18;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(22, 100, 220, 0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 90%, rgba(14, 60, 140, 0.12) 0%, transparent 70%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #e6ecf5;
+      line-height: 1.6;
+      padding: 40px 16px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      background: linear-gradient(180deg, #0e162a 0%, #0a1020 100%);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+    }
+
+    .header {
+      padding: 32px 32px 20px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .header img { width: 56px; height: 56px; margin-bottom: 12px; }
+    .header h1 { font-size: 22px; font-weight: 600; color: #fbbf24; letter-spacing: -0.01em; }
+    .header p  { font-size: 13px; color: #8b9bb4; margin-top: 4px; }
+
+    .body { padding: 32px; }
+    .body p { margin-bottom: 16px; font-size: 15px; color: #c5d0e0; }
+    .body strong { color: #fbbf24; font-weight: 600; }
+    .body .role { color: #fde68a; font-weight: 600; }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(251, 191, 36, 0.12);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: #fde68a;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .info-box {
+      background: rgba(22, 100, 220, 0.08);
+      border: 1px solid rgba(22, 100, 220, 0.2);
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin: 24px 0;
+    }
+    .info-box p { margin: 0; font-size: 13px; color: #93b3e0; }
+
+    .footer {
+      padding: 20px 32px 32px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      text-align: center;
+      font-size: 12px;
+      color: #5a6a85;
+    }
+    .footer a { color: #8b9bb4; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{LogoUrl}}" alt="ALRrx" />
+      <h1>Your account is pending approval</h1>
+      <p>RevolutionMedia.ai — ALRrx CRM</p>
+    </div>
+    <div class="body">
+      <p style="text-align:center;">
+        <span class="status-badge">⏳ Pending review</span>
+      </p>
+      <p>Hi <strong>{{UserFullName}}</strong>,</p>
+      <p>Thanks for signing in to ALRrx CRM with your <span class="role">@revolutionmedia.ai</span> Google account. Your account has been created successfully and is now <strong>pending administrator approval</strong>.</p>
+
+      <div class="info-box">
+        <p><strong>What happens next:</strong> An administrator will review your request and either grant or decline access. You will receive another email as soon as a decision is made — no need to do anything else for now.</p>
+      </div>
+
+      <p>If you don't hear back within a reasonable time, or if you believe this email was sent in error, please contact <a href="mailto:kevin.escalante@revolutionmedia.ai" style="color:#93b3e0;">kevin.escalante@revolutionmedia.ai</a>.</p>
+    </div>
+    <div class="footer">
+      <p>Sent by RevolutionMedia.ai — ALRrx CRM</p>
+      <p>This is a transactional notification. You cannot reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
