@@ -383,27 +383,37 @@ function PodiumColumn({ agent, rank, tone, heightClass }: {
   tone: 'gold' | 'silver' | 'bronze';
   heightClass: string;
 }) {
-  const tones: Record<typeof tone, { medalBg: string; medalBorder: string; medalText: string; blockBorder: string; accent: string }> = {
+  const tones: Record<typeof tone, {
+    medalBg: string;
+    medalBorder: string;
+    medalText: string;
+    blockBorder: string;
+    blockTint: string;
+    accent: string;
+  }> = {
     gold: {
-      medalBg: 'bg-amber-warmth/20',
+      medalBg: 'bg-amber-warmth/15',
       medalBorder: 'border-amber-warmth',
       medalText: 'text-amber-warmth',
-      blockBorder: 'border-amber-warmth',
+      blockBorder: 'border-amber-warmth/40',
+      blockTint: 'bg-amber-warmth/[0.04] dark:bg-amber-warmth/[0.06]',
       accent: 'text-amber-warmth',
     },
     silver: {
-      medalBg: 'bg-cyan-500/15 dark:bg-cyan-500/20',
-      medalBorder: 'border-cyan-500',
-      medalText: 'text-cyan-600 dark:text-cyan-400',
-      blockBorder: 'border-cyan-500',
-      accent: 'text-cyan-600 dark:text-cyan-400',
+      medalBg: 'bg-zinc-300/40 dark:bg-zinc-700/50',
+      medalBorder: 'border-zinc-400 dark:border-zinc-500',
+      medalText: 'text-zinc-700 dark:text-zinc-200',
+      blockBorder: 'border-whisper-border dark:border-gray-700',
+      blockTint: '',
+      accent: 'text-zinc-700 dark:text-zinc-200',
     },
     bronze: {
-      medalBg: 'bg-orange-600/15 dark:bg-orange-600/20',
-      medalBorder: 'border-orange-600',
-      medalText: 'text-orange-700 dark:text-orange-400',
-      blockBorder: 'border-orange-600',
-      accent: 'text-orange-700 dark:text-orange-400',
+      medalBg: 'bg-zinc-300/30 dark:bg-zinc-700/40',
+      medalBorder: 'border-zinc-400 dark:border-zinc-500',
+      medalText: 'text-zinc-700 dark:text-zinc-200',
+      blockBorder: 'border-whisper-border dark:border-gray-700',
+      blockTint: '',
+      accent: 'text-zinc-700 dark:text-zinc-200',
     },
   };
   const t = tones[tone];
@@ -417,7 +427,7 @@ function PodiumColumn({ agent, rank, tone, heightClass }: {
       <div className={`inline-flex items-center justify-center w-14 h-14 rounded-full border-2 ${t.medalBg} ${t.medalBorder} ${t.medalText} font-headline-lg font-bold text-2xl shadow-card`}>
         {rank}
       </div>
-      <div className={`w-full ${heightClass} rounded-xl border-2 ${t.blockBorder} flex flex-col items-center justify-center p-4 text-center shadow-card bg-surface-container-lowest dark:bg-gray-800/50`}>
+      <div className={`w-full ${heightClass} rounded-xl border-2 ${t.blockBorder} ${t.blockTint} flex flex-col items-center justify-center p-4 text-center shadow-card bg-pure-surface dark:bg-gray-900`}>
         <span className={`font-metadata-mono text-[10px] uppercase tracking-wider font-bold ${t.accent}`}>
           #{rank}
         </span>
@@ -444,9 +454,9 @@ function PodiumColumn({ agent, rank, tone, heightClass }: {
 
 function RankBadge({ rank }: { rank: number }) {
   const styles: Record<number, string> = {
-    1: 'bg-amber-warmth/20 text-amber-warmth border-amber-warmth/40',
-    2: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
-    3: 'bg-orange-600/15 text-orange-700 dark:text-orange-400 border-orange-600/30',
+    1: 'bg-amber-warmth/15 text-amber-warmth border-amber-warmth/40',
+    2: 'bg-zinc-300/40 dark:bg-zinc-700/50 text-zinc-700 dark:text-zinc-200 border-zinc-400 dark:border-zinc-500',
+    3: 'bg-zinc-300/30 dark:bg-zinc-700/40 text-zinc-700 dark:text-zinc-200 border-zinc-400 dark:border-zinc-500',
   };
   const cls = styles[rank] ?? 'bg-surface-container text-secondary border-whisper-border';
   return (
@@ -486,8 +496,6 @@ function Ticker({ sales }: { sales: VicidialSaleDto[] }) {
             ))}
           </div>
         </div>
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-pure-surface dark:from-gray-900 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-pure-surface dark:from-gray-900 to-transparent" />
       </div>
       <style>{`
         @keyframes ticker-scroll {
