@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using ALRrx.Api.HostedServices;
 using ALRrx.Api.Hubs;
 using ALRrx.Api.Middleware;
+using ALRrx.Api.Realtime;
 using ALRrx.Application.DependencyInjection;
 using ALRrx.Application.Interfaces;
 using ALRrx.Domain.ValueObjects;
@@ -217,6 +218,7 @@ builder.Services.AddInfrastructure(connectionConfig, crmConnectionConfig);
 builder.Services.AddApplication();
 
 builder.Services.AddSingleton<IAuthService, ALRrx.Infrastructure.Auth.AuthService>();
+builder.Services.AddSingleton<ISalesBroadcastService, SignalRSalesBroadcastService>();
 builder.Services.AddHostedService<DatabaseSeedHostedService>();
 builder.Services.AddScoped<ALRrx.Application.Interfaces.ITwilioService, ALRrx.Infrastructure.Twilio.TwilioService>();
 

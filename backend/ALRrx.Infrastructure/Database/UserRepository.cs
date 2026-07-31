@@ -45,6 +45,7 @@ public sealed class UserRepository : IUserRepository
                 ('Supervisor',     'Team management + can edit data', 1),
                 ('Employee',       'Read-only basic access',          1),
                 ('VicidialEditor', 'Can edit Vicidial sales entries', 1),
+                ('Television',     'TV display — sales leaderboard only', 1),
                 ('Pending',        'Awaiting access grant — 0 perms', 1)
             ON DUPLICATE KEY UPDATE Description = VALUES(Description)
             """, ct);
@@ -77,7 +78,8 @@ public sealed class UserRepository : IUserRepository
                 ('vicidial.edit',           'Edit Vicidial sales',                  'vicidial'),
                 ('period-comparison.run',   'Run period comparison exports',        'reports'),
                 ('data.edit',               'Edit CRM data rows',                   'data'),
-                ('data.delete',             'Delete CRM data rows',                 'data')
+                ('data.delete',             'Delete CRM data rows',                 'data'),
+                ('tv.view',                 'View the TV sales leaderboard',        'tv')
             ON DUPLICATE KEY UPDATE Description = VALUES(Description), Module = VALUES(Module)
             """, ct);
 
@@ -131,6 +133,15 @@ public sealed class UserRepository : IUserRepository
             FROM alrrx_roles r
             JOIN alrrx_permissions p ON p.KeyName IN ('vicidial.view', 'vicidial.edit')
             WHERE r.Name = 'VicidialEditor'
+            """, ct);
+
+        // Television: TV leaderboard only — nothing else.
+        await ExecAsync(connection, """
+            INSERT IGNORE INTO alrrx_role_permissions (RoleId, PermissionId)
+            SELECT r.Id, p.Id
+            FROM alrrx_roles r
+            JOIN alrrx_permissions p ON p.KeyName = 'tv.view'
+            WHERE r.Name = 'Television'
             """, ct);
 
         // ============================================================================

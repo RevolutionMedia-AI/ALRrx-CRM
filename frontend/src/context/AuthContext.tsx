@@ -48,6 +48,11 @@ function targetRouteFor(user: UserInfo): string {
 }
 
 function routeForActiveUser(user: UserInfo): string {
+  // Television-only users (have tv.view but no dashboard.view) get sent straight
+  // to the TV leaderboard. Admins retain access to the dashboard regardless.
+  if (user.permissions?.includes('tv.view') && !user.permissions.includes('dashboard.view')) {
+    return '/tv';
+  }
   // BUG-1 fix: Active users with Slice or Both access must NOT be sent to '/'
   // (ALTRX dashboard). Respect their platformAccess to land them on the
   // correct platform, and send dual-platform users to the picker.

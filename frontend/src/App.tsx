@@ -26,6 +26,7 @@ import SlicePodOverviewPage from './slice/pages/SlicePodOverviewPage';
 import SliceHistoryAuditPage from './slice/pages/SliceHistoryAuditPage';
 import SliceReportsPeriodPage from './slice/pages/SliceReportsPeriodPage';
 import SliceLayout from './slice/components/SliceLayout';
+import TelevisionPage from './pages/TelevisionPage';
 import { useState, useEffect, type ReactNode } from 'react';
 
 function LoadingScreen() {
@@ -40,7 +41,7 @@ function LoadingScreen() {
 }
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, has } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.status === 'Pending') return <Navigate to="/pending-approval" replace />;
@@ -50,6 +51,13 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   // be allowed in just because their status is Active.
   if (user.platformAccess !== 'Altrx' && user.platformAccess !== 'Both') {
     return <Navigate to="/select-platform" replace />;
+  }
+  // TV-only users (no dashboard.view) get sent to /tv even if their
+  // PlatformAccess happens to include Altrx. This keeps Television as a
+  // truly exclusive profile — admins can still grant dashboard.view
+  // alongside tv.view to give a user both surfaces.
+  if (has('tv.view') && !has('dashboard.view')) {
+    return <Navigate to="/tv" replace />;
   }
   return <AppLayout>{children}</AppLayout>;
 }
@@ -62,6 +70,15 @@ function AdminRoute({ children }: { children: ReactNode }) {
   if (user.status === 'Suspended' || user.status === 'Rejected') return <Navigate to="/access-denied" replace />;
   if (user.role !== 'Admin') return <Navigate to="/dashboard" replace />;
   return <AdminLayout>{children}</AdminLayout>;
+}
+
+function TelevisionRoute({ children }: { children: ReactNode }) {
+  const { user, loading, has } = useAuth();
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.status !== 'Active') return <Navigate to="/access-denied" replace />;
+  if (!has('tv.view')) return <Navigate to="/access-denied" replace />;
+  return <>{children}</>;
 }
 
 function SliceProtectedRoute({ children }: { children: ReactNode }) {
@@ -298,6 +315,14 @@ function AppRoutes() {
           <AdminRoute>
             <TwilioCostsPage />
           </AdminRoute>
+        }
+      />
+      <Route
+        path="/tv"
+        element={
+          <TelevisionRoute>
+            <TelevisionPage />
+          </TelevisionRoute>
         }
       />
       <Route

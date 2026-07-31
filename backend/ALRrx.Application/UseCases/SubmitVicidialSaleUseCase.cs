@@ -8,11 +8,16 @@ public sealed class SubmitVicidialSaleUseCase
 {
     private readonly IVicidialSalesRepository _repo;
     private readonly ILogger<SubmitVicidialSaleUseCase> _logger;
+    private readonly ISalesBroadcastService? _broadcast;
 
-    public SubmitVicidialSaleUseCase(IVicidialSalesRepository repo, ILogger<SubmitVicidialSaleUseCase> logger)
+    public SubmitVicidialSaleUseCase(
+        IVicidialSalesRepository repo,
+        ILogger<SubmitVicidialSaleUseCase> logger,
+        ISalesBroadcastService? broadcast = null)
     {
         _repo = repo;
         _logger = logger;
+        _broadcast = broadcast;
     }
 
     public async Task<int> ExecuteAsync(VicidialSaleRequest request, CancellationToken ct = default)
@@ -43,6 +48,41 @@ public sealed class SubmitVicidialSaleUseCase
         var source = request.LeadId.HasValue ? "VicidialForm" : "ManualForm";
         _logger.LogInformation("Vicidial sale #{Id} submitted: leadId={LeadId}, rep={Rep}, bundle={Bundle}, ${Amount}, source={Source}",
             newId, request.LeadId, request.SalesRep, bundleDisplayName, request.Amount, source);
+
+        // Notify TV clients so the leaderboard updates live. Best-effort —
+        // a SignalR outage must not block the sale submission.
+        if (_broadcast is not null)
+        {
+            try
+            {
+                var range = VicidialDayRange.BuildToday();
+                var todaysCount = await GetTodaysCountForRepAsync(request.SalesRep, range.From, range.To, ct);
+                await _broadcast.NotifyTvSaleAsync(request.SalesRep, todaysCount, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "TV broadcast failed for sale #{Id}", newId);
+            }
+        }
+
         return newId;
+    }
+
+    private async Task<int> GetTodaysCountForRepAsync(string salesRep, string from, string to, CancellationToken ct)
+    {
+        var rows = await _repo.GetFormSalesByAgentAsync(from, to, ct);
+        return rows.TryGetValue(salesRep, out var row) ? row.Count : 0;
+    }
+}
+
+internal static class VicidialDayRange
+{
+    public static (string From, string To) BuildToday()
+    {
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("America/Tijuana");
+        var local = TimeZoneInfo.ConvertTime(DateTime.UtcNow, tz);
+        var start = new DateTime(local.Year, local.Month, local.Day, 0, 0, 0);
+        var end = start.AddDays(1);
+        return (start.ToString("yyyy-MM-dd HH:mm:ss"), end.ToString("yyyy-MM-dd HH:mm:ss"));
     }
 }
