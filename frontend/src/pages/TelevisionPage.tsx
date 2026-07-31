@@ -93,7 +93,7 @@ export default function TelevisionPage() {
       setLastUpdated(new Date().toLocaleTimeString());
       setError(null);
     } catch {
-      setError('Error al cargar el leaderboard de ventas');
+      setError('Failed to load sales leaderboard');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -141,7 +141,7 @@ export default function TelevisionPage() {
     if (recentSales.length === 0) return null;
     const counts = new Map<string, { count: number; revenue: number }>();
     for (const s of recentSales) {
-      const key = s.bundle || 'Sin bundle';
+      const key = s.bundle || 'No bundle';
       const prev = counts.get(key) ?? { count: 0, revenue: 0 };
       counts.set(key, { count: prev.count + 1, revenue: prev.revenue + Number(s.amount) });
     }
@@ -159,40 +159,37 @@ export default function TelevisionPage() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center bg-canvas-white dark:bg-gray-950">
         <div className="max-w-md text-center">
-          <p className={`${BODY}`}>No tienes acceso a esta vista.</p>
+          <p className={`${BODY}`}>You don't have access to this view.</p>
         </div>
       </div>
     );
   }
 
-  const periodBtn = (p: Period) => {
-    const labels: Record<Period, string> = { Today: 'Hoy', Week: 'Semana', Month: 'Mes', Custom: 'Personalizado' };
-    return (
-      <button
-        key={p}
-        onClick={() => setPeriod(p)}
-        className={`px-4 py-1.5 text-sm border-r border-whisper-border dark:border-gray-700 last:border-r-0 ${TITLE} ${
-          period === p
-            ? 'bg-pure-surface dark:bg-gray-800'
-            : 'hover:bg-surface-container transition-colors'
-        }`}
-      >
-        {labels[p]}
-      </button>
-    );
-  };
+  const periodBtn = (p: Period) => (
+    <button
+      key={p}
+      onClick={() => setPeriod(p)}
+      className={`px-4 py-1.5 text-sm border-r border-whisper-border dark:border-gray-700 last:border-r-0 ${TITLE} ${
+        period === p
+          ? 'bg-pure-surface dark:bg-gray-800'
+          : 'hover:bg-surface-container transition-colors'
+      }`}
+    >
+      {p}
+    </button>
+  );
 
   return (
     <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-whisper-border dark:border-gray-700 pb-4">
         <div>
           <h1 className={`font-headline-lg text-headline-lg tracking-tight ${TITLE}`}>
-            TV — Leaderboard de Ventas
+            TV — Sales Leaderboard
           </h1>
           <p className={`mt-1 flex items-center gap-2 text-sm ${TITLE}`}>
             <span className="w-2 h-2 rounded-full bg-emerald-signal" />
             <span>
-              En vivo desde Analytics{lastUpdated && ` • Última actualización: ${lastUpdated}`}
+              Live from Analytics{lastUpdated && ` • Last updated: ${lastUpdated}`}
             </span>
           </p>
         </div>
@@ -225,10 +222,10 @@ export default function TelevisionPage() {
               onClick={() => void refresh(true)}
               disabled={refreshing || loading}
               className={`flex items-center gap-2 px-3 py-1.5 border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed ${TITLE}`}
-              title="Actualizar leaderboard de ventas"
+              title="Refresh sales leaderboard"
             >
               <RefreshIcon size={18} className={refreshing ? 'animate-spin' : ''} />
-              <span>{refreshing ? 'Actualizando...' : 'Actualizar'}</span>
+              <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
             </button>
           </div>
         </div>
@@ -250,16 +247,16 @@ export default function TelevisionPage() {
       ) : (
         <div className={`bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-700 rounded-xl p-12 text-center text-sm ${BODY}`}>
           <RankingIcon size={48} className="mx-auto mb-2 opacity-40" />
-          No hay ventas registradas en este periodo.
+          No sales recorded in this period.
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <section className="lg:col-span-8 bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-700 rounded-xl shadow-diffused overflow-hidden">
           <div className="p-6 border-b border-whisper-border dark:border-gray-700">
-            <h3 className={`font-headline-md text-lg ${TITLE}`}>Mejores Vendedores</h3>
+            <h3 className={`font-headline-md text-lg ${TITLE}`}>Top Sellers</h3>
             <p className={`text-[11px] mt-0.5 font-metadata-mono uppercase tracking-wider ${MUTED}`}>
-              Se actualiza automáticamente al registrar una venta
+              Updates automatically when a sale is registered
             </p>
           </div>
           {topTable.length > 0 ? (
@@ -267,10 +264,10 @@ export default function TelevisionPage() {
               <thead className={`text-xs uppercase tracking-wider font-metadata-mono bg-surface-container-low dark:bg-gray-800 ${TITLE}`}>
                 <tr>
                   <th className="p-3 w-12">#</th>
-                  <th className="p-3">Agente</th>
-                  <th className="p-3 text-right">Ventas Form</th>
-                  <th className="p-3 text-right">Ingresos Form</th>
-                  <th className="p-3 text-right">Ventas VICI</th>
+                  <th className="p-3">Agent</th>
+                  <th className="p-3 text-right">Form Sales</th>
+                  <th className="p-3 text-right">Form Revenue</th>
+                  <th className="p-3 text-right">VICI Sales</th>
                   <th className="p-3 text-right w-24">Conv %</th>
                 </tr>
               </thead>
@@ -302,7 +299,7 @@ export default function TelevisionPage() {
             </table>
           ) : (
             <div className={`p-12 text-sm text-center ${BODY}`}>
-              Aun no hay datos de ventas.
+              No sales data yet.
             </div>
           )}
         </section>
@@ -310,9 +307,9 @@ export default function TelevisionPage() {
         <section className="lg:col-span-4 bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-700 rounded-xl shadow-diffused overflow-hidden flex flex-col">
           <div className="p-6 border-b border-whisper-border dark:border-gray-700 flex justify-between items-center">
             <div>
-              <h3 className={`font-headline-md text-lg ${TITLE}`}>Bundle Estrella</h3>
+              <h3 className={`font-headline-md text-lg ${TITLE}`}>Top Bundle</h3>
               <p className={`text-[11px] mt-0.5 font-metadata-mono uppercase tracking-wider ${MUTED}`}>
-                Producto estrella del periodo
+                Star product of the period
               </p>
             </div>
             <StarIcon size={28} className="text-amber-warmth" />
@@ -330,13 +327,13 @@ export default function TelevisionPage() {
                 </h4>
                 <div className="grid grid-cols-2 gap-4 w-full pt-3 border-t border-whisper-border dark:border-gray-700">
                   <div>
-                    <p className={`font-metadata-mono text-[10px] uppercase tracking-wider ${MUTED}`}>Vendidos</p>
+                    <p className={`font-metadata-mono text-[10px] uppercase tracking-wider ${MUTED}`}>Sold</p>
                     <p className="font-headline-lg text-2xl font-bold text-emerald-signal font-metadata-mono mt-1">
                       {topBundle.count}
                     </p>
                   </div>
                   <div>
-                    <p className={`font-metadata-mono text-[10px] uppercase tracking-wider ${MUTED}`}>Ingresos</p>
+                    <p className={`font-metadata-mono text-[10px] uppercase tracking-wider ${MUTED}`}>Revenue</p>
                     <p className="font-headline-lg text-2xl font-bold text-emerald-signal font-metadata-mono mt-1">
                       {formatCurrency(topBundle.revenue)}
                     </p>
@@ -346,7 +343,7 @@ export default function TelevisionPage() {
             ) : (
               <div className={`text-sm flex flex-col items-center gap-2 ${BODY}`}>
                 <PackageIcon size={48} className="opacity-40" />
-                Sin ventas en este periodo
+                No sales in this period
               </div>
             )}
           </div>
@@ -364,9 +361,9 @@ function Podium({ podium }: { podium: AgentRow[] }) {
     <section className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-700 rounded-xl shadow-diffused overflow-hidden">
       <div className="p-6 border-b border-whisper-border dark:border-gray-700 flex justify-between items-start">
         <div>
-          <h3 className={`font-headline-md text-lg ${TITLE}`}>Podio</h3>
+          <h3 className={`font-headline-md text-lg ${TITLE}`}>Podium</h3>
           <p className={`text-[11px] mt-0.5 font-metadata-mono uppercase tracking-wider ${MUTED}`}>
-            Top 3 vendedores del periodo
+            Top 3 sellers of the period
           </p>
         </div>
         <RankingIcon size={28} className="text-amber-warmth" />
@@ -440,7 +437,7 @@ function PodiumColumn({ agent, rank, tone, heightClass }: {
         <p className={`font-metadata-mono text-3xl font-bold text-emerald-signal mt-2`}>
           {agent.formSales}
         </p>
-        <p className={`font-metadata-mono text-[10px] uppercase tracking-wider ${MUTED}`}>Ventas</p>
+        <p className={`font-metadata-mono text-[10px] uppercase tracking-wider ${MUTED}`}>Sales</p>
         <p className={`font-metadata-mono text-sm font-bold text-emerald-signal mt-1`}>
           {formatCurrency(agent.formRevenue)}
         </p>
@@ -473,7 +470,7 @@ function Ticker({ sales }: { sales: VicidialSaleDto[] }) {
   if (sales.length === 0) return null;
   const items = sales.map((s, idx) => ({
     id: `${s.salesRep}-${idx}-${s.saleDate}`,
-    text: `${s.salesRep} cerró ${s.bundle || 'un paquete'} por ${formatCurrency(Number(s.amount))}`,
+    text: `${s.salesRep} closed ${s.bundle || 'a package'} for ${formatCurrency(Number(s.amount))}`,
   }));
   const looped = [...items, ...items];
   return (
@@ -481,11 +478,11 @@ function Ticker({ sales }: { sales: VicidialSaleDto[] }) {
       <div className="p-4 border-b border-whisper-border dark:border-gray-700 flex items-center gap-3">
         <FlashIcon size={22} className="text-amber-warmth" />
         <h3 className={`text-sm uppercase tracking-wider font-bold ${TITLE}`}>
-          Ticker de Ventas en Vivo
+          Live Sales Ticker
         </h3>
         <span className="ml-auto px-2 py-0.5 rounded-full bg-emerald-signal/15 text-emerald-signal font-metadata-mono text-[10px] uppercase tracking-wider font-bold flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-signal animate-pulse" />
-          en vivo
+          live
         </span>
       </div>
       <div className="relative h-12 overflow-hidden">
