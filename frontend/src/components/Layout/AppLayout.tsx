@@ -14,15 +14,20 @@ const navItems = [
 // 'Both' users). Lets them jump to SLICE without going through /select-platform.
 const sliceNavItem = { label: 'Slice Platform', path: '/slice' };
 
+// TV leaderboard shortcut. Visible to any user with tv.view — admins (all
+// perms), dual-platform supervisors, and Television-only profiles.
+const tvNavItem = { label: 'TV Leaderboard', path: '/tv' };
+
 // Twilio Costs is part of the Admin Panel. It is intentionally NOT linked
 // from the ALTRX navbar — admins must go through the platform picker to
 // reach the Admin Panel, keeping it semantically separate from ALTRX/Slice.
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { user, logout, isAdmin, authUnavailable } = useAuth();
+  const { user, logout, isAdmin, authUnavailable, has } = useAuth();
   const { isDark, toggle } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const canSeeTv = has('tv.view');
 
   // Admins and dual-platform users route to the platform picker instead of a
   // full sign-out. The picker is the only entry point to the Admin Panel.
@@ -96,6 +101,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 </button>
               )
             ) : null}
+            {canSeeTv && (
+              <button
+                key={tvNavItem.path}
+                onClick={() => navigate(tvNavItem.path)}
+                className={
+                  location.pathname.startsWith(tvNavItem.path)
+                    ? 'text-primary dark:text-gray-100 border-b-2 border-primary dark:border-gray-100 pb-1 h-full flex items-center pt-1 text-sm font-semibold'
+                    : 'text-secondary dark:text-gray-400 hover:text-primary dark:hover:text-gray-200 transition-colors h-full flex items-center text-sm font-medium'
+                }
+                title="Live sales leaderboard for the office TV"
+              >
+                {tvNavItem.label}
+              </button>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">
