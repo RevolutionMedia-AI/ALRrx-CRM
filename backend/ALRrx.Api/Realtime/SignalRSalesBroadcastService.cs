@@ -16,11 +16,11 @@ public sealed class SignalRSalesBroadcastService : ISalesBroadcastService
         _logger = logger;
     }
 
-    public async Task NotifyTvSaleAsync(string salesRep, int todaysCount, CancellationToken ct = default)
+    public async Task NotifyTvSaleAsync(string salesRep, string bundle, decimal amount, int todaysCount, CancellationToken ct = default)
     {
         try
         {
-            await _hub.Clients.All.BroadcastTvSaleAsync(salesRep, todaysCount, ct);
+            await _hub.Clients.All.BroadcastTvSaleAsync(salesRep, bundle, amount, todaysCount, ct);
         }
         catch (Exception ex)
         {

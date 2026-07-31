@@ -57,7 +57,7 @@ public sealed class SubmitVicidialSaleUseCase
             {
                 var range = VicidialDayRange.BuildToday();
                 var todaysCount = await GetTodaysCountForRepAsync(request.SalesRep, range.From, range.To, ct);
-                await _broadcast.NotifyTvSaleAsync(request.SalesRep, todaysCount, ct);
+                await _broadcast.NotifyTvSaleAsync(request.SalesRep, bundleDisplayName, request.Amount, todaysCount, ct);
             }
             catch (Exception ex)
             {
