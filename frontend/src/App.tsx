@@ -78,7 +78,7 @@ function TelevisionRoute({ children }: { children: ReactNode }) {
   if (!user) return <Navigate to="/login" replace />;
   if (user.status !== 'Active') return <Navigate to="/access-denied" replace />;
   if (!has('tv.view')) return <Navigate to="/access-denied" replace />;
-  return <>{children}</>;
+  return <AppLayout>{children}</AppLayout>;
 }
 
 function SliceProtectedRoute({ children }: { children: ReactNode }) {
