@@ -15,6 +15,10 @@ const adminSectionItems = [
   { label: 'Twilio Costs', path: '/admin/twilio' },
 ];
 
+// TV leaderboard — admins have tv.view via the all-permissions grant, so they
+// can hop in without a separate Television profile.
+const adminTvItem = { label: 'TV Leaderboard', path: '/tv' };
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, logout, isAdmin } = useAuth();
   const { isDark, toggle } = useTheme();
@@ -92,6 +96,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </button>
               );
             })}
+            <button
+              key={adminTvItem.path}
+              onClick={() => navigate(adminTvItem.path)}
+              className={
+                location.pathname.startsWith(adminTvItem.path)
+                  ? 'text-primary dark:text-gray-100 border-b-2 border-primary dark:border-gray-100 pb-1 h-full flex items-center pt-1 text-sm font-semibold'
+                  : 'text-secondary dark:text-gray-400 hover:text-primary dark:hover:text-gray-200 transition-colors h-full flex items-center text-sm font-medium'
+              }
+              title="Live sales leaderboard for the office TV"
+            >
+              {adminTvItem.label}
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-3">
