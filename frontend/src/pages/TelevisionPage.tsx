@@ -138,8 +138,8 @@ export default function TelevisionPage() {
       </header>
 
       <section className="grid h-[16vh] min-h-28 grid-cols-5 border-b border-[#d7dee8] dark:border-[#202b39]">
-        <Metric label="Team sales today" value={String(totals.sales)} accent />
-        <Metric label="Revenue" value={formatCurrency(totals.revenue)} accent />
+        <Metric label="Team sales today" value={String(totals.sales)} />
+        <Metric label="Revenue" value={formatCurrency(totals.revenue)} />
         <Metric label="Calls dialed" value={totals.calls.toLocaleString('en-US')} />
         <Metric label="Conversion" value={`${conversion.toFixed(2)}%`} />
         <Metric label="Connected calls / On Call" value={`${totals.contacts} / ${onCall}`} />
@@ -161,11 +161,15 @@ export default function TelevisionPage() {
   );
 }
 
-function Metric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col justify-center border-r border-[#d7dee8] dark:border-[#202b39] px-[2.5vw] last:border-r-0">
+    <div className="flex flex-col justify-center border-r border-[#d7dee8] dark:border-[#202b39] px-[1.5vw] last:border-r-0">
       <p className="font-metadata-mono text-[clamp(.55rem,.9vw,.9rem)] font-bold uppercase tracking-[0.25em] text-[#111827] dark:text-white">{label}</p>
-      <p className={`mt-1 font-headline-lg text-[clamp(2rem,3.5vw,4rem)] font-black leading-none tracking-tight ${accent ? 'text-[#b7f52c]' : 'text-[#111827] dark:text-white'}`}>{value}</p>
+      <p className={`mt-1 font-headline-lg text-[clamp(2rem,3.5vw,4rem)] font-black leading-none tracking-tight ${
+        label === 'Team sales today' ? 'text-blue-600 dark:text-[#b7f52c]' :
+        label === 'Revenue' ? 'text-green-600 dark:text-[#b7f52c]' :
+        'text-[#111827] dark:text-white'
+      }`}>{value}</p>
     </div>
   );
 }
@@ -173,7 +177,7 @@ function Metric({ label, value, accent = false }: { label: string; value: string
 function AgentColumn({ agents, start, second = false }: { agents: AgentRow[]; start: number; second?: boolean }) {
   return (
     <div className={`min-h-0 flex flex-col px-3 ${second ? 'border-l border-[#d7dee8] dark:border-[#202b39]' : ''}`}>
-      <div className="grid grid-cols-[3rem_minmax(0,1fr)_5rem_6rem_5rem] items-center gap-2 px-2 py-2 font-metadata-mono text-[clamp(.5rem,.7vw,.7rem)] uppercase tracking-[0.22em] text-[#111827] dark:text-white">
+      <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_4.5rem_5rem_4.5rem] items-center gap-2 px-2 py-2 font-metadata-mono text-[clamp(.5rem,.7vw,.7rem)] uppercase tracking-[0.22em] text-[#111827] dark:text-white">
         <span>#</span><span>Agent</span><span className="text-right">Sales</span><span className="text-right">Calls</span><span className="text-right">Conv</span>
       </div>
       <div className="min-h-0 flex-1 grid auto-rows-fr gap-1 pb-3">
@@ -186,9 +190,9 @@ function AgentColumn({ agents, start, second = false }: { agents: AgentRow[]; st
 }
 
 function AgentCard({ agent, rank }: { agent: AgentRow; rank: number }) {
-  const medal = rank === 1 ? 'border-l-[#ffc83d] bg-white dark:bg-[#1b1911]' : rank === 2 ? 'border-l-[#d8e0e9] bg-white dark:bg-[#101721]' : rank === 3 ? 'border-l-[#d97a38] bg-white dark:bg-[#17140f]' : 'border-l-[#33465c] bg-white dark:bg-[#0d141d]';
+  const medal = rank === 1 ? 'border-l-[#ffc83d] bg-yellow-50 dark:bg-[#1b1911]' : rank === 2 ? 'border-l-[#d8e0e9] bg-slate-50 dark:bg-[#101721]' : rank === 3 ? 'border-l-[#d97a38] bg-orange-50 dark:bg-[#17140f]' : 'border-l-[#33465c] bg-white dark:bg-[#0d141d]';
   return (
-    <article className={`grid min-h-0 grid-cols-[3rem_minmax(0,1fr)_5rem_6rem_5rem] items-center gap-2 rounded border-l-4 px-2 ${medal}`}>
+    <article className={`grid min-h-0 grid-cols-[2.5rem_minmax(0,1fr)_4.5rem_5rem_4.5rem] items-center gap-2 border-b border-l-4 border-[#d7dee8] dark:border-[#202b39] px-2 ${medal}`}>
       <span className={`font-metadata-mono text-[clamp(1rem,1.6vw,1.6rem)] font-black ${rank <= 3 ? 'text-[#111827] dark:text-white' : 'text-[#111827] dark:text-white'}`}>{rank}</span>
       <div className="flex min-w-0 items-center gap-3">
         <span className="grid aspect-square w-[clamp(1.8rem,2.6vw,2.6rem)] shrink-0 place-items-center rounded-full bg-[#e5e7eb] dark:bg-[#1b2738] font-metadata-mono text-[clamp(.55rem,.75vw,.75rem)] font-black text-[#111827] dark:text-white">{initials(agent.name)}</span>
