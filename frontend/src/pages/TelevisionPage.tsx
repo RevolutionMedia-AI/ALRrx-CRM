@@ -1,110 +1,78 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as signalR from '@microsoft/signalr';
-import {
-  FlashIcon,
-  Tick01Icon,
-  StarIcon,
-  RefreshIcon,
-  RankingIcon,
-  PackageIcon,
-} from 'hugeicons-react';
 import { useAuth } from '../context/AuthContext';
 import { getAgentPerformanceWithSales } from '../services/api';
-import { listAllVicidialSales } from '../services/vicidialFormApi';
 import { readSharedToken } from '../utils/sharedToken';
-import type { ReportDto, TimeFilterDto, VicidialSaleDto } from '../types';
+import type { ReportDto } from '../types';
 
-type Period = 'Today' | 'Week' | 'Month' | 'Custom';
-const PERIOD_API: Record<Period, string> = { Today: 'Today', Week: 'ThisWeek', Month: 'ThisMonth', Custom: 'Custom' };
-const TICKER_LIMIT = 30;
-const TOP_TABLE_LIMIT = 5;
-
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(amount);
+interface TvSale {
+  salesRep: string;
+  bundle: string;
+  todaysCount: number;
 }
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-const TITLE = 'text-black dark:text-white font-bold';
-const BODY = 'text-black dark:text-white';
-const MUTED = 'text-black/70 dark:text-white/80';
 
 interface AgentRow {
   name: string;
+  user: string;
   formSales: number;
   formRevenue: number;
-  vicidialSales: number;
   callsHandled: number;
-  contacts: number;
   conversion: number;
 }
 
-function toAgentRow(r: Record<string, unknown>): AgentRow {
+function number(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toAgentRow(row: Record<string, unknown>): AgentRow {
   return {
-    name: String(r.Name ?? r.User ?? ''),
-    formSales: Number(r.Form_Sales_Count ?? 0),
-    formRevenue: Number(r.Form_Sales_Amount ?? 0),
-    vicidialSales: Number(r.Sales_Made ?? 0),
-    callsHandled: Number(r.Calls_Handled ?? 0),
-    contacts: Number(r.Contacts ?? 0),
-    conversion: Number(r.Conversion_Percentage ?? 0),
+    name: String(row.Name ?? row.User ?? ''),
+    user: String(row.User ?? ''),
+    formSales: number(row.Form_Sales_Count),
+    formRevenue: number(row.Form_Sales_Amount),
+    callsHandled: number(row.Calls_Handled),
+    conversion: number(row.Conversion_Percentage),
   };
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function initials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '--';
 }
 
 export default function TelevisionPage() {
   const { has } = useAuth();
-  const [period, setPeriod] = useState<Period>('Today');
-  const [customStart, setCustomStart] = useState(todayIso);
-  const [customEnd, setCustomEnd] = useState(todayIso);
-  const [report, setReport] = useState<ReportDto | null>(null);
-  const [recentSales, setRecentSales] = useState<VicidialSaleDto[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string>('');
-  const [flash, setFlash] = useState<string | null>(null);
-  const flashTimeoutRef = useRef<number | null>(null);
   const authorized = has('tv.view');
+  const [report, setReport] = useState<ReportDto | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState('');
+  const [tvSale, setTvSale] = useState<TvSale | null>(null);
+  const saleTimeoutRef = useRef<number | null>(null);
 
-  const filter = useCallback((): TimeFilterDto => {
-    if (period === 'Custom') {
-      return { period: PERIOD_API[period], customStart: `${customStart}T00:00:00`, customEnd: `${customEnd}T23:59:59` };
-    }
-    return { period: PERIOD_API[period] };
-  }, [period, customStart, customEnd]);
-
-  const refresh = useCallback(async (manual = false) => {
-    if (manual) setRefreshing(true);
-    else setLoading(true);
+  const refresh = useCallback(async () => {
     try {
-      const f = filter();
-      const salesRange = buildVicidialRange(f);
-      const [data, sales] = await Promise.all([
-        getAgentPerformanceWithSales(f),
-        listAllVicidialSales(salesRange.from, salesRange.to, 500).catch(() => []),
-      ]);
+      const data = await getAgentPerformanceWithSales({ period: 'Today' });
       setReport(data);
-      setRecentSales(sales);
-      setLastUpdated(new Date().toLocaleTimeString());
+      setLastUpdated(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
       setError(null);
     } catch {
-      setError('Failed to load sales leaderboard');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setError('Unable to load sales leaderboard');
     }
-  }, [filter]);
+  }, []);
 
   useEffect(() => {
     if (!authorized) return;
     void refresh();
-    const id = window.setInterval(() => void refresh(), 30_000);
-    return () => window.clearInterval(id);
+    const interval = window.setInterval(() => void refresh(), 30_000);
+    return () => window.clearInterval(interval);
   }, [authorized, refresh]);
 
   useEffect(() => {
@@ -112,435 +80,131 @@ export default function TelevisionPage() {
     const token = readSharedToken();
     const connection = new signalR.HubConnectionBuilder()
       .withUrl('/hubs/dashboard', { accessTokenFactory: () => token ?? '' })
+      .withAutomaticReconnect()
       .build();
-    connection.on('BroadcastTvSaleAsync', (salesRep: string) => {
-      void refresh(true);
-      setFlash(salesRep);
-      if (flashTimeoutRef.current) window.clearTimeout(flashTimeoutRef.current);
-      flashTimeoutRef.current = window.setTimeout(() => setFlash(null), 4000);
+
+    connection.on('BroadcastTvSaleAsync', (salesRep: string, bundle: string, _amount: number, todaysCount: number) => {
+      void refresh();
+      setTvSale({ salesRep, bundle, todaysCount });
+      if (saleTimeoutRef.current) window.clearTimeout(saleTimeoutRef.current);
+      saleTimeoutRef.current = window.setTimeout(() => setTvSale(null), 6000);
     });
     void connection.start();
+
     return () => {
       void connection.stop();
-      if (flashTimeoutRef.current) window.clearTimeout(flashTimeoutRef.current);
+      if (saleTimeoutRef.current) window.clearTimeout(saleTimeoutRef.current);
     };
   }, [authorized, refresh]);
 
-  const sortedAgents = useMemo<AgentRow[]>(() => {
-    const rows = report?.rows ?? [];
-    return rows
-      .map(toAgentRow)
-      .filter((a) => a.formSales > 0 || a.vicidialSales > 0 || a.callsHandled > 0)
-      .sort((a, b) => b.formSales - a.formSales || a.name.localeCompare(b.name));
-  }, [report]);
+  const agents = useMemo(() => (report?.rows ?? [])
+    .map(toAgentRow)
+    .filter((agent) => agent.name)
+    .sort((a, b) => b.formSales - a.formSales || b.formRevenue - a.formRevenue || a.name.localeCompare(b.name)), [report]);
 
-  const podium = useMemo(() => sortedAgents.slice(0, 3), [sortedAgents]);
-  const topTable = useMemo(() => sortedAgents.slice(0, TOP_TABLE_LIMIT), [sortedAgents]);
+  const totals = useMemo(() => agents.reduce((result, agent) => ({
+    sales: result.sales + agent.formSales,
+    revenue: result.revenue + agent.formRevenue,
+    calls: result.calls + agent.callsHandled,
+  }), { sales: 0, revenue: 0, calls: 0 }), [agents]);
 
-  const topBundle = useMemo(() => {
-    if (recentSales.length === 0) return null;
-    const counts = new Map<string, { count: number; revenue: number }>();
-    for (const s of recentSales) {
-      const key = s.bundle || 'No bundle';
-      const prev = counts.get(key) ?? { count: 0, revenue: 0 };
-      counts.set(key, { count: prev.count + 1, revenue: prev.revenue + Number(s.amount) });
-    }
-    let topKey = '';
-    let topVal = { count: 0, revenue: 0 };
-    for (const [k, v] of counts) {
-      if (v.count > topVal.count) { topKey = k; topVal = v; }
-    }
-    return topKey ? { name: topKey, count: topVal.count, revenue: topVal.revenue } : null;
-  }, [recentSales]);
+  const conversion = totals.calls ? (totals.sales / totals.calls) * 100 : 0;
 
-  const tickerSales = useMemo(() => recentSales.slice(0, TICKER_LIMIT), [recentSales]);
-
-  if (!authorized) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center bg-canvas-white dark:bg-gray-950">
-        <div className="max-w-md text-center">
-          <p className={`${BODY}`}>You don't have access to this view.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const periodBtn = (p: Period) => (
-    <button
-      key={p}
-      onClick={() => setPeriod(p)}
-      className={`px-4 py-1.5 text-sm border-r border-whisper-border dark:border-gray-700 last:border-r-0 ${TITLE} ${
-        period === p
-          ? 'bg-pure-surface dark:bg-gray-800'
-          : 'hover:bg-surface-container transition-colors'
-      }`}
-    >
-      {p}
-    </button>
-  );
+  if (!authorized) return <div className="p-8 text-center">You don't have access to this view.</div>;
 
   return (
-    <>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-whisper-border dark:border-gray-700 pb-4">
-        <div>
-          <h1 className={`font-headline-lg text-headline-lg tracking-tight ${TITLE}`}>
-            TV — Sales Leaderboard
-          </h1>
-          <p className={`mt-1 flex items-center gap-2 text-sm ${TITLE}`}>
-            <span className="w-2 h-2 rounded-full bg-emerald-signal" />
-            <span>
-              Live from Analytics{lastUpdated && ` • Last updated: ${lastUpdated}`}
-            </span>
-          </p>
+    <main className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-[#080c12] text-[#f4f7fb]">
+      {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
+
+      <header className="flex h-[9vh] min-h-16 items-center justify-between border-b border-[#202b39] px-[2vw]">
+        <div className="flex items-baseline gap-5">
+          <span className="font-headline-lg text-[clamp(1.3rem,2vw,2.5rem)] font-black tracking-[0.18em]">ALTRX</span>
+          <span className="font-metadata-mono text-[clamp(.65rem,1vw,1rem)] font-bold uppercase tracking-[0.35em] text-[#b7f52c]">Sales Floor</span>
         </div>
-        <div className="flex flex-col gap-2 items-end">
-          <div className="flex gap-2 flex-wrap items-center">
-            <div className={`bg-surface-container-low dark:bg-gray-800 border border-whisper-border dark:border-gray-700 rounded flex text-sm overflow-hidden ${TITLE}`}>
-              {periodBtn('Today')}
-              {periodBtn('Week')}
-              {periodBtn('Month')}
-              {periodBtn('Custom')}
-            </div>
-            {period === 'Custom' && (
-              <div className={`flex gap-2 items-center bg-surface-container-low dark:bg-gray-800 border border-whisper-border dark:border-gray-700 rounded px-3 py-1 ${BODY}`}>
-                <input
-                  type="date"
-                  value={customStart}
-                  onChange={(e) => setCustomStart(e.target.value)}
-                  className={`text-xs bg-transparent border-none outline-none w-[120px] ${BODY}`}
-                />
-                <span className="text-xs">to</span>
-                <input
-                  type="date"
-                  value={customEnd}
-                  onChange={(e) => setCustomEnd(e.target.value)}
-                  className={`text-xs bg-transparent border-none outline-none w-[120px] ${BODY}`}
-                />
-              </div>
-            )}
-            <button
-              onClick={() => void refresh(true)}
-              disabled={refreshing || loading}
-              className={`flex items-center gap-2 px-3 py-1.5 border border-whisper-border dark:border-gray-700 rounded bg-pure-surface dark:bg-gray-800 transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed ${TITLE}`}
-              title="Refresh sales leaderboard"
-            >
-              <RefreshIcon size={18} className={refreshing ? 'animate-spin' : ''} />
-              <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-            </button>
-          </div>
+        <div className="flex items-center gap-5 font-metadata-mono text-[clamp(.6rem,.9vw,.9rem)] uppercase tracking-[0.25em] text-[#7890aa]">
+          <span className="flex items-center gap-2 text-[#ff5364]"><i className="h-2 w-2 rounded-full bg-[#ff5364] animate-pulse" />Live</span>
+          <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+          <span className="text-[clamp(1rem,1.8vw,2rem)] font-black tracking-[0.1em] text-[#d8e0e9]">{lastUpdated || '--:--'}</span>
         </div>
-      </div>
+      </header>
 
-      <Ticker sales={tickerSales} />
+      <section className="grid h-[16vh] min-h-28 grid-cols-4 border-b border-[#202b39]">
+        <Metric label="Team sales today" value={String(totals.sales)} accent />
+        <Metric label="Revenue" value={formatCurrency(totals.revenue)} accent />
+        <Metric label="Calls dialed" value={totals.calls.toLocaleString('en-US')} />
+        <Metric label="Conversion" value={`${conversion.toFixed(2)}%`} />
+      </section>
 
-      {error && (
-        <div className="bg-deep-rose/10 border border-deep-rose/20 rounded-xl p-4 text-deep-rose text-sm flex items-center gap-2 font-bold">
-          <span className="material-symbols-outlined text-base">error</span>
-          {error}
-        </div>
-      )}
+      {error ? <div className="border-b border-red-500/30 bg-red-500/10 px-5 py-2 font-metadata-mono text-sm text-red-300">{error}</div> : null}
 
-      {loading && podium.length === 0 ? (
-        <div className="h-64 bg-surface-container dark:bg-gray-800 rounded-xl animate-pulse" />
-      ) : podium.length >= 1 ? (
-        <Podium podium={podium} />
-      ) : (
-        <div className={`bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-700 rounded-xl p-12 text-center text-sm ${BODY}`}>
-          <RankingIcon size={48} className="mx-auto mb-2 opacity-40" />
-          No sales recorded in this period.
-        </div>
-      )}
+      <section className="min-h-0 flex-1 grid grid-cols-1 lg:grid-cols-2">
+        <AgentColumn agents={agents.slice(0, Math.ceil(agents.length / 2))} start={0} />
+        <AgentColumn agents={agents.slice(Math.ceil(agents.length / 2))} start={Math.ceil(agents.length / 2)} second />
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <section className="lg:col-span-8 bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-700 rounded-xl shadow-diffused overflow-hidden">
-          <div className="p-6 border-b border-whisper-border dark:border-gray-700">
-            <h3 className={`font-headline-md text-lg ${TITLE}`}>Top Sellers</h3>
-            <p className={`text-[11px] mt-0.5 font-metadata-mono uppercase tracking-wider ${MUTED}`}>
-              Updates automatically when a sale is registered
-            </p>
-          </div>
-          {topTable.length > 0 ? (
-            <table className="w-full text-left text-sm border-collapse table-fixed">
-              <thead className={`text-xs uppercase tracking-wider font-metadata-mono bg-surface-container-low dark:bg-gray-800 ${TITLE}`}>
-                <tr>
-                  <th className="p-3 w-12">#</th>
-                  <th className="p-3">Agent</th>
-                  <th className="p-3 text-right">Form Sales</th>
-                  <th className="p-3 text-right">Form Revenue</th>
-                  <th className="p-3 text-right">VICI Sales</th>
-                  <th className="p-3 text-right w-24">Conv %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topTable.map((agent, i) => {
-                  const rank = i + 1;
-                  const highlight = flash && agent.name === flash;
-                  return (
-                    <tr
-                      key={agent.name}
-                      className={`border-b border-whisper-border dark:border-gray-700 transition-colors ${
-                        highlight ? 'bg-electric-blue/10 dark:bg-electric-blue/15' : 'hover:bg-surface-container-lowest dark:hover:bg-gray-800/50'
-                      }`}
-                    >
-                      <td className="p-3">
-                        <RankBadge rank={rank} />
-                      </td>
-                      <td className={`p-3 font-medium truncate ${BODY}`}>{agent.name}</td>
-                      <td className={`p-3 font-metadata-mono font-bold text-right text-emerald-signal`}>{agent.formSales}</td>
-                      <td className={`p-3 font-metadata-mono font-bold text-right text-emerald-signal`}>{formatCurrency(agent.formRevenue)}</td>
-                      <td className={`p-3 font-metadata-mono text-right ${BODY}`}>{agent.vicidialSales}</td>
-                      <td className={`p-3 font-metadata-mono font-bold text-right ${BODY}`}>
-                        {agent.conversion ? `${agent.conversion.toFixed(1)}%` : '--'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <div className={`p-12 text-sm text-center ${BODY}`}>
-              No sales data yet.
-            </div>
-          )}
-        </section>
-
-        <section className="lg:col-span-4 bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-700 rounded-xl shadow-diffused overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-whisper-border dark:border-gray-700 flex justify-between items-center">
-            <div>
-              <h3 className={`font-headline-md text-lg ${TITLE}`}>Top Bundle</h3>
-              <p className={`text-[11px] mt-0.5 font-metadata-mono uppercase tracking-wider ${MUTED}`}>
-                Star product of the period
-              </p>
-            </div>
-            <StarIcon size={28} className="text-amber-warmth" />
-          </div>
-          <div className="p-6 flex-1 flex flex-col items-center justify-center text-center gap-3">
-            {topBundle ? (
-              <>
-                <div className="px-4 py-2 rounded-full bg-amber-warmth/15 border border-amber-warmth/30">
-                  <span className={`font-metadata-mono text-[11px] uppercase tracking-wider font-bold text-amber-warmth`}>
-                    #1 Bundle
-                  </span>
-                </div>
-                <h4 className={`font-headline-lg text-xl leading-tight ${TITLE}`}>
-                  {topBundle.name}
-                </h4>
-                <div className="grid grid-cols-2 gap-4 w-full pt-3 border-t border-whisper-border dark:border-gray-700">
-                  <div>
-                    <p className={`font-metadata-mono text-[10px] uppercase tracking-wider ${MUTED}`}>Sold</p>
-                    <p className="font-headline-lg text-2xl font-bold text-emerald-signal font-metadata-mono mt-1">
-                      {topBundle.count}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={`font-metadata-mono text-[10px] uppercase tracking-wider ${MUTED}`}>Revenue</p>
-                    <p className="font-headline-lg text-2xl font-bold text-emerald-signal font-metadata-mono mt-1">
-                      {formatCurrency(topBundle.revenue)}
-                    </p>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className={`text-sm flex flex-col items-center gap-2 ${BODY}`}>
-                <PackageIcon size={48} className="opacity-40" />
-                No sales in this period
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
-    </>
+      <footer className="flex h-[5vh] min-h-10 items-center justify-between border-t border-[#202b39] px-[2vw] font-metadata-mono text-[clamp(.55rem,.75vw,.75rem)] uppercase tracking-[0.3em] text-[#60758d]">
+        <span>{agents.length} agents on leaderboard</span>
+        <span className="text-[#8da0b5]">Every sale moves the board</span>
+        <span>Updated {lastUpdated || '--:--'}</span>
+      </footer>
+    </main>
   );
 }
 
-function Podium({ podium }: { podium: AgentRow[] }) {
-  const first = podium[0];
-  const second = podium[1];
-  const third = podium[2];
+function Metric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <section className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-700 rounded-xl shadow-diffused overflow-hidden">
-      <div className="p-6 border-b border-whisper-border dark:border-gray-700 flex justify-between items-start">
-        <div>
-          <h3 className={`font-headline-md text-lg ${TITLE}`}>Podium</h3>
-          <p className={`text-[11px] mt-0.5 font-metadata-mono uppercase tracking-wider ${MUTED}`}>
-            Top 3 sellers of the period
-          </p>
-        </div>
-        <RankingIcon size={28} className="text-amber-warmth" />
-      </div>
-      <div className="p-8 grid grid-cols-3 gap-4 items-end">
-        <PodiumColumn agent={third} rank={3} tone="bronze" heightClass="h-32" />
-        <PodiumColumn agent={first} rank={1} tone="gold" heightClass="h-48" />
-        <PodiumColumn agent={second} rank={2} tone="silver" heightClass="h-40" />
-      </div>
-    </section>
+    <div className="flex flex-col justify-center border-r border-[#202b39] px-[2.5vw] last:border-r-0">
+      <p className="font-metadata-mono text-[clamp(.55rem,.9vw,.9rem)] font-bold uppercase tracking-[0.25em] text-[#758ba3]">{label}</p>
+      <p className={`mt-1 font-headline-lg text-[clamp(2rem,3.5vw,4rem)] font-black leading-none tracking-tight ${accent ? 'text-[#b7f52c]' : 'text-[#f4f7fb]'}`}>{value}</p>
+    </div>
   );
 }
 
-function PodiumColumn({ agent, rank, tone, heightClass }: {
-  agent: AgentRow | undefined;
-  rank: number;
-  tone: 'gold' | 'silver' | 'bronze';
-  heightClass: string;
-}) {
-  const tones: Record<typeof tone, {
-    medalBg: string;
-    medalBorder: string;
-    medalText: string;
-    blockBorder: string;
-    blockTint: string;
-    accent: string;
-  }> = {
-    gold: {
-      medalBg: 'bg-amber-warmth/15',
-      medalBorder: 'border-amber-warmth',
-      medalText: 'text-amber-warmth',
-      blockBorder: 'border-amber-warmth/40',
-      blockTint: 'bg-amber-warmth/[0.04] dark:bg-amber-warmth/[0.06]',
-      accent: 'text-amber-warmth',
-    },
-    silver: {
-      medalBg: 'bg-zinc-300/40 dark:bg-zinc-700/50',
-      medalBorder: 'border-zinc-400 dark:border-zinc-500',
-      medalText: 'text-zinc-700 dark:text-zinc-200',
-      blockBorder: 'border-whisper-border dark:border-gray-700',
-      blockTint: '',
-      accent: 'text-zinc-700 dark:text-zinc-200',
-    },
-    bronze: {
-      medalBg: 'bg-zinc-300/30 dark:bg-zinc-700/40',
-      medalBorder: 'border-zinc-400 dark:border-zinc-500',
-      medalText: 'text-zinc-700 dark:text-zinc-200',
-      blockBorder: 'border-whisper-border dark:border-gray-700',
-      blockTint: '',
-      accent: 'text-zinc-700 dark:text-zinc-200',
-    },
-  };
-  const t = tones[tone];
-  if (!agent) {
-    return (
-      <div className={`${heightClass} rounded-xl border-2 border-dashed border-whisper-border dark:border-gray-700 flex items-center justify-center ${MUTED} text-xs`}>—</div>
-    );
-  }
+function AgentColumn({ agents, start, second = false }: { agents: AgentRow[]; start: number; second?: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className={`inline-flex items-center justify-center w-14 h-14 rounded-full border-2 ${t.medalBg} ${t.medalBorder} ${t.medalText} font-headline-lg font-bold text-2xl shadow-card`}>
-        {rank}
+    <div className={`min-h-0 flex flex-col px-3 ${second ? 'border-l border-[#202b39]' : ''}`}>
+      <div className="grid grid-cols-[3rem_minmax(0,1fr)_5rem_6rem_5rem] items-center gap-2 px-2 py-2 font-metadata-mono text-[clamp(.5rem,.7vw,.7rem)] uppercase tracking-[0.22em] text-[#657b93]">
+        <span>#</span><span>Agent</span><span className="text-right">Sales</span><span className="text-right">Calls</span><span className="text-right">Conv</span>
       </div>
-      <div className={`w-full ${heightClass} rounded-xl border-2 ${t.blockBorder} ${t.blockTint} flex flex-col items-center justify-center p-4 text-center shadow-card bg-pure-surface dark:bg-gray-900`}>
-        <span className={`font-metadata-mono text-[10px] uppercase tracking-wider font-bold ${t.accent}`}>
-          #{rank}
-        </span>
-        <p className={`font-bold text-base leading-tight mt-1 truncate w-full ${TITLE}`}>
-          {agent.name}
-        </p>
-        <p className={`font-metadata-mono text-3xl font-bold text-emerald-signal mt-2`}>
-          {agent.formSales}
-        </p>
-        <p className={`font-metadata-mono text-[10px] uppercase tracking-wider ${MUTED}`}>Sales</p>
-        <p className={`font-metadata-mono text-sm font-bold text-emerald-signal mt-1`}>
-          {formatCurrency(agent.formRevenue)}
-        </p>
-      </div>
-      <div className={`w-full rounded-lg border border-whisper-border dark:border-gray-700 bg-pure-surface dark:bg-gray-800 px-3 py-2 text-center`}>
-        <p className={`font-metadata-mono text-[10px] uppercase tracking-wider ${MUTED}`}>Conv %</p>
-        <p className={`font-metadata-mono text-sm font-bold ${TITLE}`}>
-          {agent.conversion ? `${agent.conversion.toFixed(1)}%` : '--'}
-        </p>
+      <div className="min-h-0 flex-1 grid auto-rows-fr gap-1 pb-3">
+        {agents.length ? agents.map((agent, index) => <AgentCard key={`${agent.user}-${agent.name}`} agent={agent} rank={start + index + 1} />) : (
+          <div className="grid place-items-center font-metadata-mono uppercase tracking-[0.25em] text-[#52677e]">No agent data</div>
+        )}
       </div>
     </div>
   );
 }
 
-function RankBadge({ rank }: { rank: number }) {
-  const styles: Record<number, string> = {
-    1: 'bg-amber-warmth/15 text-amber-warmth border-amber-warmth/40',
-    2: 'bg-zinc-300/40 dark:bg-zinc-700/50 text-zinc-700 dark:text-zinc-200 border-zinc-400 dark:border-zinc-500',
-    3: 'bg-zinc-300/30 dark:bg-zinc-700/40 text-zinc-700 dark:text-zinc-200 border-zinc-400 dark:border-zinc-500',
-  };
-  const cls = styles[rank] ?? 'bg-surface-container text-secondary border-whisper-border';
+function AgentCard({ agent, rank }: { agent: AgentRow; rank: number }) {
+  const medal = rank === 1 ? 'border-l-[#ffc83d] bg-[#1b1911]' : rank === 2 ? 'border-l-[#d8e0e9] bg-[#101721]' : rank === 3 ? 'border-l-[#d97a38] bg-[#17140f]' : 'border-l-[#33465c] bg-[#0d141d]';
   return (
-    <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full border font-metadata-mono text-xs font-bold ${cls}`}>
-      {rank}
-    </span>
-  );
-}
-
-function Ticker({ sales }: { sales: VicidialSaleDto[] }) {
-  if (sales.length === 0) return null;
-  const items = sales.map((s, idx) => ({
-    id: `${s.salesRep}-${idx}-${s.saleDate}`,
-    text: `${s.salesRep} closed ${s.bundle || 'a package'} for ${formatCurrency(Number(s.amount))}`,
-  }));
-  const looped = [...items, ...items];
-  return (
-    <section className="relative overflow-hidden bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-700 rounded-xl shadow-diffused">
-      <div className="p-4 border-b border-whisper-border dark:border-gray-700 flex items-center gap-3">
-        <FlashIcon size={22} className="text-amber-warmth" />
-        <h3 className={`text-sm uppercase tracking-wider font-bold ${TITLE}`}>
-          Live Sales Ticker
-        </h3>
-        <span className="ml-auto px-2 py-0.5 rounded-full bg-emerald-signal/15 text-emerald-signal font-metadata-mono text-[10px] uppercase tracking-wider font-bold flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-signal animate-pulse" />
-          live
-        </span>
-      </div>
-      <div className="relative h-12 overflow-hidden">
-        <div className="absolute inset-0 flex items-center">
-          <div className="flex gap-8 animate-ticker whitespace-nowrap">
-            {looped.map((item, i) => (
-              <span key={`${item.id}-${i}`} className={`font-metadata-mono text-sm flex items-center gap-2 ${TITLE}`}>
-                <Tick01Icon size={16} className="text-emerald-signal" />
-                {item.text}
-              </span>
-            ))}
-          </div>
+    <article className={`grid min-h-0 grid-cols-[3rem_minmax(0,1fr)_5rem_6rem_5rem] items-center gap-2 rounded border-l-4 px-2 ${medal}`}>
+      <span className={`font-metadata-mono text-[clamp(1rem,1.6vw,1.6rem)] font-black ${rank <= 3 ? 'text-[#f7cf62]' : 'text-[#61758d]'}`}>{rank}</span>
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="grid aspect-square w-[clamp(1.8rem,2.6vw,2.6rem)] shrink-0 place-items-center rounded-full bg-[#1b2738] font-metadata-mono text-[clamp(.55rem,.75vw,.75rem)] font-black text-[#9db0c5]">{initials(agent.name)}</span>
+        <div className="min-w-0">
+          <p className="truncate font-headline-lg text-[clamp(.8rem,1.25vw,1.25rem)] font-bold leading-tight">{agent.name}</p>
+          <p className="truncate font-metadata-mono text-[clamp(.45rem,.6vw,.6rem)] uppercase tracking-[0.2em] text-[#60758d]">{agent.user ? `#${agent.user}` : 'Sales agent'}</p>
         </div>
       </div>
-      <style>{`
-        @keyframes ticker-scroll {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-ticker {
-          animation: ticker-scroll 60s linear infinite;
-        }
-      `}</style>
-    </section>
+      <span className="text-right font-metadata-mono text-[clamp(1rem,1.5vw,1.5rem)] font-black text-[#b7f52c]">{agent.formSales}</span>
+      <span className="text-right font-metadata-mono text-[clamp(.7rem,1vw,1rem)] font-bold text-[#9bb0c8]">{agent.callsHandled.toLocaleString('en-US')}</span>
+      <span className="text-right font-metadata-mono text-[clamp(.65rem,.9vw,.9rem)] font-bold text-[#91a6bd]">{agent.conversion.toFixed(2)}%</span>
+    </article>
   );
 }
 
-function buildVicidialRange(filter: TimeFilterDto): { from?: string; to?: string } {
-  if (filter.period === 'Custom' && filter.customStart && filter.customEnd) {
-    return { from: `${filter.customStart} 00:00:00`, to: `${filter.customEnd} 23:59:59` };
-  }
-  const tz = 'America/Tijuana';
-  const now = new Date();
-  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
-  const today = fmt.format(now);
-  switch (filter.period) {
-    case 'Today':
-      return { from: `${today} 00:00:00`, to: `${today} 23:59:59` };
-    case 'Week': {
-      const parts = today.split('-');
-      const y = Number(parts[0]);
-      const m = Number(parts[1]);
-      const d = Number(parts[2]);
-      const cur = new Date(y, m - 1, d);
-      const dow = cur.getDay();
-      const daysSinceMonday = dow === 0 ? 6 : dow - 1;
-      const monday = new Date(cur.getTime() - daysSinceMonday * 86400000);
-      const fmt2 = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
-      return { from: `${fmt2.format(monday)} 00:00:00`, to: `${today} 23:59:59` };
-    }
-    case 'Month': {
-      const parts = today.split('-');
-      const y = Number(parts[0]);
-      const m = Number(parts[1]);
-      const firstOfMonth = `${y}-${String(m).padStart(2, '0')}-01`;
-      return { from: `${firstOfMonth} 00:00:00`, to: `${today} 23:59:59` };
-    }
-    default:
-      return {};
-  }
+function SaleAnnouncement({ sale }: { sale: TvSale }) {
+  return (
+    <div className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[#080c12] text-center">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(183,245,44,.14),transparent_52%)]" />
+      <div className="absolute inset-6 border border-[#b7f52c]/20" />
+      <div className="relative max-w-[92vw]">
+        <p className="mb-8 font-metadata-mono text-[clamp(1rem,2vw,2rem)] font-black uppercase tracking-[0.55em] text-[#b7f52c]">New Sale</p>
+        <h2 className="font-headline-lg text-[clamp(4rem,11vw,10rem)] font-black leading-[.85] tracking-tight text-white">{sale.salesRep}</h2>
+        <p className="mt-10 font-metadata-mono text-[clamp(1rem,2.2vw,2.25rem)] uppercase tracking-[0.25em] text-[#aab8c8]">{sale.bundle}</p>
+        <p className="mt-5 font-metadata-mono text-[clamp(1rem,2vw,2rem)] uppercase tracking-[0.3em] text-[#b7f52c]">{sale.todaysCount} {sale.todaysCount === 1 ? 'sale' : 'sales'} today</p>
+      </div>
+    </div>
+  );
 }
