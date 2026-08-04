@@ -206,13 +206,13 @@ function AgentCard({ agent, rank }: { agent: AgentRow; rank: number }) {
 
 function SaleAnnouncement({ sale }: { sale: TvSale }) {
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[#080c12] text-center">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(183,245,44,.14),transparent_52%)]" />
-      <div className="absolute inset-6 border border-[#b7f52c]/20" />
+    <div className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-[#f8fafc] text-center text-[#111827] dark:bg-[#080c12] dark:text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(183,245,44,.16),transparent_52%)] dark:bg-[radial-gradient(circle_at_center,rgba(183,245,44,.14),transparent_52%)]" />
+      <div className="absolute inset-6 border border-[#b7f52c]/30 dark:border-[#b7f52c]/20" />
       <div className="relative max-w-[92vw]">
         <p className="mb-8 font-metadata-mono text-[clamp(1rem,2vw,2rem)] font-black uppercase tracking-[0.55em] text-[#b7f52c]">New Sale</p>
-        <h2 className="font-headline-lg text-[clamp(4rem,11vw,10rem)] font-black leading-[.85] tracking-tight text-white">{sale.salesRep}</h2>
-        <p className="mt-10 font-metadata-mono text-[clamp(1rem,2.2vw,2.25rem)] uppercase tracking-[0.25em] text-[#111827] dark:text-white">{sale.bundle}</p>
+        <h2 className="font-headline-lg text-[clamp(4rem,11vw,10rem)] font-black leading-[.85] tracking-tight text-[#111827] dark:text-white">{sale.salesRep}</h2>
+        <p className="mt-10 font-metadata-mono text-[clamp(1rem,2.2vw,2.25rem)] font-bold uppercase tracking-[0.25em] text-[#111827] dark:text-white">{sale.bundle}</p>
         <p className="mt-5 font-metadata-mono text-[clamp(1rem,2vw,2rem)] uppercase tracking-[0.3em] text-[#b7f52c]">{sale.todaysCount} {sale.todaysCount === 1 ? 'sale' : 'sales'} today</p>
       </div>
     </div>
