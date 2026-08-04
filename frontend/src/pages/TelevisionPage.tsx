@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as signalR from '@microsoft/signalr';
 import { useAuth } from '../context/AuthContext';
-import { getAgentPerformanceWithSales } from '../services/api';
+import { getAgentPerformanceWithSales, getStaffing } from '../services/api';
 import { readSharedToken } from '../utils/sharedToken';
 import type { ReportDto } from '../types';
 
@@ -17,6 +17,7 @@ interface AgentRow {
   formSales: number;
   formRevenue: number;
   callsHandled: number;
+  contacts: number;
   conversion: number;
 }
 
@@ -32,6 +33,7 @@ function toAgentRow(row: Record<string, unknown>): AgentRow {
     formSales: number(row.Form_Sales_Count),
     formRevenue: number(row.Form_Sales_Amount),
     callsHandled: number(row.Calls_Handled),
+    contacts: number(row.Contacts),
     conversion: number(row.Conversion_Percentage),
   };
 }
@@ -52,6 +54,7 @@ export default function TelevisionPage() {
   const { has } = useAuth();
   const authorized = has('tv.view');
   const [report, setReport] = useState<ReportDto | null>(null);
+  const [staffing, setStaffing] = useState<ReportDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
   const [tvSale, setTvSale] = useState<TvSale | null>(null);
@@ -59,8 +62,12 @@ export default function TelevisionPage() {
 
   const refresh = useCallback(async () => {
     try {
-      const data = await getAgentPerformanceWithSales({ period: 'Today' });
+      const [data, currentStaffing] = await Promise.all([
+        getAgentPerformanceWithSales({ period: 'Today' }),
+        getStaffing().catch(() => null),
+      ]);
       setReport(data);
+      setStaffing(currentStaffing);
       setLastUpdated(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
       setError(null);
     } catch {
@@ -106,33 +113,36 @@ export default function TelevisionPage() {
     sales: result.sales + agent.formSales,
     revenue: result.revenue + agent.formRevenue,
     calls: result.calls + agent.callsHandled,
-  }), { sales: 0, revenue: 0, calls: 0 }), [agents]);
+    contacts: result.contacts + agent.contacts,
+  }), { sales: 0, revenue: 0, calls: 0, contacts: 0 }), [agents]);
 
-  const conversion = totals.calls ? (totals.sales / totals.calls) * 100 : 0;
+  const onCall = useMemo(() => (staffing?.rows ?? []).filter((row) => String(row.Status ?? '').toUpperCase() === 'INCALL').length, [staffing]);
+  const conversion = totals.contacts ? (totals.sales / totals.contacts) * 100 : 0;
 
   if (!authorized) return <div className="p-8 text-center">You don't have access to this view.</div>;
 
   return (
-    <main className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-[#080c12] text-[#f4f7fb]">
+    <main className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-[#f8fafc] text-[#111827] dark:bg-[#080c12] dark:text-white">
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
 
-      <header className="flex h-[9vh] min-h-16 items-center justify-between border-b border-[#202b39] px-[2vw]">
+      <header className="flex h-[9vh] min-h-16 items-center justify-between border-b border-[#d7dee8] dark:border-[#202b39] px-[2vw]">
         <div className="flex items-baseline gap-5">
           <span className="font-headline-lg text-[clamp(1.3rem,2vw,2.5rem)] font-black tracking-[0.18em]">ALTRX</span>
           <span className="font-metadata-mono text-[clamp(.65rem,1vw,1rem)] font-bold uppercase tracking-[0.35em] text-[#b7f52c]">Sales Floor</span>
         </div>
-        <div className="flex items-center gap-5 font-metadata-mono text-[clamp(.6rem,.9vw,.9rem)] uppercase tracking-[0.25em] text-[#7890aa]">
+        <div className="flex items-center gap-5 font-metadata-mono text-[clamp(.6rem,.9vw,.9rem)] uppercase tracking-[0.25em] text-[#111827] dark:text-white">
           <span className="flex items-center gap-2 text-[#ff5364]"><i className="h-2 w-2 rounded-full bg-[#ff5364] animate-pulse" />Live</span>
           <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-          <span className="text-[clamp(1rem,1.8vw,2rem)] font-black tracking-[0.1em] text-[#d8e0e9]">{lastUpdated || '--:--'}</span>
+          <span className="text-[clamp(1rem,1.8vw,2rem)] font-black tracking-[0.1em] text-[#111827] dark:text-white">{lastUpdated || '--:--'}</span>
         </div>
       </header>
 
-      <section className="grid h-[16vh] min-h-28 grid-cols-4 border-b border-[#202b39]">
+      <section className="grid h-[16vh] min-h-28 grid-cols-5 border-b border-[#d7dee8] dark:border-[#202b39]">
         <Metric label="Team sales today" value={String(totals.sales)} accent />
         <Metric label="Revenue" value={formatCurrency(totals.revenue)} accent />
         <Metric label="Calls dialed" value={totals.calls.toLocaleString('en-US')} />
         <Metric label="Conversion" value={`${conversion.toFixed(2)}%`} />
+        <Metric label="Out / In split" value={`${onCall} / ${totals.contacts}`} />
       </section>
 
       {error ? <div className="border-b border-red-500/30 bg-red-500/10 px-5 py-2 font-metadata-mono text-sm text-red-300">{error}</div> : null}
@@ -142,9 +152,9 @@ export default function TelevisionPage() {
         <AgentColumn agents={agents.slice(Math.ceil(agents.length / 2))} start={Math.ceil(agents.length / 2)} second />
       </section>
 
-      <footer className="flex h-[5vh] min-h-10 items-center justify-between border-t border-[#202b39] px-[2vw] font-metadata-mono text-[clamp(.55rem,.75vw,.75rem)] uppercase tracking-[0.3em] text-[#60758d]">
+      <footer className="flex h-[5vh] min-h-10 items-center justify-between border-t border-[#d7dee8] dark:border-[#202b39] px-[2vw] font-metadata-mono text-[clamp(.55rem,.75vw,.75rem)] uppercase tracking-[0.3em] text-[#111827] dark:text-white">
         <span>{agents.length} agents on leaderboard</span>
-        <span className="text-[#8da0b5]">Every sale moves the board</span>
+        <span className="text-[#111827] dark:text-white">Every sale moves the board</span>
         <span>Updated {lastUpdated || '--:--'}</span>
       </footer>
     </main>
@@ -153,22 +163,22 @@ export default function TelevisionPage() {
 
 function Metric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="flex flex-col justify-center border-r border-[#202b39] px-[2.5vw] last:border-r-0">
-      <p className="font-metadata-mono text-[clamp(.55rem,.9vw,.9rem)] font-bold uppercase tracking-[0.25em] text-[#758ba3]">{label}</p>
-      <p className={`mt-1 font-headline-lg text-[clamp(2rem,3.5vw,4rem)] font-black leading-none tracking-tight ${accent ? 'text-[#b7f52c]' : 'text-[#f4f7fb]'}`}>{value}</p>
+    <div className="flex flex-col justify-center border-r border-[#d7dee8] dark:border-[#202b39] px-[2.5vw] last:border-r-0">
+      <p className="font-metadata-mono text-[clamp(.55rem,.9vw,.9rem)] font-bold uppercase tracking-[0.25em] text-[#111827] dark:text-white">{label}</p>
+      <p className={`mt-1 font-headline-lg text-[clamp(2rem,3.5vw,4rem)] font-black leading-none tracking-tight ${accent ? 'text-[#b7f52c]' : 'text-[#111827] dark:text-white'}`}>{value}</p>
     </div>
   );
 }
 
 function AgentColumn({ agents, start, second = false }: { agents: AgentRow[]; start: number; second?: boolean }) {
   return (
-    <div className={`min-h-0 flex flex-col px-3 ${second ? 'border-l border-[#202b39]' : ''}`}>
-      <div className="grid grid-cols-[3rem_minmax(0,1fr)_5rem_6rem_5rem] items-center gap-2 px-2 py-2 font-metadata-mono text-[clamp(.5rem,.7vw,.7rem)] uppercase tracking-[0.22em] text-[#657b93]">
+    <div className={`min-h-0 flex flex-col px-3 ${second ? 'border-l border-[#d7dee8] dark:border-[#202b39]' : ''}`}>
+      <div className="grid grid-cols-[3rem_minmax(0,1fr)_5rem_6rem_5rem] items-center gap-2 px-2 py-2 font-metadata-mono text-[clamp(.5rem,.7vw,.7rem)] uppercase tracking-[0.22em] text-[#111827] dark:text-white">
         <span>#</span><span>Agent</span><span className="text-right">Sales</span><span className="text-right">Calls</span><span className="text-right">Conv</span>
       </div>
       <div className="min-h-0 flex-1 grid auto-rows-fr gap-1 pb-3">
         {agents.length ? agents.map((agent, index) => <AgentCard key={`${agent.user}-${agent.name}`} agent={agent} rank={start + index + 1} />) : (
-          <div className="grid place-items-center font-metadata-mono uppercase tracking-[0.25em] text-[#52677e]">No agent data</div>
+          <div className="grid place-items-center font-metadata-mono uppercase tracking-[0.25em] text-[#111827] dark:text-white">No agent data</div>
         )}
       </div>
     </div>
@@ -176,20 +186,20 @@ function AgentColumn({ agents, start, second = false }: { agents: AgentRow[]; st
 }
 
 function AgentCard({ agent, rank }: { agent: AgentRow; rank: number }) {
-  const medal = rank === 1 ? 'border-l-[#ffc83d] bg-[#1b1911]' : rank === 2 ? 'border-l-[#d8e0e9] bg-[#101721]' : rank === 3 ? 'border-l-[#d97a38] bg-[#17140f]' : 'border-l-[#33465c] bg-[#0d141d]';
+  const medal = rank === 1 ? 'border-l-[#ffc83d] bg-white dark:bg-[#1b1911]' : rank === 2 ? 'border-l-[#d8e0e9] bg-white dark:bg-[#101721]' : rank === 3 ? 'border-l-[#d97a38] bg-white dark:bg-[#17140f]' : 'border-l-[#33465c] bg-white dark:bg-[#0d141d]';
   return (
     <article className={`grid min-h-0 grid-cols-[3rem_minmax(0,1fr)_5rem_6rem_5rem] items-center gap-2 rounded border-l-4 px-2 ${medal}`}>
-      <span className={`font-metadata-mono text-[clamp(1rem,1.6vw,1.6rem)] font-black ${rank <= 3 ? 'text-[#f7cf62]' : 'text-[#61758d]'}`}>{rank}</span>
+      <span className={`font-metadata-mono text-[clamp(1rem,1.6vw,1.6rem)] font-black ${rank <= 3 ? 'text-[#111827] dark:text-white' : 'text-[#111827] dark:text-white'}`}>{rank}</span>
       <div className="flex min-w-0 items-center gap-3">
-        <span className="grid aspect-square w-[clamp(1.8rem,2.6vw,2.6rem)] shrink-0 place-items-center rounded-full bg-[#1b2738] font-metadata-mono text-[clamp(.55rem,.75vw,.75rem)] font-black text-[#9db0c5]">{initials(agent.name)}</span>
+        <span className="grid aspect-square w-[clamp(1.8rem,2.6vw,2.6rem)] shrink-0 place-items-center rounded-full bg-[#e5e7eb] dark:bg-[#1b2738] font-metadata-mono text-[clamp(.55rem,.75vw,.75rem)] font-black text-[#111827] dark:text-white">{initials(agent.name)}</span>
         <div className="min-w-0">
           <p className="truncate font-headline-lg text-[clamp(.8rem,1.25vw,1.25rem)] font-bold leading-tight">{agent.name}</p>
-          <p className="truncate font-metadata-mono text-[clamp(.45rem,.6vw,.6rem)] uppercase tracking-[0.2em] text-[#60758d]">{agent.user ? `#${agent.user}` : 'Sales agent'}</p>
+          <p className="truncate font-metadata-mono text-[clamp(.45rem,.6vw,.6rem)] uppercase tracking-[0.2em] text-[#111827] dark:text-white">{agent.user ? `#${agent.user}` : 'Sales agent'}</p>
         </div>
       </div>
       <span className="text-right font-metadata-mono text-[clamp(1rem,1.5vw,1.5rem)] font-black text-[#b7f52c]">{agent.formSales}</span>
-      <span className="text-right font-metadata-mono text-[clamp(.7rem,1vw,1rem)] font-bold text-[#9bb0c8]">{agent.callsHandled.toLocaleString('en-US')}</span>
-      <span className="text-right font-metadata-mono text-[clamp(.65rem,.9vw,.9rem)] font-bold text-[#91a6bd]">{agent.conversion.toFixed(2)}%</span>
+      <span className="text-right font-metadata-mono text-[clamp(.7rem,1vw,1rem)] font-bold text-[#111827] dark:text-white">{agent.callsHandled.toLocaleString('en-US')}</span>
+      <span className="text-right font-metadata-mono text-[clamp(.65rem,.9vw,.9rem)] font-bold text-[#111827] dark:text-white">{agent.conversion.toFixed(2)}%</span>
     </article>
   );
 }
@@ -202,7 +212,7 @@ function SaleAnnouncement({ sale }: { sale: TvSale }) {
       <div className="relative max-w-[92vw]">
         <p className="mb-8 font-metadata-mono text-[clamp(1rem,2vw,2rem)] font-black uppercase tracking-[0.55em] text-[#b7f52c]">New Sale</p>
         <h2 className="font-headline-lg text-[clamp(4rem,11vw,10rem)] font-black leading-[.85] tracking-tight text-white">{sale.salesRep}</h2>
-        <p className="mt-10 font-metadata-mono text-[clamp(1rem,2.2vw,2.25rem)] uppercase tracking-[0.25em] text-[#aab8c8]">{sale.bundle}</p>
+        <p className="mt-10 font-metadata-mono text-[clamp(1rem,2.2vw,2.25rem)] uppercase tracking-[0.25em] text-[#111827] dark:text-white">{sale.bundle}</p>
         <p className="mt-5 font-metadata-mono text-[clamp(1rem,2vw,2rem)] uppercase tracking-[0.3em] text-[#b7f52c]">{sale.todaysCount} {sale.todaysCount === 1 ? 'sale' : 'sales'} today</p>
       </div>
     </div>

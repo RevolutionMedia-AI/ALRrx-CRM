@@ -632,19 +632,19 @@ function AgentCard({
       {isLongPause && (
         <span title={`Paused for ${pauseTime}`} className="absolute top-2 right-2 material-symbols-outlined text-deep-rose text-[16px] animate-pulse">priority_high</span>
       )}
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-pure-surface border border-whisper-border flex items-center justify-center text-primary font-bold text-xs">
+      <div className="flex flex-col gap-2 mb-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="w-9 h-9 shrink-0 rounded-full bg-pure-surface border border-whisper-border flex items-center justify-center text-primary font-bold text-xs">
             {getInitials(agent.Name ?? agent.User ?? '')}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-primary leading-tight truncate" title={agent.Name}>{agent.Name ?? agent.User ?? '--'}</p>
             <p className="text-[11px] text-secondary font-metadata-mono">#{agent.Emp_Number ?? agent.User}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className={`w-2 h-2 rounded-full ${c.dot}`} />
-          <span className={`text-[11px] font-medium ${c.text}`}>{c.label}</span>
+        <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-start">
+          <span className={`w-2 h-2 shrink-0 rounded-full ${c.dot}`} />
+          <span className={`text-[11px] font-medium whitespace-nowrap ${c.text}`}>{c.label}</span>
         </div>
       </div>
 
