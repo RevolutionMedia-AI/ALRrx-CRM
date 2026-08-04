@@ -190,7 +190,7 @@ function AgentColumn({ agents, start, second = false }: { agents: AgentRow[]; st
 }
 
 function AgentCard({ agent, rank }: { agent: AgentRow; rank: number }) {
-  const medal = rank === 1 ? 'border-l-[#ffc83d] bg-yellow-50 dark:bg-[#1b1911]' : rank === 2 ? 'border-l-[#d8e0e9] bg-slate-50 dark:bg-[#101721]' : rank === 3 ? 'border-l-[#d97a38] bg-orange-50 dark:bg-[#17140f]' : 'border-l-[#33465c] bg-white dark:bg-[#0d141d]';
+  const medal = rank === 1 ? 'border-l-[#ffc83d] bg-yellow-50 dark:bg-[#1b1911]' : rank === 2 ? 'border-l-[#aeb4bd] bg-[#d9dde3] dark:bg-[#101721]' : rank === 3 ? 'border-l-[#d97a38] bg-orange-50 dark:bg-[#17140f]' : 'border-l-[#33465c] bg-white dark:bg-[#0d141d]';
   return (
     <article className={`grid min-h-0 grid-cols-[2.5rem_minmax(0,1fr)_4.5rem_5rem_4.5rem] items-center gap-2 border-b border-l-4 border-[#d7dee8] dark:border-[#202b39] px-2 ${medal}`}>
       <span className={`font-metadata-mono text-[clamp(1rem,1.6vw,1.6rem)] font-black ${rank <= 3 ? 'text-[#111827] dark:text-white' : 'text-[#111827] dark:text-white'}`}>{rank}</span>
@@ -201,7 +201,7 @@ function AgentCard({ agent, rank }: { agent: AgentRow; rank: number }) {
           <p className="truncate font-metadata-mono text-[clamp(.45rem,.6vw,.6rem)] uppercase tracking-[0.2em] text-[#111827] dark:text-white">{agent.user ? `#${agent.user}` : 'Sales agent'}</p>
         </div>
       </div>
-      <span className="text-right font-metadata-mono text-[clamp(1rem,1.5vw,1.5rem)] font-black text-[#b7f52c]">{agent.formSales}</span>
+      <span className="text-right font-metadata-mono text-[clamp(1rem,1.5vw,1.5rem)] font-black text-purple-600 dark:text-[#b7f52c]">{agent.formSales}</span>
       <span className="text-right font-metadata-mono text-[clamp(.7rem,1vw,1rem)] font-bold text-[#111827] dark:text-white">{agent.callsHandled.toLocaleString('en-US')}</span>
       <span className="text-right font-metadata-mono text-[clamp(.65rem,.9vw,.9rem)] font-bold text-[#111827] dark:text-white">{agent.conversion.toFixed(2)}%</span>
     </article>
