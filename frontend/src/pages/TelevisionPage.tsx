@@ -177,7 +177,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 function AgentColumn({ agents, start, second = false }: { agents: AgentRow[]; start: number; second?: boolean }) {
   return (
     <div className={`min-h-0 flex flex-col px-3 ${second ? 'border-l border-[#d7dee8] dark:border-[#202b39]' : ''}`}>
-      <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_4.5rem_5rem_4.5rem] items-center gap-2 px-2 py-2 font-metadata-mono text-[clamp(.5rem,.7vw,.7rem)] uppercase tracking-[0.22em] text-[#111827] dark:text-white">
+      <div className="grid w-full max-w-[48rem] grid-cols-[2.5rem_minmax(0,1fr)_4.5rem_5rem_4.5rem] items-center gap-2 px-2 py-2 font-metadata-mono text-[clamp(.5rem,.7vw,.7rem)] uppercase tracking-[0.22em] text-[#111827] dark:text-white">
         <span>#</span><span>Agent</span><span className="text-right">Sales</span><span className="text-right">Calls</span><span className="text-right">Conv</span>
       </div>
       <div className="min-h-0 flex-1 grid auto-rows-fr gap-1 pb-3">
@@ -192,7 +192,7 @@ function AgentColumn({ agents, start, second = false }: { agents: AgentRow[]; st
 function AgentCard({ agent, rank }: { agent: AgentRow; rank: number }) {
   const medal = rank === 1 ? 'border-l-[#ffc83d] bg-yellow-50 dark:bg-[#1b1911]' : rank === 2 ? 'border-l-[#aeb4bd] bg-[#d9dde3] dark:bg-[#101721]' : rank === 3 ? 'border-l-[#d97a38] bg-orange-50 dark:bg-[#17140f]' : 'border-l-[#33465c] bg-white dark:bg-[#0d141d]';
   return (
-    <article className={`grid min-h-0 grid-cols-[2.5rem_minmax(0,1fr)_4.5rem_5rem_4.5rem] items-center gap-2 border-b border-l-4 border-[#d7dee8] dark:border-[#202b39] px-2 ${medal}`}>
+    <article className={`grid min-h-0 w-full max-w-[48rem] grid-cols-[2.5rem_minmax(0,1fr)_4.5rem_5rem_4.5rem] items-center gap-2 border-b border-l-4 border-[#d7dee8] dark:border-[#202b39] px-2 ${medal}`}>
       <span className={`font-metadata-mono text-[clamp(1rem,1.6vw,1.6rem)] font-black ${rank <= 3 ? 'text-[#111827] dark:text-white' : 'text-[#111827] dark:text-white'}`}>{rank}</span>
       <div className="flex min-w-0 items-center gap-3">
         <span className="grid aspect-square w-[clamp(1.8rem,2.6vw,2.6rem)] shrink-0 place-items-center rounded-full bg-[#e5e7eb] dark:bg-[#1b2738] font-metadata-mono text-[clamp(.55rem,.75vw,.75rem)] font-black text-[#111827] dark:text-white">{initials(agent.name)}</span>
