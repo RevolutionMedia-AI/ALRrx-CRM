@@ -142,7 +142,7 @@ export default function TelevisionPage() {
         <Metric label="Revenue" value={formatCurrency(totals.revenue)} accent />
         <Metric label="Calls dialed" value={totals.calls.toLocaleString('en-US')} />
         <Metric label="Conversion" value={`${conversion.toFixed(2)}%`} />
-        <Metric label="Out / In split" value={`${onCall} / ${totals.contacts}`} />
+        <Metric label="Connected calls / On Call" value={`${totals.contacts} / ${onCall}`} />
       </section>
 
       {error ? <div className="border-b border-red-500/30 bg-red-500/10 px-5 py-2 font-metadata-mono text-sm text-red-300">{error}</div> : null}
@@ -212,7 +212,7 @@ function SaleAnnouncement({ sale }: { sale: TvSale }) {
       <div className="relative max-w-[92vw]">
         <p className="mb-8 font-metadata-mono text-[clamp(1rem,2vw,2rem)] font-black uppercase tracking-[0.55em] text-[#b7f52c]">New Sale</p>
         <h2 className="font-headline-lg text-[clamp(4rem,11vw,10rem)] font-black leading-[.85] tracking-tight text-[#111827] dark:text-white">{sale.salesRep}</h2>
-        <p className="mt-10 font-metadata-mono text-[clamp(1rem,2.2vw,2.25rem)] font-bold uppercase tracking-[0.25em] text-[#111827] dark:text-white">{sale.bundle}</p>
+        <p className="mt-10 font-metadata-mono text-[clamp(1rem,2.2vw,2.25rem)] uppercase tracking-[0.25em] text-[#111827] dark:text-white">{sale.bundle}</p>
         <p className="mt-5 font-metadata-mono text-[clamp(1rem,2vw,2rem)] uppercase tracking-[0.3em] text-[#b7f52c]">{sale.todaysCount} {sale.todaysCount === 1 ? 'sale' : 'sales'} today</p>
       </div>
     </div>
