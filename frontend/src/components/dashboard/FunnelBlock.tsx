@@ -102,9 +102,9 @@ export default function FunnelBlock({ dialed, contacted, sales, outboundSalesCal
               label="Dialed"
               value={dialed}
               loading={loading}
-              gradient="bg-gradient-to-br from-electric-blue/10 via-electric-blue/5 to-transparent"
-              ringColor="border-electric-blue/30"
-              textColor="text-electric-blue"
+              gradient="bg-gradient-to-br from-electric-blue/15 via-electric-blue/[0.07] to-transparent dark:from-blue-500/25 dark:via-blue-500/10 dark:to-transparent"
+              ringColor="border-electric-blue/30 dark:border-blue-400/40"
+              textColor="text-electric-blue dark:text-blue-400"
             />
             <Arrow
               pct={safePct(contacted ?? 0, dialed ?? 0)}
@@ -115,9 +115,9 @@ export default function FunnelBlock({ dialed, contacted, sales, outboundSalesCal
               label="Contacted"
               value={contacted}
               loading={loading}
-              gradient="bg-gradient-to-br from-emerald-signal/10 via-emerald-signal/5 to-transparent"
-              ringColor="border-emerald-signal/30"
-              textColor="text-emerald-signal"
+              gradient="bg-gradient-to-br from-emerald-signal/15 via-emerald-signal/[0.07] to-transparent dark:from-emerald-500/25 dark:via-emerald-500/10 dark:to-transparent"
+              ringColor="border-emerald-signal/30 dark:border-emerald-400/40"
+              textColor="text-emerald-signal dark:text-emerald-400"
             />
             <Arrow
               pct={safePct(sales, contacted ?? 0)}
@@ -128,9 +128,9 @@ export default function FunnelBlock({ dialed, contacted, sales, outboundSalesCal
               label="Sales"
               value={sales}
               loading={loading}
-              gradient="bg-gradient-to-br from-amber-warmth/10 via-amber-warmth/5 to-transparent"
-              ringColor="border-amber-warmth/30"
-              textColor="text-amber-warmth"
+              gradient="bg-gradient-to-br from-amber-warmth/15 via-amber-warmth/[0.07] to-transparent dark:from-amber-500/25 dark:via-amber-500/10 dark:to-transparent"
+              ringColor="border-amber-warmth/30 dark:border-amber-400/40"
+              textColor="text-amber-warmth dark:text-amber-400"
               emptyText="No sales yet today"
             />
           </div>
@@ -184,21 +184,21 @@ function DirectionCard({
   const icon = isOutbound ? 'call_made' : 'call_received';
   const palette = isOutbound
     ? {
-        gradient: 'bg-gradient-to-br from-emerald-signal/10 via-emerald-signal/5 to-transparent',
-        ringColor: 'border-emerald-signal/30',
-        textColor: 'text-emerald-signal',
-        iconColor: 'text-emerald-signal',
+        gradient: 'bg-gradient-to-br from-emerald-signal/15 via-emerald-signal/[0.07] to-transparent dark:from-emerald-500/25 dark:via-emerald-500/10 dark:to-transparent',
+        ringColor: 'border-emerald-signal/30 dark:border-emerald-400/40',
+        textColor: 'text-emerald-signal dark:text-emerald-400',
+        iconColor: 'text-emerald-signal dark:text-emerald-400',
       }
     : {
-        gradient: 'bg-gradient-to-br from-electric-blue/10 via-electric-blue/5 to-transparent',
-        ringColor: 'border-electric-blue/30',
-        textColor: 'text-electric-blue',
-        iconColor: 'text-electric-blue',
+        gradient: 'bg-gradient-to-br from-electric-blue/15 via-electric-blue/[0.07] to-transparent dark:from-blue-500/25 dark:via-blue-500/10 dark:to-transparent',
+        ringColor: 'border-electric-blue/30 dark:border-blue-400/40',
+        textColor: 'text-electric-blue dark:text-blue-400',
+        iconColor: 'text-electric-blue dark:text-blue-400',
       };
 
   return (
     <div className={`flex items-center gap-3 rounded-xl border ${palette.ringColor} ${palette.gradient} p-4 shadow-sm`}>
-      <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-pure-surface/60 ${palette.iconColor}`}>
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-pure-surface/60 dark:bg-gray-800/70 ${palette.iconColor}`}>
         <span className="material-symbols-outlined text-xl">{icon}</span>
       </div>
       <div className="flex-1 min-w-0">
