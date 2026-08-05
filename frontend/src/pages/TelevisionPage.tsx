@@ -247,7 +247,7 @@ return (
             <span className="text-right">Revenue</span>
             <span className="text-right">% Total</span>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+          <div className="overflow-y-auto px-4 pb-4">
             {agents.length ? agents.slice(0, 15).map((agent, index) => (
               <RankingRow
                 key={`${agent.user}-${agent.name}`}
