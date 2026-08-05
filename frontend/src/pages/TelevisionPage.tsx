@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import {
   getAgentPerformanceWithSales,
   getDashboardSummary,
-  getStaffing,
 } from '../services/api';
 import {
   getVicidialCallCounts,
@@ -72,7 +71,7 @@ function clampPercent(value: number): number {
 }
 
 export default function TelevisionPage() {
-  const { has } = useAuth();
+  const { has, isAdmin } = useAuth();
   const authorized = has('tv.view');
 
   const [report, setReport] = useState<ReportDto | null>(null);
@@ -80,7 +79,6 @@ export default function TelevisionPage() {
   const [callCounts, setCallCounts] = useState<VicidialCallCounts | null>(null);
   const [salesSummary, setSalesSummary] = useState<{ totalSales: number; totalCount: number } | null>(null);
   const [recentSales, setRecentSales] = useState<VicidialSaleDto[]>([]);
-  const [staffing, setStaffing] = useState<ReportDto | null>(null);
   const [dashboardSummary, setDashboardSummary] = useState<DashboardSummaryDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
@@ -96,7 +94,6 @@ export default function TelevisionPage() {
         counts,
         summary,
         sales,
-        currentStaffing,
         dashboard,
       ] = await Promise.all([
         getAgentPerformanceWithSales({ period: 'Today' }),
@@ -104,7 +101,6 @@ export default function TelevisionPage() {
         getVicidialCallCounts('Today').catch(() => null),
         getVicidialSalesSummary(range.from, range.to, 500).catch(() => null),
         listAllVicidialSales(range.from, range.to, 500).catch(() => []),
-        getStaffing().catch(() => null),
         getDashboardSummary({ period: 'Today' }).catch(() => null),
       ]);
 
@@ -113,7 +109,6 @@ export default function TelevisionPage() {
       setCallCounts(counts);
       setSalesSummary(summary ? { totalSales: summary.totalSales, totalCount: summary.totalCount } : null);
       setRecentSales(sales);
-      setStaffing(currentStaffing);
       setDashboardSummary(dashboard);
       setLastUpdated(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
       setError(null);
@@ -223,10 +218,7 @@ const revenue = useMemo(() => {
   return salesSummary?.totalSales ?? 0;
 }, [dashboardSummary, salesSummary]);
 
-  const activeAgents = useMemo(() => {
-    if (!staffing?.rows?.length) return 0;
-    return staffing.rows.filter((row) => String(row.Status ?? '').toUpperCase() !== 'OFFLINE').length;
-  }, [staffing]);
+  
 
   if (!authorized) return <div className="p-8 text-center">You don't have access to this view.</div>;
 
@@ -271,8 +263,8 @@ const revenue = useMemo(() => {
             <Metric icon="revenue" label="Revenue" value={formatCurrency(revenue)} sub="Today" tone="purple" />
           </section>
           <TopPerformer agents={agents} recentSales={recentSales} />
-          <DailyGoalCard current={totals.sales} />
-          <PulseBoard activeAgents={activeAgents} recentSales={recentSales} />
+          <DailyGoalCard current={totals.sales} canEdit={isAdmin} />
+          <TopRevenueCard recentSales={recentSales} />
         </aside>
       </section>
 
@@ -374,48 +366,194 @@ function TopPerformer({ agents, recentSales }: { agents: AgentRow[]; recentSales
   const top = agents[0];
   const last = recentSales[0];
   return (
-    <section className="overflow-hidden rounded-xl border border-purple-500/60 bg-white p-4 shadow-[0_0_25px_rgba(192,132,252,.18)] dark:bg-slate-900/60">
+    <section className="relative overflow-hidden rounded-2xl border-2 border-purple-500 bg-gradient-to-br from-purple-100 via-white to-pink-100 p-5 shadow-[0_0_40px_rgba(168,85,247,.45)] dark:border-purple-300 dark:from-purple-500/30 dark:via-slate-900 dark:to-pink-500/20">
+      <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-purple-300/40 blur-3xl dark:bg-purple-400/30" aria-hidden />
       <header className="flex items-center justify-between">
-        <h3 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-purple-700 dark:text-purple-300">Top Performer</h3>
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Today</span>
+        <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-purple-700 dark:text-purple-200">Top Performer</h3>
+        <span className="rounded-full bg-purple-600 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-white shadow-lg shadow-purple-500/40 dark:bg-purple-400 dark:text-purple-950">Live</span>
       </header>
       {top ? (
-        <div className="mt-3 flex items-center gap-3">
-          <span className="grid h-14 w-14 place-items-center rounded-full border border-purple-500/70 bg-purple-100 font-mono text-base font-black text-purple-700 dark:border-purple-300/60 dark:bg-purple-500/15 dark:text-purple-200">{initials(top.name)}</span>
-          <div className="min-w-0">
-            <p className="truncate text-lg font-black text-[#111827] dark:text-white">{top.name}</p>
-            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">{top.totalSales} sales · {formatCurrency(last?.amount ?? 0)} last</p>
+        <div className="mt-4 flex items-center gap-4">
+          <span className="grid h-20 w-20 place-items-center rounded-full border-4 border-purple-500 bg-white text-2xl font-black text-purple-700 shadow-xl shadow-purple-500/50 dark:border-purple-300 dark:bg-slate-950 dark:text-purple-200">{initials(top.name)}</span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-2xl font-black text-[#111827] dark:text-white">{top.name}</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">ID {top.user || '—'}</p>
           </div>
         </div>
       ) : (
-        <p className="mt-3 font-mono text-xs uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting data</p>
+        <p className="mt-4 font-mono text-sm uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting data</p>
       )}
+      {top ? (
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-xl border-2 border-purple-500 bg-white px-3 py-3 text-center dark:bg-slate-950">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-purple-700 dark:text-purple-300">Total Sales</p>
+            <p className="mt-1 text-3xl font-black text-[#111827] dark:text-white">{top.totalSales}</p>
+          </div>
+          <div className="rounded-xl border-2 border-amber-500 bg-white px-3 py-3 text-center dark:bg-slate-950">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-amber-700 dark:text-amber-300">Revenue</p>
+            <p className="mt-1 text-2xl font-black text-amber-600 dark:text-amber-300">{formatCurrency(top.revenue)}</p>
+          </div>
+        </div>
+      ) : null}
+      {top && last ? (
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Last sale: {formatCurrency(last.amount)}</p>
+      ) : null}
     </section>
   );
 }
 
-function DailyGoalCard({ current }: { current: number }) {
-  const target = 0;
+const DAILY_GOAL_KEY = 'tv.dailyGoal';
+
+function loadDailyGoal(): number {
+  try {
+    const raw = window.localStorage.getItem(DAILY_GOAL_KEY);
+    if (!raw) return 0;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveDailyGoal(value: number) {
+  try {
+    if (value > 0) window.localStorage.setItem(DAILY_GOAL_KEY, String(value));
+    else window.localStorage.removeItem(DAILY_GOAL_KEY);
+  } catch {
+    return;
+  }
+}
+
+function DailyGoalCard({ current, canEdit }: { current: number; canEdit: boolean }) {
+  const [target, setTarget] = useState<number>(() => loadDailyGoal());
+  const [draft, setDraft] = useState<string>('');
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    setTarget(loadDailyGoal());
+  }, []);
+
   const percent = target > 0 ? clampPercent((current / target) * 100) : 0;
-  const remaining = Math.max(target - current, 0);
+  const remaining = target > 0 ? Math.max(target - current, 0) : 0;
+
+  const onSave = () => {
+    const parsed = Number(draft);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      setTarget(parsed);
+      saveDailyGoal(parsed);
+    }
+    setEditing(false);
+    setDraft('');
+  };
+
   return (
-    <section className="overflow-hidden rounded-xl border border-cyan-500/60 bg-white p-4 shadow-[0_0_25px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
+    <section className="relative overflow-hidden rounded-2xl border-2 border-cyan-500 bg-gradient-to-br from-cyan-100 via-white to-blue-100 p-5 shadow-[0_0_40px_rgba(34,211,238,.45)] dark:border-cyan-300 dark:from-cyan-500/25 dark:via-slate-900 dark:to-blue-500/20">
+      <div className="absolute -left-8 -top-8 h-32 w-32 rounded-full bg-cyan-300/40 blur-3xl dark:bg-cyan-400/30" aria-hidden />
       <header className="flex items-center justify-between">
-        <h3 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Daily Goal</h3>
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Sales target</span>
+        <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-200">Daily Goal</h3>
+        {canEdit ? (
+          editing ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') onSave();
+                  if (event.key === 'Escape') { setEditing(false); setDraft(''); }
+                }}
+                placeholder={target ? String(target) : '0'}
+                className="w-24 rounded border border-cyan-500 bg-white px-2 py-1 text-right font-mono text-sm font-bold text-cyan-700 outline-none focus:ring-2 focus:ring-cyan-400 dark:bg-slate-950 dark:text-cyan-200"
+              />
+              <button type="button" onClick={onSave} className="rounded bg-cyan-600 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow hover:bg-cyan-500">Save</button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => { setEditing(true); setDraft(target ? String(target) : ''); }} className="rounded bg-cyan-600 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow hover:bg-cyan-500">Edit target</button>
+          )
+        ) : (
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Sales target</span>
+        )}
       </header>
-      <div className="relative mt-3 grid place-items-center">
+      <div className="relative mt-4 grid place-items-center">
         <ProgressDial percent={percent} />
         <p className="pointer-events-none absolute text-center">
-          <span className="block text-2xl font-black text-[#111827] dark:text-white">{current}</span>
+          <span className="block text-4xl font-black text-[#111827] dark:text-white">{current}</span>
           <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">of {target || '—'}</span>
+          <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">{percent}% reached</span>
         </p>
       </div>
-      <dl className="mt-3 grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">
-        <div><dt className="text-cyan-700 dark:text-cyan-300">Current</dt><dd className="text-[#111827] dark:text-white">{current}</dd></div>
-        <div><dt className="text-purple-700 dark:text-purple-300">Target</dt><dd className="text-[#111827] dark:text-white">{target || '—'}</dd></div>
-        <div><dt className="text-orange-700 dark:text-orange-300">Remaining</dt><dd className="text-[#111827] dark:text-white">{remaining || '—'}</dd></div>
+      <dl className="mt-4 grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">
+        <div className="rounded border border-cyan-500/60 bg-white px-2 py-2 text-center dark:bg-slate-950">
+          <dt className="text-cyan-700 dark:text-cyan-300">Current</dt>
+          <dd className="mt-1 text-base font-black text-[#111827] dark:text-white">{current}</dd>
+        </div>
+        <div className="rounded border border-purple-500/60 bg-white px-2 py-2 text-center dark:bg-slate-950">
+          <dt className="text-purple-700 dark:text-purple-300">Target</dt>
+          <dd className="mt-1 text-base font-black text-[#111827] dark:text-white">{target || '—'}</dd>
+        </div>
+        <div className="rounded border border-orange-500/60 bg-white px-2 py-2 text-center dark:bg-slate-950">
+          <dt className="text-orange-700 dark:text-orange-300">Remaining</dt>
+          <dd className="mt-1 text-base font-black text-[#111827] dark:text-white">{remaining || '—'}</dd>
+        </div>
       </dl>
+    </section>
+  );
+}
+
+function TopRevenueCard({ recentSales }: { recentSales: VicidialSaleDto[] }) {
+  const byAgent = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const sale of recentSales) {
+      map.set(sale.salesRep, (map.get(sale.salesRep) ?? 0) + Number(sale.amount));
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [recentSales]);
+
+  const top = byAgent[0];
+  const max = top?.[1] ?? 1;
+
+  return (
+    <section className="relative overflow-hidden rounded-2xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-100 via-white to-teal-100 p-5 shadow-[0_0_40px_rgba(16,185,129,.45)] dark:border-emerald-300 dark:from-emerald-500/25 dark:via-slate-900 dark:to-teal-500/20">
+      <div className="absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-emerald-300/40 blur-3xl dark:bg-emerald-400/30" aria-hidden />
+      <header className="flex items-center justify-between">
+        <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-emerald-700 dark:text-emerald-200">Top Revenue</h3>
+        <span className="rounded-full bg-emerald-600 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-white shadow-lg shadow-emerald-500/40 dark:bg-emerald-400 dark:text-emerald-950">$ live</span>
+      </header>
+      {byAgent.length ? (
+        <>
+          <div className="mt-4 rounded-xl border-2 border-emerald-500 bg-white p-3 text-center dark:bg-slate-950">
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-emerald-700 dark:text-emerald-300">#1 Revenue</p>
+            <p className="truncate text-xl font-black text-[#111827] dark:text-white">{top?.[0] ?? '—'}</p>
+            <p className="mt-1 text-2xl font-black text-emerald-600 dark:text-emerald-300">{formatCurrency(top?.[1] ?? 0)}</p>
+          </div>
+          <ul className="mt-3 space-y-2">
+            {byAgent.map(([name, amount], index) => {
+              const share = clampPercent((amount / max) * 100);
+              return (
+                <li key={name} className="rounded-lg border border-emerald-500/40 bg-white px-3 py-2 dark:bg-slate-950">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className="flex items-center gap-2 truncate font-bold text-[#111827] dark:text-white">
+                      <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-100 font-mono text-xs font-black text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-200">{index + 1}</span>
+                      {name}
+                    </span>
+                    <span className="font-mono text-sm font-black text-emerald-700 dark:text-emerald-300">{formatCurrency(amount)}</span>
+                  </div>
+                  <span
+                    aria-hidden
+                    className="mt-1 block h-1 rounded bg-emerald-500"
+                    style={{ width: `${share}%`, transition: 'width .7s ease' }}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      ) : (
+        <p className="mt-4 font-mono text-sm uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting first sale</p>
+      )}
     </section>
   );
 }
@@ -438,28 +576,6 @@ function ProgressDial({ percent }: { percent: number }) {
         </linearGradient>
       </defs>
     </svg>
-  );
-}
-
-function PulseBoard({ activeAgents, recentSales }: { activeAgents: number; recentSales: VicidialSaleDto[] }) {
-  const latest = recentSales.slice(0, 3);
-  return (
-    <section className="overflow-hidden rounded-xl border border-lime-500/60 bg-white p-4 shadow-[0_0_25px_rgba(132,204,22,.18)] dark:bg-slate-900/60">
-      <header className="flex items-center justify-between">
-        <h3 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-lime-700 dark:text-lime-300">Live Pulse</h3>
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">{activeAgents} active</span>
-      </header>
-      <ul className="mt-3 space-y-2 text-sm text-[#111827] dark:text-white">
-        {latest.length ? latest.map((sale) => (
-          <li key={sale.id} className="flex items-center justify-between gap-2">
-            <span className="truncate text-[#111827] dark:text-slate-100">{sale.salesRep}</span>
-            <span className="font-mono text-xs text-lime-700 dark:text-lime-300">{formatCurrency(Number(sale.amount))}</span>
-          </li>
-        )) : (
-          <li className="font-mono text-xs uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting first sale</li>
-        )}
-      </ul>
-    </section>
   );
 }
 
