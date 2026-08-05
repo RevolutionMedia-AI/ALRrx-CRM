@@ -20,6 +20,21 @@ interface TvSale {
   todaysCount: number;
 }
 
+const EXCLUDED_RANK_NAMES = new Set(
+  [
+    'silver arellano',
+    'jessica duarte',
+  ].map((name) => name.toLowerCase()),
+);
+
+function isExcludedFromRank(name: string): boolean {
+  const key = name.trim().toLowerCase();
+  if (!key) return true;
+  if (EXCLUDED_RANK_NAMES.has(key)) return true;
+  if (key.includes('vicidial')) return true;
+  return false;
+}
+
 interface AgentRow {
   name: string;
   user: string;
@@ -183,7 +198,7 @@ export default function TelevisionPage() {
       if (existing) {
         existing.outboundSales = split.outboundSales;
         existing.inboundSales = split.inboundSales;
-      } else if (split.agentName) {
+      } else if (split.agentName && !isExcludedFromRank(split.agentName)) {
         performance.push({
           name: split.agentName,
           user: split.agentId,
@@ -196,9 +211,8 @@ export default function TelevisionPage() {
       }
     }
     return performance
-      .filter((agent) => agent.name)
-      .sort((a, b) => b.totalSales - a.totalSales || b.revenue - a.revenue || a.name.localeCompare(b.name))
-      .slice(0, 16);
+      .filter((agent) => agent.name && !isExcludedFromRank(agent.name))
+      .sort((a, b) => b.totalSales - a.totalSales || b.revenue - a.revenue || a.name.localeCompare(b.name));
   }, [report, callTypeSales]);
 
   const totals = useMemo(
@@ -238,9 +252,9 @@ export default function TelevisionPage() {
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   const goalPct = dailyGoal > 0 ? clampPercent((totals.sales / dailyGoal) * 100) : 0;
   const goalPctLabel = `${Math.round(goalPct)}%`;
-  const topAgents = agents.slice(0, 16);
-  const leftRows = topAgents.slice(0, 8);
-  const rightRows = topAgents.slice(8, 16);
+  const splitIndex = agents.length > 8 ? Math.ceil(agents.length / 2) : agents.length;
+  const leftRows = agents.slice(0, splitIndex);
+  const rightRows = agents.slice(splitIndex);
   const liveLine = `${agents.length} AGENTS RANKED`;
   const tickerMessage = `PUSH TO ${dailyGoal} — TOP CLOSER TAKES THE BOARD`;
 
@@ -321,10 +335,15 @@ export default function TelevisionPage() {
 
       <div
         className="grid min-h-0 flex-1 overflow-hidden bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100"
-        style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: rightRows.length ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr)',
+        }}
       >
         <RankPanel rows={leftRows} side="left" startRank={1} flashId={flashId} />
-        <RankPanel rows={rightRows} side="right" startRank={9} flashId={flashId} />
+        {rightRows.length ? (
+          <RankPanel rows={rightRows} side="right" startRank={splitIndex + 1} flashId={flashId} />
+        ) : null}
       </div>
 
       <div
