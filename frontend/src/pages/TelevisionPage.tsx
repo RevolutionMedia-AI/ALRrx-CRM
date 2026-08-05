@@ -387,7 +387,7 @@ function RankPanel({
         <div className="text-right">CONV</div>
         <div className="text-right">REVENUE</div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white dark:bg-slate-950">
         {rows.length ? (
           rows.map((agent, index) => (
             <RankRow
@@ -395,6 +395,7 @@ function RankPanel({
               agent={agent}
               rank={startRank + index}
               flash={flashId === agent.name}
+              zebra={index % 2 === 1}
             />
           ))
         ) : (
@@ -410,19 +411,20 @@ function RankPanel({
   );
 }
 
-function RankRow({ agent, rank, flash }: { agent: AgentRow; rank: number; flash: boolean }) {
+function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number; flash: boolean; zebra: boolean }) {
   const lead = agent.totalSales > 0 && rank <= 3;
-  const medal = ['#facc15', '#67e8f9', '#fb923c'][rank - 1] ?? '#67e8f9';
-  const tint = ['rgba(250,204,21,.18)', 'rgba(103,232,249,.16)', 'rgba(251,146,60,.18)'][rank - 1] ?? 'rgba(8,145,178,.14)';
+  const medal = ['#a16207', '#0e7490', '#9a3412'][rank - 1] ?? '#0e7490';
+  const medalDark = ['#facc15', '#67e8f9', '#fb923c'][rank - 1] ?? '#67e8f9';
+  const leadBg = ['bg-amber-100/80 dark:bg-yellow-400/15', 'bg-cyan-100/80 dark:bg-cyan-400/10', 'bg-orange-100/80 dark:bg-orange-400/15'][rank - 1] ?? '';
   const callsText = agent.callsHandled.toLocaleString('en-US');
   const conv = agent.callsHandled > 0 ? ((agent.totalSales / agent.callsHandled) * 100).toFixed(2) + '%' : '—';
   const revenue = formatCurrency(agent.revenue);
+  const rowBg = lead ? leadBg : zebra ? 'bg-slate-100/70 dark:bg-cyan-400/[0.07]' : '';
   return (
     <div
-      className={`grid h-[clamp(72px,7vw,96px)] items-center gap-2 border-b border-slate-200/80 border-l-[3px] px-2 dark:border-cyan-400/10 ${flash ? 'animate-pulse' : ''}`}
+      className={`grid h-[clamp(72px,7vw,96px)] items-center gap-2 border-b border-slate-300/80 border-l-[3px] px-2 dark:border-cyan-400/15 ${rowBg} ${flash ? 'animate-pulse' : ''}`}
       style={{
-        background: lead ? tint : 'rgba(8,145,178,.14)',
-        borderLeftColor: lead ? medal : '#22d3ee',
+        borderLeftColor: lead ? medal : '#0e7490',
         animation: flash ? 'tvRankFlash 1.4s ease' : undefined,
         fontFamily: 'Barlow Condensed, system-ui, sans-serif',
         gridTemplateColumns: '2.6rem minmax(0, 1fr) 3.6rem 3.6rem 3.6rem 4.6rem',
@@ -430,7 +432,7 @@ function RankRow({ agent, rank, flash }: { agent: AgentRow; rank: number; flash:
     >
       <div
         className="flex items-center gap-1 font-bold leading-none"
-        style={{ fontSize: 'clamp(22px, 2.2vw, 30px)', color: lead ? medal : '#67e8f9' }}
+        style={{ fontSize: 'clamp(22px, 2.2vw, 30px)', color: lead ? medal : '#0e7490' }}
       >
         {rank === 1 ? <CrownIcon /> : null}
         {rank}
