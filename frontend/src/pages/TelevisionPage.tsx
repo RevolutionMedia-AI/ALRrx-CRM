@@ -31,6 +31,12 @@ const EXCLUDED_RANK_NAMES = new Set(
     'monica melchor',
     'jhosimar salinas',
     'israel guerra torres',
+    'silver arellano',
+    'jesus secundino',
+    'eleodoro landeros',
+    'hector villeda',
+    'jesus ibarra',
+    'jessica duarte',
   ].map((name) => name.toLowerCase()),
 );
 
