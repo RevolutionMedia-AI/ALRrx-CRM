@@ -250,69 +250,71 @@ export default function TelevisionPage() {
 
   return (
     <div
-      className="flex h-[calc(100dvh-4rem)] w-full flex-col overflow-hidden bg-[#1f2c39] text-[#f2f2f3]"
+      className="flex h-[calc(100dvh-4rem)] w-full min-w-0 min-h-0 flex-col overflow-hidden bg-slate-950 text-cyan-100"
       style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}
     >
-      <div className="flex items-center justify-between border-b border-[#f2f2f3]/[0.14] px-8 py-4">
-        <div className="flex items-baseline gap-8" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-          <div className="text-[54px] font-semibold leading-none tracking-[0.18em] text-[#f2f2f3]">ALTRX</div>
-          <div className="text-[30px] font-semibold leading-none tracking-[0.26em] text-[#94bce3]">SALES FLOOR</div>
+      <div className="flex items-center justify-between border-b border-cyan-400/20 px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-4 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+          <div className="font-semibold leading-none tracking-[0.18em] text-cyan-300" style={{ fontSize: 'clamp(24px, 3.4vw, 54px)' }}>ALTRX</div>
         </div>
-        <div className="flex items-center gap-8" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-          <div className="flex items-center gap-3">
-            <div className="h-3 w-3 animate-pulse rounded-full bg-[#94bce3]" />
-            <div className="text-[22px] font-semibold leading-none tracking-[0.28em] text-[#94bce3]">LIVE</div>
+        <div className="flex items-center gap-3 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,.8)] sm:h-3 sm:w-3" />
+            <div className="font-semibold leading-none tracking-[0.28em] text-emerald-400" style={{ fontSize: 'clamp(13px, 1.6vw, 22px)' }}>LIVE</div>
           </div>
-          <div className="text-[22px] font-medium uppercase leading-none tracking-[0.16em] text-[#f2f2f3]/60">{dateLabel}</div>
-          <div className="min-w-[215px] text-right font-mono text-[44px] font-semibold leading-none tracking-[0.06em] text-[#f2f2f3]">{clock || '--:--:--'}</div>
+          <div className="hidden font-medium uppercase leading-none tracking-[0.16em] text-cyan-200 sm:block" style={{ fontSize: 'clamp(11px, 1.4vw, 18px)' }}>{dateLabel}</div>
+          <div className="font-mono font-semibold leading-none tracking-[0.06em] text-cyan-300" style={{ fontSize: 'clamp(18px, 2.4vw, 36px)' }}>{clock || '--:--:--'}</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 border-b border-[#f2f2f3]/[0.14] lg:grid-cols-5">
-        <div className="flex flex-col gap-3 border-r border-[#f2f2f3]/[0.16] px-8 py-4">
-          <div className="flex items-baseline justify-between" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="text-[22px] font-semibold uppercase leading-none tracking-[0.2em] text-[#f2f2f3]/60">TEAM SALES TODAY</div>
-            <div className="text-[22px] font-semibold uppercase leading-none tracking-[0.2em] text-[#94bce3]">{goalPctLabel} OF GOAL</div>
+      <div className="grid grid-cols-2 lg:grid-cols-5 min-h-0 overflow-hidden">
+        <div className="flex flex-col gap-2 overflow-hidden border-r border-cyan-400/20 px-6 py-4 min-w-0">
+          <div className="flex min-w-0 items-baseline justify-between gap-2 text-cyan-200" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+            <div className="text-[clamp(11px,1.4vw,18px)] font-semibold uppercase tracking-[0.2em]">TEAM SALES TODAY</div>
+            <div className="text-[clamp(11px,1.4vw,18px)] font-semibold uppercase tracking-[0.2em] text-cyan-300">{goalPctLabel} OF GOAL</div>
           </div>
-          <div className="flex items-end gap-4 leading-none" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="text-[94px] font-semibold tracking-[-0.02em] text-[#f2f2f3]">{totals.sales}</div>
-            <div className="text-[42px] font-normal text-[#f2f2f3]/50">/ {dailyGoal}</div>
-            <div className="pb-2.5 text-[22px] font-semibold uppercase tracking-[0.18em] text-[#f2f2f3]/50">DAILY GOAL</div>
+          <div className="flex min-w-0 items-end gap-2 leading-none text-cyan-300" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+            <div className="text-[clamp(36px,5.5vw,72px)] font-semibold tracking-[-0.02em]">{totals.sales}</div>
+            <div className="text-[clamp(18px,2.2vw,32px)] font-normal text-cyan-400/70">/ {dailyGoal}</div>
+            <div className="pb-1 text-[clamp(10px,1.2vw,15px)] font-semibold uppercase tracking-[0.18em] text-cyan-200/80">DAILY GOAL</div>
           </div>
-          <div className="relative h-5 border border-[#f2f2f3]/[0.34]">
+          <div className="relative h-[6px] w-full overflow-hidden rounded-sm border border-cyan-300/40">
             <div
-              className="absolute inset-y-0 left-0 bg-[#94bce3]"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-400 to-cyan-200"
               style={{ width: `${goalPct}%`, transition: 'width .7s ease' }}
             />
           </div>
         </div>
-        <KpiCell label="REVENUE" value={formatCurrency(revenue)} accent="#94bce3" />
-        <KpiCell label="CALLS DIALED" value={totals.calls.toLocaleString('en-US')} accent="#f2f2f3" />
-        <KpiCell label="CONVERSION" value={`${conversion.toFixed(2)}%`} accent="#94bce3" />
-        <div className="flex flex-col justify-center gap-1 px-6 py-4">
-          <div className="text-[20px] font-semibold uppercase tracking-[0.2em] text-[#f2f2f3]/60" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+        <KpiCell label="REVENUE" value={formatCurrency(revenue)} accent="#67e8f9" />
+        <KpiCell label="CALLS DIALED" value={totals.calls.toLocaleString('en-US')} accent="#67e8f9" />
+        <KpiCell label="CONVERSION" value={`${conversion.toFixed(2)}%`} accent="#67e8f9" />
+        <div className="flex min-w-0 flex-col justify-center gap-1 overflow-hidden border-l border-cyan-400/20 px-4 py-4">
+          <div className="text-[clamp(10px,1.2vw,15px)] font-semibold uppercase tracking-[0.2em] text-cyan-200" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
             OUT / IN
           </div>
-          <div className="flex items-baseline gap-3 leading-none" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="text-[60px] font-semibold text-[#f2f2f3]">{totals.outbound}</div>
-            <div className="text-[34px] text-[#f2f2f3]/40">/</div>
-            <div className="text-[60px] font-semibold text-[#94bce3]">{totals.inbound}</div>
+          <div className="flex min-w-0 items-baseline gap-2 leading-none" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+            <div className="text-[clamp(28px,3.4vw,48px)] font-semibold text-cyan-200">{totals.outbound}</div>
+            <div className="text-[clamp(18px,2vw,28px)] text-cyan-400/70">/</div>
+            <div className="text-[clamp(28px,3.4vw,48px)] font-semibold text-cyan-300">{totals.inbound}</div>
           </div>
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 grid-cols-2" style={{ display: 'grid' }}>
+      <div
+        className="grid min-h-0 flex-1 overflow-hidden"
+        style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}
+      >
         <RankPanel rows={leftRows} side="left" startRank={1} flashId={flashId} />
         <RankPanel rows={rightRows} side="right" startRank={11} flashId={flashId} />
       </div>
 
       <div
-        className="flex h-[54px] items-center justify-between border-t border-[#f2f2f3]/[0.14] px-8"
+        className="flex h-[32px] items-center justify-between border-t border-cyan-400/20 px-3 text-cyan-300 sm:px-4"
         style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
       >
-        <div className="text-[19px] font-medium tracking-[0.2em] text-[#f2f2f3]/55">{liveLine}</div>
-        <div className="text-[19px] font-medium tracking-[0.2em] text-[#94bce3]">{tickerMessage}</div>
-        <div className="text-[19px] font-medium tracking-[0.2em] text-[#f2f2f3]/55">UPDATED {lastUpdated || clock || '--:--'}</div>
+        <div className="truncate font-medium tracking-[0.2em]" style={{ fontSize: 'clamp(8px, 0.85vw, 11px)' }}>{liveLine}</div>
+        <div className="hidden truncate font-medium tracking-[0.2em] text-cyan-200 md:block" style={{ fontSize: 'clamp(8px, 0.85vw, 11px)' }}>{tickerMessage}</div>
+        <div className="truncate font-medium tracking-[0.2em]" style={{ fontSize: 'clamp(8px, 0.85vw, 11px)' }}>UPDATED {lastUpdated || clock || '--:--'}</div>
       </div>
 
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
@@ -357,13 +359,13 @@ function RankPanel({
 }) {
   return (
     <div
-      className={`relative flex flex-col overflow-hidden px-4 py-4 ${
-        side === 'right' ? 'border-l border-[#f2f2f3]/[0.16]' : ''
+      className={`flex min-w-0 flex-col overflow-hidden px-3 py-3 ${
+        side === 'right' ? 'border-l border-cyan-400/20' : ''
       }`}
     >
       <div
-        className="mb-2 grid grid-cols-[56px_1fr_80px_84px_84px_116px] items-center gap-2 px-2 text-[17px] font-semibold uppercase tracking-[0.18em] text-[#f2f2f3]/55"
-        style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
+        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.18em] text-cyan-200"
+        style={{ gridTemplateColumns: 'minmax(1.4rem, 1.4rem) minmax(0, 1fr) 3.2rem 3.2rem 3.2rem 4.5rem', fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(9px, 0.9vw, 12px)' }}
       >
         <div>RANK</div>
         <div>AGENT</div>
@@ -372,7 +374,7 @@ function RankPanel({
         <div className="text-right">CONV</div>
         <div className="text-right">REVENUE</div>
       </div>
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {rows.length ? (
           rows.map((agent, index) => (
             <RankRow
@@ -384,8 +386,8 @@ function RankPanel({
           ))
         ) : (
           <div
-            className="grid flex-1 place-items-center text-[18px] font-semibold uppercase tracking-[0.2em] text-[#f2f2f3]/35"
-            style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
+            className="grid flex-1 place-items-center font-semibold uppercase tracking-[0.2em] text-cyan-400/70"
+            style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(10px, 1vw, 13px)' }}
           >
             Awaiting data
           </div>
@@ -398,53 +400,52 @@ function RankPanel({
 function RankRow({ agent, rank, flash }: { agent: AgentRow; rank: number; flash: boolean }) {
   const lead = agent.totalSales > 0 && rank <= 3;
   const zero = agent.totalSales === 0;
-  const medal = ['#f0b429', '#cfd6dd', '#d98545'][rank - 1] ?? '#94bce3';
-  const tint = ['rgba(240,180,41,.20)', 'rgba(207,214,221,.16)', 'rgba(217,133,69,.18)'][rank - 1] ?? 'rgba(137,168,201,.14)';
+  const medal = ['#facc15', '#67e8f9', '#fb923c'][rank - 1] ?? '#67e8f9';
+  const tint = ['rgba(250,204,21,.18)', 'rgba(103,232,249,.16)', 'rgba(251,146,60,.18)'][rank - 1] ?? 'rgba(103,232,249,.14)';
   const callsText = agent.callsHandled.toLocaleString('en-US');
   const conv = agent.callsHandled > 0 ? ((agent.totalSales / agent.callsHandled) * 100).toFixed(2) + '%' : '—';
   const revenue = formatCurrency(agent.revenue);
   return (
     <div
-      className={`grid h-[68px] grid-cols-[56px_1fr_80px_84px_84px_116px] items-center gap-2 border-b border-[#f2f2f3]/[0.14] border-l-[3px] px-2 ${
-        lead ? '' : zero ? '' : 'bg-[#89a8c9]/[0.14]'
-      }`}
+      className={`grid h-[clamp(48px,5vw,68px)] items-center gap-2 border-b border-cyan-400/10 border-l-[3px] px-2 ${flash ? 'animate-pulse' : ''}`}
       style={{
-        background: lead ? tint : zero ? 'transparent' : 'rgba(137,168,201,.14)',
-        borderLeftColor: lead ? medal : zero ? 'rgba(242,242,243,.12)' : '#94bce3',
-        animation: flash ? 'rankFlash 1.4s ease' : undefined,
+        background: lead ? tint : zero ? 'transparent' : 'rgba(8,145,178,.14)',
+        borderLeftColor: lead ? medal : zero ? 'rgba(8,145,178,.25)' : '#22d3ee',
+        animation: flash ? 'tvRankFlash 1.4s ease' : undefined,
         fontFamily: 'Barlow Condensed, system-ui, sans-serif',
+        gridTemplateColumns: 'minmax(1.4rem, 1.4rem) minmax(0, 1fr) 3.2rem 3.2rem 3.2rem 4.5rem',
       }}
     >
       <div
         className="flex items-center gap-1 font-semibold leading-none"
-        style={{ fontSize: lead ? 30 : 26, color: lead ? medal : 'rgba(242,242,243,.4)' }}
+        style={{ fontSize: 'clamp(14px, 1.4vw, 22px)', color: lead ? medal : 'rgba(103,232,249,.6)' }}
       >
         {rank === 1 ? <CrownIcon /> : null}
         {rank}
       </div>
       <div className="flex min-w-0 items-center gap-2">
         <div
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full font-semibold"
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-full font-semibold"
           style={{
-            background: 'rgba(31,44,57,0.6)',
-            border: `1px solid ${medal}33`,
-            color: lead ? medal : 'rgba(242,242,243,.7)',
-            fontSize: 14,
+            background: 'rgba(8,47,73,.6)',
+            border: `1px solid ${medal}55`,
+            color: lead ? medal : 'rgba(103,232,249,.7)',
+            fontSize: 'clamp(9px, .8vw, 12px)',
           }}
         >
           {initials(agent.name)}
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 leading-tight">
           <div
-            className="truncate font-semibold leading-tight"
+            className="truncate font-semibold"
             style={{
-              fontSize: lead ? 22 : 19,
-              color: zero ? 'rgba(242,242,243,.55)' : lead ? medal : '#f2f2f3',
+              fontSize: 'clamp(11px, 1.1vw, 16px)',
+              color: zero ? 'rgba(103,232,249,.55)' : lead ? medal : '#67e8f9',
             }}
           >
             #{agent.user || '----'} {agent.name}
           </div>
-          <div className="text-[12px] uppercase tracking-[0.18em] text-[#f2f2f3]/45">
+          <div className="truncate uppercase tracking-[0.18em] text-cyan-300/70" style={{ fontSize: 'clamp(8px, 0.75vw, 11px)' }}>
             {agent.status}
           </div>
         </div>
@@ -452,23 +453,23 @@ function RankRow({ agent, rank, flash }: { agent: AgentRow; rank: number; flash:
       <div
         className="text-center font-semibold leading-none"
         style={{
-          fontSize: lead ? 28 : 22,
-          color: zero ? 'rgba(242,242,243,.3)' : lead ? medal : '#b5d9fd',
+          fontSize: 'clamp(12px, 1.3vw, 22px)',
+          color: zero ? 'rgba(103,232,249,.45)' : lead ? medal : '#67e8f9',
         }}
       >
         {agent.totalSales}
       </div>
-      <div className="text-right font-semibold text-[18px] text-[#f2f2f3]/70 leading-none">
+      <div className="text-right font-semibold leading-none text-cyan-300" style={{ fontSize: 'clamp(11px, 1vw, 15px)' }}>
         {callsText}
       </div>
-      <div className="text-right font-semibold text-[18px] text-[#f2f2f3]/70 leading-none">
+      <div className="text-right font-semibold leading-none text-cyan-300" style={{ fontSize: 'clamp(11px, 1vw, 15px)' }}>
         {conv}
       </div>
       <div
         className="text-right font-semibold leading-none"
         style={{
-          fontSize: 20,
-          color: zero ? 'rgba(242,242,243,.3)' : '#94bce3',
+          fontSize: 'clamp(11px, 1.1vw, 15px)',
+          color: zero ? 'rgba(103,232,249,.45)' : '#22d3ee',
         }}
       >
         {revenue}
@@ -488,25 +489,25 @@ function CrownIcon() {
 
 function SaleAnnouncement({ sale }: { sale: TvSale }) {
   return (
-    <div className="fixed inset-0 z-[120] grid place-items-center overflow-hidden bg-[#1f2c39]/95">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(132,204,22,.16),transparent_55%)]" />
-      <div className="absolute inset-6 border border-[#94bce3]/60" />
+    <div className="fixed inset-0 z-[120] grid place-items-center overflow-hidden bg-slate-950/95">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(132,204,22,.18),transparent_55%)]" />
+      <div className="absolute inset-2 border border-cyan-300/40 sm:inset-6" />
       <div className="relative max-w-[92vw] text-center">
         <div
-          className="mb-6 text-[56px] font-semibold uppercase tracking-[0.4em] text-[#94bce3]"
-          style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
+          className="mb-4 font-semibold uppercase tracking-[0.4em] text-cyan-300"
+          style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(28px, 3.2vw, 56px)' }}
         >
           NEW SALE
         </div>
         <div
-          className="font-semibold leading-[.9]"
-          style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 110, letterSpacing: '-.01em', color: '#f2f2f3' }}
+          className="font-semibold leading-[.9] text-cyan-100"
+          style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(54px, 7vw, 110px)', letterSpacing: '-.01em' }}
         >
           {sale.salesRep}
         </div>
         <div
-          className="mt-4 text-[36px] font-medium uppercase tracking-[0.22em] text-[#f2f2f3]/60"
-          style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
+          className="mt-3 font-medium uppercase tracking-[0.22em] text-cyan-200"
+          style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(18px, 1.8vw, 36px)' }}
         >
           #{sale.bundle} · {sale.todaysCount} SALES TODAY
         </div>
@@ -525,7 +526,7 @@ function DailyGoalEditor({ goal, onSave }: { goal: number; onSave: (value: numbe
     setDraft('');
   };
   return (
-    <div className="fixed bottom-4 right-4 z-[110] flex items-center gap-2">
+    <div className="fixed bottom-3 right-3 z-[110] flex items-center gap-2 sm:bottom-4 sm:right-4">
       {editing ? (
         <>
           <input
@@ -541,12 +542,12 @@ function DailyGoalEditor({ goal, onSave }: { goal: number; onSave: (value: numbe
               }
             }}
             placeholder={String(goal)}
-            className="w-24 rounded border border-cyan-400/60 bg-[#1f2c39] px-2 py-1 text-right font-mono text-sm font-bold text-cyan-100 outline-none focus:ring-2 focus:ring-cyan-400"
+            className="w-20 rounded border border-cyan-400/60 bg-slate-950 px-2 py-1 text-right font-mono text-xs font-bold text-cyan-100 outline-none focus:ring-2 focus:ring-cyan-400 sm:w-24 sm:text-sm"
           />
           <button
             type="button"
             onClick={handleSave}
-            className="rounded bg-cyan-500 px-3 py-1 font-mono text-xs font-bold uppercase tracking-[0.2em] text-white shadow hover:bg-cyan-400"
+            className="rounded bg-cyan-500 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow hover:bg-cyan-400 sm:px-3 sm:text-xs"
           >
             Save
           </button>
@@ -558,7 +559,7 @@ function DailyGoalEditor({ goal, onSave }: { goal: number; onSave: (value: numbe
             setEditing(true);
             setDraft(String(goal));
           }}
-          className="rounded border border-cyan-400/60 bg-[#1f2c39]/80 px-3 py-1 font-mono text-xs font-bold uppercase tracking-[0.2em] text-cyan-200 shadow hover:border-cyan-300"
+          className="rounded border border-cyan-400/60 bg-slate-950/80 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-200 shadow hover:border-cyan-300 sm:px-3 sm:text-xs"
         >
           Edit goal ({goal})
         </button>
