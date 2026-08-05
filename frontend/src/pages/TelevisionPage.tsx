@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   getAgentPerformanceWithSales,
   getDashboardSummary,
+  getStaffing,
 } from '../services/api';
 import {
   getVicidialCallTypeSales,
@@ -83,6 +84,7 @@ export default function TelevisionPage() {
   const { has, isAdmin } = useAuth();
   const authorized = has('tv.view');
   const [report, setReport] = useState<ReportDto | null>(null);
+  const [staffingReport, setStaffingReport] = useState<ReportDto | null>(null);
   const [salesSummary, setSalesSummary] = useState<{ totalSales: number; totalCount: number } | null>(null);
   const [callTypeSales, setCallTypeSales] = useState<{ agentName: string; agentId: string; outboundSales: number; inboundSales: number; outboundPct: number; inboundPct: number }[]>([]);
   const [recentSales, setRecentSales] = useState<VicidialSaleDto[]>([]);
@@ -98,14 +100,16 @@ export default function TelevisionPage() {
   const refresh = useCallback(async () => {
     try {
       const range = todayRange();
-      const [agentReport, typeSales, summary, sales, metrics] = await Promise.all([
+      const [agentReport, typeSales, summary, sales, metrics, staffing] = await Promise.all([
         getAgentPerformanceWithSales({ period: 'Today' }),
         getVicidialCallTypeSales('Today').catch(() => []),
         getVicidialSalesSummary(range.from, range.to, 500).catch(() => null),
         listAllVicidialSales(range.from, range.to, 500).catch(() => []),
         getDashboardSummary({ period: 'Today' }).catch(() => null),
+        getStaffing().catch(() => null),
       ]);
       setReport(agentReport);
+      setStaffingReport(staffing);
       setCallTypeSales(typeSales);
       setSalesSummary(summary ? { totalSales: summary.totalSales, totalCount: summary.totalCount } : null);
       setRecentSales(sales);
@@ -240,6 +244,11 @@ export default function TelevisionPage() {
   const liveLine = `${agents.length} AGENTS RANKED`;
   const tickerMessage = `PUSH TO ${dailyGoal} — TOP CLOSER TAKES THE BOARD`;
 
+  const onCallCount = useMemo(() => {
+    const rows = staffingReport?.rows ?? [];
+    return rows.filter((row) => String(row.Status ?? '').toUpperCase() === 'INCALL').length;
+  }, [staffingReport]);
+
   if (!authorized) return <div className="p-8 text-center text-[#f4f7fb]">You don&apos;t have access to this view.</div>;
 
   return (
@@ -298,13 +307,14 @@ export default function TelevisionPage() {
           valueClass="text-rose-700 dark:text-rose-400"
         />
         <div className="flex min-w-0 flex-col justify-center gap-1 overflow-hidden px-5 py-3 min-w-0 lg:border-l lg:border-slate-300/60 dark:lg:border-cyan-400/15">
-          <div className="font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            OUT / IN
+          <div className="flex items-center gap-2 font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+            <span className="relative inline-flex h-2 w-2 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400">
+              <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/70 dark:bg-emerald-400/70" />
+            </span>
+            ON CALL
           </div>
-          <div className="flex min-w-0 items-baseline gap-2 leading-none" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="truncate font-semibold text-slate-700 dark:text-cyan-200" style={{ fontSize: 'clamp(22px, 2.6vw, 40px)' }}>{totals.outbound}</div>
-            <div className="truncate text-slate-400 dark:text-cyan-400/70" style={{ fontSize: 'clamp(14px, 1.6vw, 24px)' }}>/</div>
-            <div className="truncate font-semibold text-slate-900 dark:text-cyan-300" style={{ fontSize: 'clamp(22px, 2.6vw, 40px)' }}>{totals.inbound}</div>
+          <div className="font-semibold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(24px, 3.4vw, 52px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+            {onCallCount}
           </div>
         </div>
       </div>
