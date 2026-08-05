@@ -3,6 +3,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getAccessGroup } from '../../utils/accessControl';
 import type { ReactNode } from 'react';
+import MobileNavMenu, { type MobileNavItem } from './MobileNavMenu';
 
 const navItems = [
   { label: 'Dashboard ALTRX', path: '/' },
@@ -21,6 +22,17 @@ export default function TelevisionLayout({ children }: { children: ReactNode }) 
   const canSeeTv = has('tv.view');
 
   const hasDualAccess = !!user && getAccessGroup(user.platformAccess) === 'both';
+
+  const mobileNavItems: MobileNavItem[] = [
+    ...navItems,
+    ...(user?.platformAccess === 'Slice' || user?.platformAccess === 'Both'
+      ? isAdmin
+        ? []
+        : [sliceNavItem].map((item) => ({ ...item, startsWith: true }))
+      : []),
+    ...(canSeeTv ? [{ ...tvNavItem, startsWith: true }] : []),
+  ];
+
   const handleSignOut = () => {
     if (hasDualAccess || isAdmin) {
       if (location.pathname === '/select-platform') return;
@@ -39,12 +51,14 @@ export default function TelevisionLayout({ children }: { children: ReactNode }) 
         </div>
       )}
       <nav className={`fixed ${authUnavailable ? 'top-9' : 'top-0'} left-0 right-0 z-50 flex justify-between items-center px-4 h-16 bg-pure-surface dark:bg-gray-900 border-b border-whisper-border dark:border-gray-800 transition-colors`}>
-        <div className="flex items-center gap-8">
-          <div className="font-display-hero text-lg font-bold text-primary dark:text-gray-100 flex items-center gap-2">
+        <div className="flex items-center gap-3 md:gap-8">
+          <MobileNavMenu items={mobileNavItems} />
+          <div className="font-display-hero text-base md:text-lg font-bold text-primary dark:text-gray-100 flex items-center gap-2">
             <span className="material-symbols-outlined text-electric-blue" style={{ fontVariationSettings: "'FILL' 1" }}>
               local_fire_department
             </span>
-            RevolutionMedia Reports
+            <span className="hidden sm:inline">RevolutionMedia Reports</span>
+            <span className="sm:hidden">ALTRX</span>
           </div>
           <button
             onClick={toggle}
@@ -109,9 +123,10 @@ export default function TelevisionLayout({ children }: { children: ReactNode }) 
           <button
             onClick={handleSignOut}
             title={hasDualAccess || isAdmin ? 'Switch platform or sign out' : 'Sign out'}
-            className="bg-primary dark:bg-gray-700 text-on-primary dark:text-gray-100 px-4 py-1.5 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm"
+            className="bg-primary dark:bg-gray-700 text-on-primary dark:text-gray-100 px-3 md:px-4 py-1.5 rounded font-medium text-sm hover:scale-[0.98] transition-transform shadow-sm"
           >
-            {hasDualAccess || isAdmin ? 'Switch' : 'Sign Out'}
+            <span className="hidden sm:inline">{hasDualAccess || isAdmin ? 'Switch' : 'Sign Out'}</span>
+            <span className="sm:hidden">{hasDualAccess || isAdmin ? 'Switch' : 'Exit'}</span>
           </button>
         </div>
       </nav>
