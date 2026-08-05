@@ -296,14 +296,14 @@ function Metric({ icon, label, value, sub, tone }: { icon: 'sales' | 'conversion
   const Icon = icon === 'sales' ? ShoppingCartIcon : icon === 'conversion' ? TargetIcon : DollarIcon;
   const accent = tones[tone];
   return (
-    <div className={`flex items-center gap-3 rounded-xl border ${accent.ring} bg-white px-3 py-2 dark:bg-slate-900/60 ${accent.glow}`}>
-      <span className={`grid h-12 w-12 place-items-center rounded-full border ${accent.ring} ${accent.text}`}>
+    <div className={`flex items-center gap-2 rounded-xl border ${accent.ring} bg-white px-3 py-2 dark:bg-slate-900/60 ${accent.glow}`}>
+      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border ${accent.ring} ${accent.text}`}>
         <Icon />
       </span>
       <div className="min-w-0">
-        <p className={`font-mono text-[11px] font-bold uppercase tracking-[0.3em] ${accent.text}`}>{label}</p>
-        <p className="text-[clamp(2rem,3.2vw,3.5rem)] font-black leading-none text-[#111827] dark:text-white">{value}</p>
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">{sub}</p>
+        <p className={`font-mono text-[10px] font-bold uppercase tracking-[0.3em] ${accent.text}`}>{label}</p>
+        <p className="text-[clamp(1.4rem,2.2vw,2.2rem)] font-black leading-tight text-[#111827] dark:text-white">{value}</p>
+        <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">{sub}</p>
       </div>
     </div>
   );
@@ -386,9 +386,9 @@ function TopPerformer({ agents, recentSales }: { agents: AgentRow[]; recentSales
       </header>
       {top ? (
         <div className="mt-2 flex items-center gap-2">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-purple-500 bg-white text-base font-black text-purple-700 shadow-md shadow-purple-500/40 dark:border-purple-300 dark:bg-slate-950 dark:text-purple-200">{initials(top.name)}</span>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 border-purple-500 bg-white text-sm font-black text-purple-700 shadow-md shadow-purple-500/40 dark:border-purple-300 dark:bg-slate-950 dark:text-purple-200">{initials(top.name)}</span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-black leading-tight text-[#111827] dark:text-white">{top.name}</p>
+            <p className="truncate text-sm font-black leading-tight text-[#111827] dark:text-white">{top.name}</p>
             <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">{top.totalSales} sales · {formatCurrency(top.revenue)}</p>
           </div>
         </div>
@@ -475,11 +475,11 @@ function DailyGoalCard({ current, canEdit }: { current: number; canEdit: boolean
           <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Sales target</span>
         )}
       </header>
-      <div className="relative mt-2 grid place-items-center">
-        <ProgressDial percent={percent} />
+      <div className="relative mt-1 grid place-items-center">
+        <ProgressDial percent={percent} size={88} stroke={8} />
         <p className="pointer-events-none absolute text-center">
-          <span className="block text-2xl font-black text-[#111827] dark:text-white">{current}</span>
-          <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">of {target || '—'}</span>
+          <span className="block text-xl font-black text-[#111827] dark:text-white">{current}</span>
+          <span className="font-mono text-[8px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">of {target || '—'}</span>
         </p>
       </div>
       <dl className="mt-2 grid grid-cols-3 gap-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">
@@ -556,9 +556,7 @@ function TopRevenueCard({ recentSales }: { recentSales: VicidialSaleDto[] }) {
   );
 }
 
-function ProgressDial({ percent }: { percent: number }) {
-  const size = 132;
-  const stroke = 12;
+function ProgressDial({ percent, size = 132, stroke = 12 }: { percent: number; size?: number; stroke?: number }) {
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (clampPercent(percent) / 100) * circumference;
