@@ -227,9 +227,9 @@ return (
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
 
       <section className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
+        <Metric icon="revenue" label="Revenue" value={formatCurrency(revenue)} sub="Today" tone="purple" />
         <Metric icon="sales" label="Sales" value={String(totals.sales)} sub="Today" tone="lime" />
         <Metric icon="conversion" label="Conversion" value={`${conversion.toFixed(2)}%`} sub="Calls → Sale" tone="orange" />
-        <Metric icon="revenue" label="Revenue" value={formatCurrency(revenue)} sub="Today" tone="purple" />
       </section>
 
       <section className="grid min-h-0 flex-1 grid-cols-1 gap-2.5 lg:grid-cols-[2fr_1fr]">
