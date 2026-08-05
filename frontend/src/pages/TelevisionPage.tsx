@@ -483,28 +483,59 @@ function RankPanel({
   );
 }
 
+const LEAD_RANKS: {
+  gradient: string;
+  borderLight: string;
+  borderDark: string;
+  rankLight: string;
+  rankDark: string;
+}[] = [
+  {
+    gradient: 'linear-gradient(to right, rgba(255,215,0,0.22) 0%, rgba(255,215,0,0.08) 45%, transparent 100%)',
+    borderLight: 'border-l-[#b45309]',
+    borderDark: 'dark:border-l-[#FFD700]',
+    rankLight: 'text-[#a16207]',
+    rankDark: 'dark:text-[#FFD700]',
+  },
+  {
+    gradient: 'linear-gradient(to right, rgba(135,206,235,0.20) 0%, rgba(135,206,235,0.07) 45%, transparent 100%)',
+    borderLight: 'border-l-[#0e7490]',
+    borderDark: 'dark:border-l-[#87CEEB]',
+    rankLight: 'text-[#0e7490]',
+    rankDark: 'dark:text-[#67e8f9]',
+  },
+  {
+    gradient: 'linear-gradient(to right, rgba(255,140,0,0.22) 0%, rgba(255,140,0,0.08) 45%, transparent 100%)',
+    borderLight: 'border-l-[#9a3412]',
+    borderDark: 'dark:border-l-[#FF8C00]',
+    rankLight: 'text-[#9a3412]',
+    rankDark: 'dark:text-[#fb923c]',
+  },
+];
+
 function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number; flash: boolean; zebra: boolean }) {
   const lead = agent.totalSales > 0 && rank <= 3;
-  const medal = ['#a16207', '#0e7490', '#9a3412'][rank - 1] ?? '#0e7490';
-  const medalDark = ['#facc15', '#67e8f9', '#fb923c'][rank - 1] ?? '#67e8f9';
-  const leadBg = ['bg-amber-100/80 dark:bg-yellow-400/15', 'bg-cyan-100/80 dark:bg-cyan-400/10', 'bg-orange-100/80 dark:bg-orange-400/15'][rank - 1] ?? '';
+  const leadCfg = lead ? LEAD_RANKS[rank - 1] ?? null : null;
+  const rankColorClass = leadCfg
+    ? `${leadCfg.rankLight} ${leadCfg.rankDark}`
+    : 'text-[#0e7490] dark:text-cyan-200';
   const callsText = agent.callsHandled.toLocaleString('en-US');
   const conv = agent.callsHandled > 0 ? ((agent.totalSales / agent.callsHandled) * 100).toFixed(2) + '%' : '—';
   const revenue = formatCurrency(agent.revenue);
-  const rowBg = lead ? leadBg : zebra ? 'bg-slate-100/70 dark:bg-cyan-400/[0.07]' : '';
+  const rowBg = leadCfg ? '' : zebra ? 'bg-slate-100/70 dark:bg-cyan-400/[0.07]' : '';
   return (
     <div
-      className={`grid h-[clamp(72px,7vw,96px)] items-center gap-2 border-b border-slate-300/80 border-l-[3px] px-2 dark:border-cyan-400/15 ${rowBg} ${flash ? 'animate-pulse' : ''}`}
+      className={`grid h-[clamp(72px,7vw,96px)] items-center gap-2 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-2 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'}`}
       style={{
-        borderLeftColor: lead ? medal : '#0e7490',
+        background: leadCfg ? leadCfg.gradient : undefined,
         animation: flash ? 'tvRankFlash 1.4s ease' : undefined,
         fontFamily: 'Barlow Condensed, system-ui, sans-serif',
         gridTemplateColumns: '2.6rem minmax(0, 1fr) 3.6rem 3.6rem 3.6rem 4.6rem',
       }}
     >
       <div
-        className="flex items-center gap-1 font-bold leading-none"
-        style={{ fontSize: 'clamp(22px, 2.2vw, 30px)', color: lead ? medal : '#0e7490' }}
+        className={`flex items-center gap-1 font-bold leading-none ${rankColorClass}`}
+        style={{ fontSize: 'clamp(22px, 2.2vw, 30px)' }}
       >
         {rank === 1 ? <CrownIcon /> : null}
         {rank}
