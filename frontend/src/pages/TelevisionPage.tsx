@@ -22,8 +22,15 @@ interface TvSale {
 
 const EXCLUDED_RANK_NAMES = new Set(
   [
-    'silver arellano',
-    'jessica duarte',
+    'vicileads',
+    'jesus duarte',
+    'ulises montillo',
+    'keren quezada',
+    'jose manuel chavez',
+    'leonardo delgado',
+    'monica melchor',
+    'jhosimar salinas',
+    'israel guerra torres',
   ].map((name) => name.toLowerCase()),
 );
 
@@ -31,7 +38,6 @@ function isExcludedFromRank(name: string): boolean {
   const key = name.trim().toLowerCase();
   if (!key) return true;
   if (EXCLUDED_RANK_NAMES.has(key)) return true;
-  if (key.includes('vicidial')) return true;
   return false;
 }
 
@@ -298,7 +304,7 @@ export default function TelevisionPage() {
 
   return (
     <div
-      className="flex h-[calc(100dvh-4rem)] w-full min-w-0 min-h-0 flex-col overflow-hidden bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100"
+      className="flex min-h-[calc(100dvh-4rem)] w-full min-w-0 flex-col bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100"
       style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}
     >
       <div className="flex items-center justify-between border-b border-slate-300/60 bg-white px-4 py-3 text-slate-700 dark:border-cyan-400/20 dark:bg-slate-950 dark:text-cyan-100 sm:px-6">
@@ -365,7 +371,7 @@ export default function TelevisionPage() {
       </div>
 
       <div
-        className="grid min-h-0 flex-1 overflow-hidden bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100"
+        className="grid flex-1 bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100"
         style={{
           display: 'grid',
           gridTemplateColumns: rightRows.length ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr)',
@@ -428,7 +434,7 @@ function RankPanel({
 }) {
   return (
     <div
-      className={`flex min-w-0 flex-col overflow-hidden px-3 py-3 ${
+      className={`flex min-w-0 flex-col px-3 py-3 ${
         side === 'right' ? 'border-l border-slate-300/60 dark:border-cyan-400/20' : ''
       }`}
     >
@@ -447,7 +453,7 @@ function RankPanel({
         <div className="text-right">CONV</div>
         <div className="text-right">REVENUE</div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white dark:bg-slate-950">
+      <div className="flex flex-col bg-white dark:bg-slate-950">
         {rows.length ? (
           rows.map((agent, index) => (
             <RankRow
