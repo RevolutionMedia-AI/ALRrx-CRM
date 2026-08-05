@@ -419,7 +419,7 @@ function RankRow({ agent, rank, flash }: { agent: AgentRow; rank: number; flash:
   const revenue = formatCurrency(agent.revenue);
   return (
     <div
-      className={`grid h-[clamp(56px,5.6vw,76px)] items-center gap-2 border-b border-slate-200/80 border-l-[3px] px-2 dark:border-cyan-400/10 ${flash ? 'animate-pulse' : ''}`}
+      className={`grid h-[clamp(72px,7vw,96px)] items-center gap-2 border-b border-slate-200/80 border-l-[3px] px-2 dark:border-cyan-400/10 ${flash ? 'animate-pulse' : ''}`}
       style={{
         background: lead ? tint : 'rgba(8,145,178,.14)',
         borderLeftColor: lead ? medal : '#22d3ee',
@@ -430,35 +430,35 @@ function RankRow({ agent, rank, flash }: { agent: AgentRow; rank: number; flash:
     >
       <div
         className="flex items-center gap-1 font-bold leading-none"
-        style={{ fontSize: 'clamp(16px, 1.7vw, 24px)', color: lead ? medal : '#67e8f9' }}
+        style={{ fontSize: 'clamp(22px, 2.2vw, 30px)', color: lead ? medal : '#67e8f9' }}
       >
         {rank === 1 ? <CrownIcon /> : null}
         {rank}
       </div>
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-3">
         <div
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full font-bold bg-slate-100 border border-slate-300 text-indigo-700 dark:bg-slate-900/60 dark:border-cyan-400/40 dark:text-cyan-200"
-          style={{ fontSize: 'clamp(11px, 1vw, 14px)' }}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-bold bg-slate-100 border border-slate-300 text-indigo-700 dark:bg-slate-900/60 dark:border-cyan-400/40 dark:text-cyan-200"
+          style={{ fontSize: 'clamp(13px, 1.2vw, 16px)' }}
         >
           {initials(agent.name)}
         </div>
-        <div className="min-w-0 flex-1 truncate font-bold leading-tight text-slate-800 dark:text-cyan-100" style={{ fontSize: 'clamp(13px, 1.2vw, 17px)' }}>
+        <div className="min-w-0 flex-1 truncate font-bold leading-tight text-slate-800 dark:text-cyan-100" style={{ fontSize: 'clamp(15px, 1.5vw, 21px)' }}>
           {agent.name}
         </div>
       </div>
       <div
         className="text-center font-bold leading-none text-indigo-700 dark:text-cyan-300"
-        style={{ fontSize: 'clamp(14px, 1.4vw, 22px)' }}
+        style={{ fontSize: 'clamp(17px, 1.7vw, 26px)' }}
       >
         {agent.totalSales}
       </div>
-      <div className="text-right font-bold leading-none text-amber-700 dark:text-yellow-300" style={{ fontSize: 'clamp(13px, 1.1vw, 16px)' }}>
+      <div className="text-right font-bold leading-none text-amber-700 dark:text-yellow-300" style={{ fontSize: 'clamp(15px, 1.4vw, 19px)' }}>
         {callsText}
       </div>
-      <div className="text-right font-bold leading-none text-amber-800 dark:text-yellow-300" style={{ fontSize: 'clamp(13px, 1.1vw, 16px)' }}>
+      <div className="text-right font-bold leading-none text-amber-800 dark:text-yellow-300" style={{ fontSize: 'clamp(15px, 1.4vw, 19px)' }}>
         {conv}
       </div>
-      <div className="text-right font-bold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(13px, 1.2vw, 17px)' }}>
+      <div className="text-right font-bold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(15px, 1.5vw, 20px)' }}>
         {revenue}
       </div>
     </div>
