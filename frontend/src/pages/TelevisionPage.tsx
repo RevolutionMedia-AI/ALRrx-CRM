@@ -84,8 +84,6 @@ export default function TelevisionPage() {
   const [lastUpdated, setLastUpdated] = useState('');
   const [tvSale, setTvSale] = useState<TvSale | null>(null);
   const saleTimeoutRef = useRef<number | null>(null);
-  const rankingRef = useRef<HTMLDivElement | null>(null);
-  const [rankingHeight, setRankingHeight] = useState(0);
 
   const refresh = useCallback(async () => {
     try {
@@ -125,24 +123,6 @@ export default function TelevisionPage() {
     const interval = window.setInterval(() => void refresh(), 30_000);
     return () => window.clearInterval(interval);
   }, [authorized, refresh]);
-
-  useEffect(() => {
-    if (!authorized) return;
-    const node = rankingRef.current;
-    if (!node) return;
-    const measure = () => setRankingHeight(node.offsetHeight);
-    measure();
-    let observer: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(measure);
-      observer.observe(node);
-    }
-    window.addEventListener('resize', measure);
-    return () => {
-      window.removeEventListener('resize', measure);
-      observer?.disconnect();
-    };
-  }, [authorized, report]);
 
   useEffect(() => {
     if (!authorized) return;
@@ -198,7 +178,12 @@ export default function TelevisionPage() {
     }
     return performance
       .filter((agent) => agent.name)
-      .sort((a, b) => b.totalSales - a.totalSales || a.name.localeCompare(b.name));
+      .sort((a, b) => {
+        const score = (agent: AgentRow) => agent.totalSales * 0.7 + (agent.revenue / 100) * 0.3;
+        const diff = score(b) - score(a);
+        if (diff !== 0) return diff;
+        return a.name.localeCompare(b.name);
+      });
   }, [report, callTypeSales]);
 
   const totals = useMemo(() => agents.reduce((result, agent) => ({
@@ -252,8 +237,8 @@ return (
         <Metric icon="conversion" label="Conversion" value={`${conversion.toFixed(2)}%`} sub="Calls → Sale" tone="orange" />
       </section>
 
-      <section className="grid grid-cols-1 items-stretch gap-2.5 lg:grid-cols-[2fr_1fr]">
-        <article ref={rankingRef} className="flex flex-col overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
+      <section className="grid grid-cols-1 items-start gap-2.5 lg:grid-cols-[2fr_1fr]">
+        <article className="flex flex-col overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
           <header className="flex items-center justify-between border-b border-cyan-500/30 px-4 py-3">
             <h3 className="font-mono text-base font-black uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Agent Ranking</h3>
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Updated {lastUpdated || '--:--'}</span>
@@ -265,7 +250,7 @@ return (
             <span className="text-right">Inbound</span>
             <span className="text-right">Sales</span>
             <span className="text-right">Revenue</span>
-            <span className="text-right">% Total</span>
+            <span className="text-right">% Conv</span>
           </div>
           <div className="px-4 pb-4">
             {agents.length ? agents.slice(0, 15).map((agent, index) => (
@@ -283,9 +268,9 @@ return (
         </article>
 
         <aside className="flex flex-col gap-2.5">
-          <TopPerformer agents={agents} recentSales={recentSales} rankingHeight={rankingHeight} />
-          <DailyGoalCard current={totals.sales} canEdit={isAdmin} rankingHeight={rankingHeight} />
-          <TopRevenueCard recentSales={recentSales} rankingHeight={rankingHeight} />
+          <TopPerformer agents={agents} recentSales={recentSales} />
+          <DailyGoalCard current={totals.sales} canEdit={isAdmin} />
+          <TopRevenueCard recentSales={recentSales} />
         </aside>
       </section>
 
@@ -357,6 +342,7 @@ function RankingRow({ agent, rank, teamTotal, teamRevenue }: { agent: AgentRow; 
     rank === 2 ? 'bg-cyan-100 border-l-cyan-500 dark:bg-cyan-400/10 dark:border-l-cyan-300' :
     rank === 3 ? 'bg-orange-100 border-l-orange-500 dark:bg-orange-400/10 dark:border-l-orange-300' :
     'bg-white border-l-[#d7dee8] dark:bg-slate-900/40 dark:border-l-slate-700';
+  const conversion = agent.callsHandled > 0 ? clampPercent((agent.totalSales / agent.callsHandled) * 100) : 0;
   return (
     <article className={`relative overflow-hidden rounded-lg border-l-4 border border-[#d7dee8] dark:border-slate-800 ${medalBg}`}>
       <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-3 py-3">
@@ -372,7 +358,7 @@ function RankingRow({ agent, rank, teamTotal, teamRevenue }: { agent: AgentRow; 
         <span className="text-right font-mono text-[clamp(1rem,1.35vw,1.4rem)] font-bold text-purple-700 dark:text-purple-300">{agent.inboundSales}</span>
         <span className="text-right font-mono text-[clamp(1.15rem,1.5vw,1.6rem)] font-black text-lime-700 dark:text-lime-300">{agent.totalSales}</span>
         <span className="text-right font-mono text-[clamp(1rem,1.2vw,1.25rem)] font-bold text-[#111827] dark:text-white">{formatCurrency(agent.revenue)}</span>
-        <span className="text-right font-mono text-[clamp(.95rem,1.15vw,1.15rem)] font-bold text-[#111827] dark:text-white">{share.toFixed(1)}%</span>
+        <span className="text-right font-mono text-[clamp(.95rem,1.15vw,1.15rem)] font-bold text-[#111827] dark:text-white">{conversion.toFixed(2)}%</span>
       </div>
       <span
         aria-hidden
@@ -383,14 +369,11 @@ function RankingRow({ agent, rank, teamTotal, teamRevenue }: { agent: AgentRow; 
   );
 }
 
-function TopPerformer({ agents, recentSales, rankingHeight = 0 }: { agents: AgentRow[]; recentSales: VicidialSaleDto[]; rankingHeight?: number }) {
+function TopPerformer({ agents, recentSales }: { agents: AgentRow[]; recentSales: VicidialSaleDto[] }) {
   const top = agents[0];
   const last = recentSales[0];
   return (
-    <section
-      style={{ minHeight: rankingHeight ? `${Math.max(220, Math.round(rankingHeight * 0.36))}px` : undefined }}
-      className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-purple-500 bg-gradient-to-br from-purple-100 via-white to-pink-100 p-4 shadow-[0_0_40px_rgba(168,85,247,.45)] dark:border-purple-300 dark:from-purple-500/30 dark:via-slate-900 dark:to-pink-500/20"
-    >
+    <section className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-purple-500 bg-gradient-to-br from-purple-100 via-white to-pink-100 p-4 shadow-[0_0_40px_rgba(168,85,247,.45)] dark:border-purple-300 dark:from-purple-500/30 dark:via-slate-900 dark:to-pink-500/20">
       <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-purple-300/40 blur-3xl dark:bg-purple-400/30" aria-hidden />
       <header className="flex items-center justify-between">
         <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-purple-700 dark:text-purple-200">Top Performer</h3>
@@ -448,7 +431,7 @@ function saveDailyGoal(value: number) {
   }
 }
 
-function DailyGoalCard({ current, canEdit, rankingHeight = 0 }: { current: number; canEdit: boolean; rankingHeight?: number }) {
+function DailyGoalCard({ current, canEdit }: { current: number; canEdit: boolean }) {
   const [target, setTarget] = useState<number>(() => loadDailyGoal());
   const [draft, setDraft] = useState<string>('');
   const [editing, setEditing] = useState(false);
@@ -471,10 +454,7 @@ function DailyGoalCard({ current, canEdit, rankingHeight = 0 }: { current: numbe
   };
 
   return (
-    <section
-      style={{ minHeight: rankingHeight ? `${Math.max(220, Math.round(rankingHeight * 0.28))}px` : undefined }}
-      className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-cyan-500 bg-gradient-to-br from-cyan-100 via-white to-blue-100 p-4 shadow-[0_0_40px_rgba(34,211,238,.45)] dark:border-cyan-300 dark:from-cyan-500/25 dark:via-slate-900 dark:to-blue-500/20"
-    >
+    <section className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-cyan-500 bg-gradient-to-br from-cyan-100 via-white to-blue-100 p-4 shadow-[0_0_40px_rgba(34,211,238,.45)] dark:border-cyan-300 dark:from-cyan-500/25 dark:via-slate-900 dark:to-blue-500/20">
       <div className="absolute -left-8 -top-8 h-32 w-32 rounded-full bg-cyan-300/40 blur-3xl dark:bg-cyan-400/30" aria-hidden />
       <header className="flex items-center justify-between">
         <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-200">Daily Goal</h3>
@@ -528,7 +508,7 @@ function DailyGoalCard({ current, canEdit, rankingHeight = 0 }: { current: numbe
   );
 }
 
-function TopRevenueCard({ recentSales, rankingHeight = 0 }: { recentSales: VicidialSaleDto[]; rankingHeight?: number }) {
+function TopRevenueCard({ recentSales }: { recentSales: VicidialSaleDto[] }) {
   const byAgent = useMemo(() => {
     const map = new Map<string, number>();
     for (const sale of recentSales) {
@@ -542,10 +522,7 @@ function TopRevenueCard({ recentSales, rankingHeight = 0 }: { recentSales: Vicid
   const top = byAgent[0];
   const max = top?.[1] ?? 1;
   return (
-    <section
-      style={{ minHeight: rankingHeight ? `${Math.max(240, Math.round(rankingHeight * 0.36))}px` : undefined }}
-      className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-100 via-white to-teal-100 p-4 shadow-[0_0_40px_rgba(16,185,129,.45)] dark:border-emerald-300 dark:from-emerald-500/25 dark:via-slate-900 dark:to-teal-500/20"
-    >
+    <section className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-100 via-white to-teal-100 p-4 shadow-[0_0_40px_rgba(16,185,129,.45)] dark:border-emerald-300 dark:from-emerald-500/25 dark:via-slate-900 dark:to-teal-500/20">
       <div className="absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-emerald-300/40 blur-3xl dark:bg-emerald-400/30" aria-hidden />
       <header className="flex items-center justify-between">
         <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-emerald-700 dark:text-emerald-200">Top Revenue</h3>
