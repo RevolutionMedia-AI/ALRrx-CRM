@@ -373,10 +373,10 @@ export default function AnalyticsPage() {
     <button
       key={p}
       onClick={() => setPeriod(p)}
-      className={`px-4 py-1.5 text-sm border-r border-whisper-border last:border-r-0 ${
+      className={`px-4 py-1.5 text-sm border-r border-whisper-border last:border-r-0 transition-colors ${
         period === p
-          ? 'bg-pure-surface text-primary font-medium'
-          : 'text-secondary hover:bg-surface-container transition-colors'
+          ? 'bg-pure-surface dark:bg-gray-950 text-primary font-medium'
+          : 'text-secondary dark:text-gray-400 hover:bg-surface-container dark:hover:bg-gray-800'
       }`}
     >
       {p}
@@ -399,33 +399,33 @@ export default function AnalyticsPage() {
         </div>
         <div className="flex flex-col gap-2 items-end">
           <div className="flex gap-2 flex-wrap items-center">
-            <div className="bg-surface-container-low border border-whisper-border rounded flex text-sm overflow-hidden">
+            <div className="bg-surface-container-low border border-whisper-border rounded flex text-sm overflow-hidden dark:bg-gray-900 dark:border-gray-700">
               {periodBtn('Today')}
               {periodBtn('Week')}
               {periodBtn('Month')}
               {periodBtn('Custom')}
             </div>
             {period === 'Custom' && (
-              <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1">
+              <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1 dark:bg-gray-900 dark:border-gray-700">
                 <input
                   type="date"
                   value={customStart}
                   onChange={(e) => setCustomStart(e.target.value)}
-                  className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+                  className="text-xs text-primary bg-transparent border-none outline-none w-[120px] dark:text-gray-100 dark:[color-scheme:dark]"
                 />
                 <span className="text-muted-slate text-xs">to</span>
                 <input
                   type="date"
                   value={customEnd}
                   onChange={(e) => setCustomEnd(e.target.value)}
-                  className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+                  className="text-xs text-primary bg-transparent border-none outline-none w-[120px] dark:text-gray-100 dark:[color-scheme:dark]"
                 />
               </div>
             )}
             <button
               onClick={handleManualRefresh}
               disabled={refreshing || loading}
-              className="flex items-center gap-2 px-3 py-1.5 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-3 py-1.5 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-900 dark:border-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
               title="Refresh analytics data"
             >
               <span className={`material-symbols-outlined text-[20px] ${refreshing ? 'animate-spin' : ''}`}>sync</span>
@@ -661,7 +661,7 @@ export default function AnalyticsPage() {
           </section>
 
           {/* 2. Disposition Details table */}
-          <section className="bg-pure-surface border border-whisper-border rounded-xl shadow-diffused overflow-hidden">
+          <section className="bg-pure-surface dark:bg-gray-900 border border-whisper-border dark:border-gray-700 rounded-xl shadow-diffused overflow-hidden">
             <div className="p-6 border-b border-whisper-border flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-lg text-primary">Disposition Details</h3>
@@ -695,11 +695,11 @@ export default function AnalyticsPage() {
                         <tr key={d.name} className="border-b border-whisper-border hover:bg-surface-container-lowest dark:hover:bg-gray-800 transition-colors">
                           <td className="p-3 text-primary font-medium">
                             <div className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-black/5" style={{ backgroundColor: d.color }} />
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-1 ring-black/5 dark:ring-white/10" style={{ backgroundColor: d.color }} />
                               <span className="font-metadata-mono uppercase tracking-wider">{d.name}</span>
                             </div>
                           </td>
-                          <td className="p-3 text-right font-metadata-mono">{d.value}</td>
+                          <td className="p-3 text-right font-metadata-mono text-primary">{d.value}</td>
                           <td className="p-3 text-right font-metadata-mono text-secondary">{pct}%</td>
                         </tr>
                       );
