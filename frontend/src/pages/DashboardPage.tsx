@@ -215,10 +215,10 @@ export default function DashboardPage() {
     <button
       key={p}
       onClick={() => setPeriod(p)}
-      className={`px-4 py-1.5 text-sm border-r border-whisper-border last:border-r-0 ${
+      className={`px-4 py-1.5 text-sm border-r border-whisper-border last:border-r-0 transition-colors ${
         period === p
           ? 'bg-pure-surface text-primary font-medium'
-          : 'text-secondary hover:bg-surface-container transition-colors'
+          : 'text-secondary dark:text-gray-400 hover:bg-surface-container dark:hover:bg-gray-800'
       }`}
     >
       {p}
@@ -240,33 +240,33 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap items-end">
-          <div className="bg-surface-container-low border border-whisper-border rounded flex text-sm overflow-hidden">
+          <div className="bg-surface-container-low border border-whisper-border rounded flex text-sm overflow-hidden dark:bg-gray-900 dark:border-gray-700">
             {periodBtn('Today')}
             {periodBtn('Week')}
             {periodBtn('Month')}
             {periodBtn('Custom')}
           </div>
           {period === 'Custom' && (
-            <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1">
+            <div className="flex gap-2 items-center bg-surface-container-low border border-whisper-border rounded px-3 py-1 dark:bg-gray-900 dark:border-gray-700">
               <input
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+                className="text-xs text-primary bg-transparent border-none outline-none w-[120px] dark:text-gray-100 dark:[color-scheme:dark]"
               />
               <span className="text-muted-slate text-xs">to</span>
               <input
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="text-xs text-primary bg-transparent border-none outline-none w-[120px]"
+                className="text-xs text-primary bg-transparent border-none outline-none w-[120px] dark:text-gray-100 dark:[color-scheme:dark]"
               />
             </div>
           )}
           <button
             onClick={handleManualRefresh}
             disabled={summaryLoading}
-            className="flex items-center gap-2 px-3 py-1.5 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-3 py-1.5 border border-whisper-border rounded bg-pure-surface text-secondary hover:text-primary transition-colors shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed dark:bg-gray-900 dark:border-gray-700 dark:text-gray-300 dark:hover:text-gray-100"
             title="Refresh dashboard data"
           >
             <span className={`material-symbols-outlined text-[20px] ${summaryLoading ? 'animate-spin' : ''}`}>sync</span>

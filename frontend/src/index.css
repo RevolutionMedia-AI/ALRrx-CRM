@@ -15,9 +15,18 @@ body {
 
 .dark .bg-pure-surface { background-color: #111827; }
 .dark .bg-canvas-white { background-color: #0a0a0f; }
+.dark .bg-surface-container { background-color: #1f2937; }
+.dark .bg-surface-container-low { background-color: #161b22; }
+.dark .bg-surface-container-lowest { background-color: #0d1117; }
+.dark .bg-surface-container-high { background-color: #2a3038; }
+.dark .bg-surface-container-highest { background-color: #353a42; }
 .dark .text-primary { color: #e5e7eb; }
 .dark .text-secondary { color: #9ca3af; }
 .dark .text-on-surface { color: #e5e7eb; }
+.dark .text-muted-slate { color: #6b7280; }
+.dark .border-whisper-border { border-color: rgba(75,85,99,0.6); }
+.dark .hover\:bg-surface-container-low:hover { background-color: #1f2937; }
+.dark .hover\:bg-surface-container:hover { background-color: #2a3038; }
 
 @keyframes tvRankFlash {
   0% { background-color: rgba(34, 211, 238, 0); }
