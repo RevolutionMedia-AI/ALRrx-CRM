@@ -228,7 +228,7 @@ const revenue = useMemo(() => {
   if (!authorized) return <div className="p-8 text-center">You don't have access to this view.</div>;
 
   return (
-    <main className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-slate-950 text-white">
+    <main className="flex min-h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden bg-slate-950 p-4 text-white">
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
 
       <header className="flex h-[9vh] min-h-16 items-center justify-between border-b border-cyan-400/30 px-[2vw]">
