@@ -232,8 +232,8 @@ return (
         <Metric icon="conversion" label="Conversion" value={`${conversion.toFixed(2)}%`} sub="Calls → Sale" tone="orange" />
       </section>
 
-      <section className="grid min-h-0 flex-1 grid-cols-1 gap-2.5 lg:grid-cols-[2fr_1fr]">
-        <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
+      <section className="grid min-h-0 grid-cols-1 items-start gap-2.5 lg:grid-cols-[2fr_1fr]">
+        <article className="flex flex-col overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
           <header className="flex items-center justify-between border-b border-cyan-500/30 px-4 py-3">
             <h3 className="font-mono text-base font-black uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Agent Ranking</h3>
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Updated {lastUpdated || '--:--'}</span>
@@ -247,7 +247,7 @@ return (
             <span className="text-right">Revenue</span>
             <span className="text-right">% Total</span>
           </div>
-          <div className="overflow-y-auto px-4 pb-4">
+          <div className="px-4 pb-4">
             {agents.length ? agents.slice(0, 15).map((agent, index) => (
               <RankingRow
                 key={`${agent.user}-${agent.name}`}
@@ -262,7 +262,7 @@ return (
           </div>
         </article>
 
-        <aside className="grid min-h-0 grid-rows-3 gap-2.5">
+        <aside className="flex flex-col gap-2.5">
           <TopPerformer agents={agents} recentSales={recentSales} />
           <DailyGoalCard current={totals.sales} canEdit={isAdmin} />
           <TopRevenueCard recentSales={recentSales} />
