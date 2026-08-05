@@ -223,22 +223,22 @@ const revenue = useMemo(() => {
   if (!authorized) return <div className="p-8 text-center">You don't have access to this view.</div>;
 
 return (
-    <div className="flex min-h-[calc(100dvh-4rem)] flex-col gap-3 overflow-hidden bg-white px-2.5 py-3 text-[#111827] dark:bg-slate-950 dark:text-white">
+    <div className="flex min-h-[calc(100dvh-4rem)] flex-col gap-2.5 overflow-hidden bg-white text-[#111827] dark:bg-slate-950 dark:text-white">
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <section className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
         <Metric icon="sales" label="Sales" value={String(totals.sales)} sub="Today" tone="lime" />
         <Metric icon="conversion" label="Conversion" value={`${conversion.toFixed(2)}%`} sub="Calls → Sale" tone="orange" />
         <Metric icon="revenue" label="Revenue" value={formatCurrency(revenue)} sub="Today" tone="purple" />
       </section>
 
-      <section className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
+      <section className="grid min-h-0 flex-1 grid-cols-1 gap-2.5 lg:grid-cols-[2fr_1fr]">
         <article className="overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
-          <header className="flex items-center justify-between border-b border-cyan-500/30 px-5 py-3">
+          <header className="flex items-center justify-between border-b border-cyan-500/30 px-3 py-2">
             <h3 className="font-mono text-base font-black uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Agent Ranking</h3>
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Updated {lastUpdated || '--:--'}</span>
           </header>
-          <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-[#111827] dark:text-white">
+          <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] text-[#111827] dark:text-white">
             <span>Pos.</span>
             <span>Agent</span>
             <span className="text-right">Outbound</span>
@@ -247,7 +247,7 @@ return (
             <span className="text-right">Revenue</span>
             <span className="text-right">% Total</span>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
             {agents.length ? agents.slice(0, 15).map((agent, index) => (
               <RankingRow
                 key={`${agent.user}-${agent.name}`}
@@ -262,14 +262,14 @@ return (
           </div>
         </article>
 
-        <aside className="flex flex-col gap-4">
+        <aside className="flex flex-col gap-2.5">
           <TopPerformer agents={agents} recentSales={recentSales} />
           <DailyGoalCard current={totals.sales} canEdit={isAdmin} />
           <TopRevenueCard recentSales={recentSales} />
         </aside>
       </section>
 
-      <footer className="flex h-[5vh] min-h-10 items-center justify-between border-t border-cyan-500/30 px-2.5 font-mono text-[clamp(.55rem,.75vw,.75rem)] uppercase tracking-[0.3em] text-[#111827] dark:text-white">
+      <footer className="flex h-[4vh] min-h-8 items-center justify-between border-t border-cyan-500/30 px-3 font-mono text-[clamp(.55rem,.75vw,.75rem)] uppercase tracking-[0.3em] text-[#111827] dark:text-white">
         <span>{agents.length} agents ranked</span>
         <span className="text-cyan-700 dark:text-cyan-300">Every sale moves the board</span>
         <span>Updated {lastUpdated || '--:--'}</span>
@@ -287,8 +287,8 @@ function Metric({ icon, label, value, sub, tone }: { icon: 'sales' | 'conversion
   const Icon = icon === 'sales' ? ShoppingCartIcon : icon === 'conversion' ? TargetIcon : DollarIcon;
   const accent = tones[tone];
   return (
-    <div className={`flex items-center gap-4 rounded-xl border ${accent.ring} bg-white px-5 py-3 dark:bg-slate-900/60 ${accent.glow}`}>
-      <span className={`grid h-14 w-14 place-items-center rounded-full border ${accent.ring} ${accent.text}`}>
+    <div className={`flex items-center gap-3 rounded-xl border ${accent.ring} bg-white px-3 py-2 dark:bg-slate-900/60 ${accent.glow}`}>
+      <span className={`grid h-12 w-12 place-items-center rounded-full border ${accent.ring} ${accent.text}`}>
         <Icon />
       </span>
       <div className="min-w-0">
@@ -339,7 +339,7 @@ function RankingRow({ agent, rank, teamTotal, teamRevenue }: { agent: AgentRow; 
     'bg-white border-l-[#d7dee8] dark:bg-slate-900/40 dark:border-l-slate-700';
   return (
     <article className={`relative overflow-hidden rounded-lg border-l-4 border border-[#d7dee8] dark:border-slate-800 ${medalBg}`}>
-      <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-3 py-2">
+      <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-3 py-1.5">
         <span className={`font-mono text-[clamp(1rem,1.4vw,1.5rem)] font-black ${highlightMedal ? 'text-lime-700 dark:text-lime-300' : 'text-[#111827] dark:text-white'}`}>{rank}</span>
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid aspect-square w-9 shrink-0 place-items-center rounded-full bg-[#e5e7eb] font-mono text-xs font-black text-[#111827] dark:bg-slate-800 dark:text-cyan-200">{initials(agent.name)}</span>

@@ -15,6 +15,7 @@ import PendingApprovalPage from './pages/PendingApprovalPage';
 import AccessDeniedPage from './pages/AccessDeniedPage';
 import NoAccessPage from './pages/NoAccessPage';
 import AppLayout from './components/Layout/AppLayout';
+import TelevisionLayout from './components/Layout/TelevisionLayout';
 import AdminLayout from './components/Layout/AdminLayout';
 import PlatformPickerModal from './components/PlatformPickerModal';
 import { resolveAccess, ROUTES } from './utils/accessControl';
@@ -78,7 +79,7 @@ function TelevisionRoute({ children }: { children: ReactNode }) {
   if (!user) return <Navigate to="/login" replace />;
   if (user.status !== 'Active') return <Navigate to="/access-denied" replace />;
   if (!has('tv.view')) return <Navigate to="/access-denied" replace />;
-  return <AppLayout>{children}</AppLayout>;
+  return <TelevisionLayout>{children}</TelevisionLayout>;
 }
 
 function SliceProtectedRoute({ children }: { children: ReactNode }) {
