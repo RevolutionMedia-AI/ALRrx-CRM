@@ -27,7 +27,6 @@ interface AgentRow {
   totalSales: number;
   revenue: number;
   callsHandled: number;
-  status: string;
 }
 
 function num(value: unknown): number {
@@ -79,8 +78,6 @@ function findMetric(metrics: { label: string; value: string }[] | undefined, hin
   if (!metrics) return undefined;
   return metrics.find((m) => m.label.toLowerCase().includes(hint.toLowerCase()))?.value;
 }
-
-const FALLBACK_STATUSES = ['ON CALL', 'AVAILABLE', 'ON CALL', 'BREAK', 'AVAILABLE', 'ON CALL', 'AVAILABLE', 'ON CALL', 'BREAK', 'ON CALL', 'AVAILABLE', 'ON CALL', 'BREAK', 'ON CALL', 'ON CALL', 'BREAK', 'AVAILABLE', 'ON CALL', 'BREAK', 'OFFLINE'];
 
 export default function TelevisionPage() {
   const { has, isAdmin } = useAuth();
@@ -166,7 +163,7 @@ export default function TelevisionPage() {
   }, [authorized, refresh]);
 
   const agents = useMemo<AgentRow[]>(() => {
-    const performance = (report?.rows ?? []).map((row, index) => ({
+    const performance = (report?.rows ?? []).map((row) => ({
       name: String(row.Name ?? row.User ?? ''),
       user: String(row.User ?? ''),
       outboundSales: 0,
@@ -174,7 +171,6 @@ export default function TelevisionPage() {
       totalSales: num(row.Form_Sales_Count),
       revenue: num(row.Form_Sales_Amount),
       callsHandled: num(row.Calls_Handled),
-      status: FALLBACK_STATUSES[index % FALLBACK_STATUSES.length] ?? 'OFFLINE',
     }));
     const lookup = new Map(performance.map((agent) => [agent.name.toLowerCase(), agent]));
     for (const split of callTypeSales) {
@@ -192,13 +188,13 @@ export default function TelevisionPage() {
           totalSales: split.outboundSales + split.inboundSales,
           revenue: 0,
           callsHandled: 0,
-          status: FALLBACK_STATUSES[performance.length % FALLBACK_STATUSES.length] ?? 'OFFLINE',
         });
       }
     }
     return performance
       .filter((agent) => agent.name)
-      .sort((a, b) => b.totalSales - a.totalSales || b.revenue - a.revenue || a.name.localeCompare(b.name));
+      .sort((a, b) => b.totalSales - a.totalSales || b.revenue - a.revenue || a.name.localeCompare(b.name))
+      .slice(0, 16);
   }, [report, callTypeSales]);
 
   const totals = useMemo(
@@ -238,12 +234,10 @@ export default function TelevisionPage() {
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   const goalPct = dailyGoal > 0 ? clampPercent((totals.sales / dailyGoal) * 100) : 0;
   const goalPctLabel = `${Math.round(goalPct)}%`;
-  const leftRows = agents.slice(0, 10);
-  const rightRows = agents.slice(10, 20);
-  const onCallCount = agents.filter((a) => a.status === 'ON CALL').length;
-  const availableCount = agents.filter((a) => a.status === 'AVAILABLE').length;
-  const breakCount = agents.filter((a) => a.status === 'BREAK').length;
-  const liveLine = `${agents.length} AGENTS ONLINE · ${onCallCount} ON CALL · ${availableCount} AVAILABLE · ${breakCount} BREAK`;
+  const topAgents = agents.slice(0, 16);
+  const leftRows = topAgents.slice(0, 8);
+  const rightRows = topAgents.slice(8, 16);
+  const liveLine = `${agents.length} AGENTS RANKED`;
   const tickerMessage = `PUSH TO ${dailyGoal} — TOP CLOSER TAKES THE BOARD`;
 
   if (!authorized) return <div className="p-8 text-center text-[#f4f7fb]">You don&apos;t have access to this view.</div>;
@@ -365,7 +359,11 @@ function RankPanel({
     >
       <div
         className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.18em] text-cyan-200"
-        style={{ gridTemplateColumns: 'minmax(1.4rem, 1.4rem) minmax(0, 1fr) 3.2rem 3.2rem 3.2rem 4.5rem', fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(9px, 0.9vw, 12px)' }}
+        style={{
+          gridTemplateColumns: '2.6rem minmax(0, 1fr) 3.6rem 3.6rem 3.6rem 4.6rem',
+          fontFamily: 'Barlow Condensed, system-ui, sans-serif',
+          fontSize: 'clamp(11px, 1vw, 14px)',
+        }}
       >
         <div>RANK</div>
         <div>AGENT</div>
@@ -387,7 +385,7 @@ function RankPanel({
         ) : (
           <div
             className="grid flex-1 place-items-center font-semibold uppercase tracking-[0.2em] text-cyan-400/70"
-            style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(10px, 1vw, 13px)' }}
+            style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(12px, 1.1vw, 14px)' }}
           >
             Awaiting data
           </div>
@@ -401,77 +399,57 @@ function RankRow({ agent, rank, flash }: { agent: AgentRow; rank: number; flash:
   const lead = agent.totalSales > 0 && rank <= 3;
   const zero = agent.totalSales === 0;
   const medal = ['#facc15', '#67e8f9', '#fb923c'][rank - 1] ?? '#67e8f9';
-  const tint = ['rgba(250,204,21,.18)', 'rgba(103,232,249,.16)', 'rgba(251,146,60,.18)'][rank - 1] ?? 'rgba(103,232,249,.14)';
+  const tint = ['rgba(250,204,21,.18)', 'rgba(103,232,249,.16)', 'rgba(251,146,60,.18)'][rank - 1] ?? 'rgba(8,145,178,.14)';
   const callsText = agent.callsHandled.toLocaleString('en-US');
   const conv = agent.callsHandled > 0 ? ((agent.totalSales / agent.callsHandled) * 100).toFixed(2) + '%' : '—';
   const revenue = formatCurrency(agent.revenue);
   return (
     <div
-      className={`grid h-[clamp(48px,5vw,68px)] items-center gap-2 border-b border-cyan-400/10 border-l-[3px] px-2 ${flash ? 'animate-pulse' : ''}`}
+      className={`grid h-[clamp(56px,5.6vw,76px)] items-center gap-2 border-b border-cyan-400/10 border-l-[3px] px-2 ${flash ? 'animate-pulse' : ''}`}
       style={{
-        background: lead ? tint : zero ? 'transparent' : 'rgba(8,145,178,.14)',
-        borderLeftColor: lead ? medal : zero ? 'rgba(8,145,178,.25)' : '#22d3ee',
+        background: lead ? tint : 'rgba(8,145,178,.14)',
+        borderLeftColor: lead ? medal : '#22d3ee',
         animation: flash ? 'tvRankFlash 1.4s ease' : undefined,
         fontFamily: 'Barlow Condensed, system-ui, sans-serif',
-        gridTemplateColumns: 'minmax(1.4rem, 1.4rem) minmax(0, 1fr) 3.2rem 3.2rem 3.2rem 4.5rem',
+        gridTemplateColumns: '2.6rem minmax(0, 1fr) 3.6rem 3.6rem 3.6rem 4.6rem',
       }}
     >
       <div
-        className="flex items-center gap-1 font-semibold leading-none"
-        style={{ fontSize: 'clamp(14px, 1.4vw, 22px)', color: lead ? medal : 'rgba(103,232,249,.6)' }}
+        className="flex items-center gap-1 font-bold leading-none"
+        style={{ fontSize: 'clamp(16px, 1.7vw, 24px)', color: lead ? medal : 'rgba(103,232,249,.7)' }}
       >
         {rank === 1 ? <CrownIcon /> : null}
         {rank}
       </div>
       <div className="flex min-w-0 items-center gap-2">
         <div
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full font-semibold"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full font-bold"
           style={{
             background: 'rgba(8,47,73,.6)',
-            border: `1px solid ${medal}55`,
-            color: lead ? medal : 'rgba(103,232,249,.7)',
-            fontSize: 'clamp(9px, .8vw, 12px)',
+            border: `1px solid ${lead ? medal : 'rgba(103,232,249,.4)'}`,
+            color: lead ? medal : '#67e8f9',
+            fontSize: 'clamp(11px, 1vw, 14px)',
           }}
         >
           {initials(agent.name)}
         </div>
-        <div className="min-w-0 flex-1 leading-tight">
-          <div
-            className="truncate font-semibold"
-            style={{
-              fontSize: 'clamp(11px, 1.1vw, 16px)',
-              color: zero ? 'rgba(103,232,249,.55)' : lead ? medal : '#67e8f9',
-            }}
-          >
-            #{agent.user || '----'} {agent.name}
-          </div>
-          <div className="truncate uppercase tracking-[0.18em] text-cyan-300/70" style={{ fontSize: 'clamp(8px, 0.75vw, 11px)' }}>
-            {agent.status}
-          </div>
+        <div className="min-w-0 flex-1 truncate font-bold leading-tight" style={{ fontSize: 'clamp(13px, 1.2vw, 17px)', color: lead ? medal : '#67e8f9' }}>
+          {agent.name}
         </div>
       </div>
       <div
-        className="text-center font-semibold leading-none"
-        style={{
-          fontSize: 'clamp(12px, 1.3vw, 22px)',
-          color: zero ? 'rgba(103,232,249,.45)' : lead ? medal : '#67e8f9',
-        }}
+        className="text-center font-bold leading-none"
+        style={{ fontSize: 'clamp(14px, 1.4vw, 22px)', color: lead ? medal : '#67e8f9' }}
       >
         {agent.totalSales}
       </div>
-      <div className="text-right font-semibold leading-none text-cyan-300" style={{ fontSize: 'clamp(11px, 1vw, 15px)' }}>
+      <div className="text-right font-bold leading-none text-cyan-200" style={{ fontSize: 'clamp(13px, 1.1vw, 16px)' }}>
         {callsText}
       </div>
-      <div className="text-right font-semibold leading-none text-cyan-300" style={{ fontSize: 'clamp(11px, 1vw, 15px)' }}>
+      <div className="text-right font-bold leading-none text-cyan-200" style={{ fontSize: 'clamp(13px, 1.1vw, 16px)' }}>
         {conv}
       </div>
-      <div
-        className="text-right font-semibold leading-none"
-        style={{
-          fontSize: 'clamp(11px, 1.1vw, 15px)',
-          color: zero ? 'rgba(103,232,249,.45)' : '#22d3ee',
-        }}
-      >
+      <div className="text-right font-bold leading-none text-cyan-300" style={{ fontSize: 'clamp(13px, 1.2vw, 17px)' }}>
         {revenue}
       </div>
     </div>
