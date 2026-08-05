@@ -551,14 +551,14 @@ function CrownIcon() {
 function SaleAnnouncement({ sale }: { sale: TvSale }) {
   return (
     <div className="fixed inset-0 z-[120] grid place-items-center overflow-hidden bg-slate-900/95 text-slate-100 dark:bg-slate-950/95 dark:text-cyan-100">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(132,204,22,.18),transparent_55%)] dark:bg-[radial-gradient(circle_at_center,rgba(132,204,22,.18),transparent_55%)]" />
-      <div className="absolute inset-2 border border-slate-300/60 dark:border-cyan-300/40 sm:inset-6" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(250,204,21,.22),transparent_55%)] dark:bg-[radial-gradient(circle_at_center,rgba(250,204,21,.22),transparent_55%)]" />
+      <div className="absolute inset-2 border border-yellow-400/60 sm:inset-6 dark:border-yellow-300/50" />
       <div className="relative max-w-[92vw] text-center">
         <div
-          className="mb-4 font-semibold uppercase tracking-[0.4em] text-emerald-600 dark:text-cyan-300"
-          style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(28px, 3.2vw, 56px)' }}
+          className="mb-4 font-bold uppercase tracking-[0.4em] text-yellow-500 drop-shadow-[0_0_18px_rgba(234,179,8,.55)] dark:text-yellow-300 dark:drop-shadow-[0_0_22px_rgba(250,204,21,.65)]"
+          style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(28px, 3.2vw, 64px)' }}
         >
-          NEW SALE
+          !!! NEW SALE !!!
         </div>
         <div
           className="font-semibold leading-[.9] text-slate-900 dark:text-cyan-100"
@@ -567,10 +567,10 @@ function SaleAnnouncement({ sale }: { sale: TvSale }) {
           {sale.salesRep}
         </div>
         <div
-          className="mt-3 font-medium uppercase tracking-[0.22em] text-slate-600 dark:text-cyan-200"
-          style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(18px, 1.8vw, 36px)' }}
+          className="mt-3 font-bold uppercase tracking-[0.22em] text-yellow-600 drop-shadow-[0_0_14px_rgba(234,179,8,.45)] dark:text-yellow-300 dark:drop-shadow-[0_0_18px_rgba(250,204,21,.6)]"
+          style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(18px, 1.8vw, 40px)' }}
         >
-          #{sale.bundle} · {sale.todaysCount} SALES TODAY
+          !!! #{sale.bundle} · {sale.todaysCount} SALES TODAY !!!
         </div>
       </div>
     </div>
