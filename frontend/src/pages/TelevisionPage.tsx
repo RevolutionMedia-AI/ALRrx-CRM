@@ -231,16 +231,12 @@ return (
     <div className="flex min-h-[calc(100dvh-4rem)] flex-col gap-2.5 overflow-hidden bg-white text-[#111827] dark:bg-slate-950 dark:text-white">
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
 
-      <section className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
+      <section className="grid grid-cols-2 gap-2.5 lg:grid-cols-5">
         <Metric icon="revenue" label="Revenue" value={formatCurrency(revenue)} sub="Today" tone="purple" />
         <Metric icon="sales" label="Sales" value={String(totals.sales)} sub="Today" tone="lime" />
         <Metric icon="conversion" label="Conversion" value={`${conversion.toFixed(2)}%`} sub="Calls → Sale" tone="orange" />
-      </section>
-
-      <section className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
         <TopPerformer agents={agents} recentSales={recentSales} />
         <DailyGoalCard current={totals.sales} canEdit={isAdmin} />
-        <TopRevenueCard recentSales={recentSales} />
       </section>
 
       <section className="flex min-h-0 flex-1">
@@ -378,36 +374,25 @@ function TopPerformer({ agents, recentSales }: { agents: AgentRow[]; recentSales
   const top = agents[0];
   const last = recentSales[0];
   return (
-    <section className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-purple-500 bg-gradient-to-br from-purple-100 via-white to-pink-100 p-4 shadow-[0_0_40px_rgba(168,85,247,.45)] dark:border-purple-300 dark:from-purple-500/30 dark:via-slate-900 dark:to-pink-500/20">
-      <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-purple-300/40 blur-3xl dark:bg-purple-400/30" aria-hidden />
+    <section className="relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-purple-500 bg-gradient-to-br from-purple-100 via-white to-pink-100 p-3 shadow-[0_0_25px_rgba(168,85,247,.4)] dark:border-purple-300 dark:from-purple-500/30 dark:via-slate-900 dark:to-pink-500/20">
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-purple-300/40 blur-3xl dark:bg-purple-400/30" aria-hidden />
       <header className="flex items-center justify-between">
-        <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-purple-700 dark:text-purple-200">Top Performer</h3>
+        <h3 className="font-mono text-[10px] font-black uppercase tracking-[0.3em] text-purple-700 dark:text-purple-200">Top Performer</h3>
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Today</span>
       </header>
       {top ? (
-        <div className="mt-3 flex items-center gap-3">
-          <span className="grid h-16 w-16 place-items-center rounded-full border-4 border-purple-500 bg-white text-xl font-black text-purple-700 shadow-xl shadow-purple-500/50 dark:border-purple-300 dark:bg-slate-950 dark:text-purple-200">{initials(top.name)}</span>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-purple-500 bg-white text-base font-black text-purple-700 shadow-md shadow-purple-500/40 dark:border-purple-300 dark:bg-slate-950 dark:text-purple-200">{initials(top.name)}</span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xl font-black text-[#111827] dark:text-white">{top.name}</p>
+            <p className="truncate text-base font-black leading-tight text-[#111827] dark:text-white">{top.name}</p>
+            <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">{top.totalSales} sales · {formatCurrency(top.revenue)}</p>
           </div>
         </div>
       ) : (
-        <p className="mt-3 font-mono text-sm uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting data</p>
+        <p className="mt-2 font-mono text-xs uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting data</p>
       )}
-      {top ? (
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-xl border-2 border-purple-500 bg-white px-2 py-2 text-center dark:bg-slate-950">
-            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-purple-700 dark:text-purple-300">Total Sales</p>
-            <p className="mt-1 text-2xl font-black text-[#111827] dark:text-white">{top.totalSales}</p>
-          </div>
-          <div className="rounded-xl border-2 border-amber-500 bg-white px-2 py-2 text-center dark:bg-slate-950">
-            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-amber-700 dark:text-amber-300">Revenue</p>
-            <p className="mt-1 text-lg font-black text-amber-600 dark:text-amber-300">{formatCurrency(top.revenue)}</p>
-          </div>
-        </div>
-      ) : null}
       {top && last ? (
-        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Last sale: {formatCurrency(last.amount)}</p>
+        <p className="mt-auto pt-2 font-mono text-[9px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">Last sale: {formatCurrency(last.amount)}</p>
       ) : null}
     </section>
   );
@@ -458,13 +443,13 @@ function DailyGoalCard({ current, canEdit }: { current: number; canEdit: boolean
   };
 
   return (
-    <section className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-cyan-500 bg-gradient-to-br from-cyan-100 via-white to-blue-100 p-4 shadow-[0_0_40px_rgba(34,211,238,.45)] dark:border-cyan-300 dark:from-cyan-500/25 dark:via-slate-900 dark:to-blue-500/20">
-      <div className="absolute -left-8 -top-8 h-32 w-32 rounded-full bg-cyan-300/40 blur-3xl dark:bg-cyan-400/30" aria-hidden />
+    <section className="relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-cyan-500 bg-gradient-to-br from-cyan-100 via-white to-blue-100 p-3 shadow-[0_0_25px_rgba(34,211,238,.4)] dark:border-cyan-300 dark:from-cyan-500/25 dark:via-slate-900 dark:to-blue-500/20">
+      <div className="absolute -left-8 -top-8 h-24 w-24 rounded-full bg-cyan-300/40 blur-3xl dark:bg-cyan-400/30" aria-hidden />
       <header className="flex items-center justify-between">
-        <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-200">Daily Goal</h3>
+        <h3 className="font-mono text-[10px] font-black uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-200">Daily Goal</h3>
         {canEdit ? (
           editing ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <input
                 type="number"
                 min={0}
@@ -475,37 +460,36 @@ function DailyGoalCard({ current, canEdit }: { current: number; canEdit: boolean
                   if (event.key === 'Escape') { setEditing(false); setDraft(''); }
                 }}
                 placeholder={target ? String(target) : '0'}
-                className="w-24 rounded border border-cyan-500 bg-white px-2 py-1 text-right font-mono text-sm font-bold text-cyan-700 outline-none focus:ring-2 focus:ring-cyan-400 dark:bg-slate-950 dark:text-cyan-200"
+                className="w-16 rounded border border-cyan-500 bg-white px-1 py-0.5 text-right font-mono text-xs font-bold text-cyan-700 outline-none focus:ring-2 focus:ring-cyan-400 dark:bg-slate-950 dark:text-cyan-200"
               />
-              <button type="button" onClick={onSave} className="rounded bg-cyan-600 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow hover:bg-cyan-500">Save</button>
+              <button type="button" onClick={onSave} className="rounded bg-cyan-600 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-white shadow hover:bg-cyan-500">Save</button>
             </div>
           ) : (
-            <button type="button" onClick={() => { setEditing(true); setDraft(target ? String(target) : ''); }} className="rounded bg-cyan-600 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow hover:bg-cyan-500">Edit target</button>
+            <button type="button" onClick={() => { setEditing(true); setDraft(target ? String(target) : ''); }} className="rounded bg-cyan-600 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-white shadow hover:bg-cyan-500">Edit</button>
           )
         ) : (
           <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Sales target</span>
         )}
       </header>
-      <div className="relative mt-4 grid place-items-center">
+      <div className="relative mt-2 grid place-items-center">
         <ProgressDial percent={percent} />
         <p className="pointer-events-none absolute text-center">
-          <span className="block text-4xl font-black text-[#111827] dark:text-white">{current}</span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">of {target || '—'}</span>
-          <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">{percent}% reached</span>
+          <span className="block text-2xl font-black text-[#111827] dark:text-white">{current}</span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">of {target || '—'}</span>
         </p>
       </div>
-      <dl className="mt-4 grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">
-        <div className="rounded border border-cyan-500/60 bg-white px-2 py-2 text-center dark:bg-slate-950">
+      <dl className="mt-2 grid grid-cols-3 gap-1 font-mono text-[9px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">
+        <div className="rounded border border-cyan-500/60 bg-white px-1 py-1 text-center dark:bg-slate-950">
           <dt className="text-cyan-700 dark:text-cyan-300">Current</dt>
-          <dd className="mt-1 text-base font-black text-[#111827] dark:text-white">{current}</dd>
+          <dd className="mt-0.5 text-sm font-black text-[#111827] dark:text-white">{current}</dd>
         </div>
-        <div className="rounded border border-purple-500/60 bg-white px-2 py-2 text-center dark:bg-slate-950">
+        <div className="rounded border border-purple-500/60 bg-white px-1 py-1 text-center dark:bg-slate-950">
           <dt className="text-purple-700 dark:text-purple-300">Target</dt>
-          <dd className="mt-1 text-base font-black text-[#111827] dark:text-white">{target || '—'}</dd>
+          <dd className="mt-0.5 text-sm font-black text-[#111827] dark:text-white">{target || '—'}</dd>
         </div>
-        <div className="rounded border border-orange-500/60 bg-white px-2 py-2 text-center dark:bg-slate-950">
-          <dt className="text-orange-700 dark:text-orange-300">Remaining</dt>
-          <dd className="mt-1 text-base font-black text-[#111827] dark:text-white">{remaining || '—'}</dd>
+        <div className="rounded border border-orange-500/60 bg-white px-1 py-1 text-center dark:bg-slate-950">
+          <dt className="text-orange-700 dark:text-orange-300">Left</dt>
+          <dd className="mt-0.5 text-sm font-black text-[#111827] dark:text-white">{remaining || '—'}</dd>
         </div>
       </dl>
     </section>
