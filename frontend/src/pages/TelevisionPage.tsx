@@ -258,9 +258,11 @@ return (
               const secondHalf = topAgents.slice(midpoint);
               return [firstHalf, secondHalf].map((group, groupIndex) => (
                 <div key={groupIndex} className="flex flex-col">
-                  <div className="grid grid-cols-[3rem_minmax(0,1fr)_5rem_5rem_5rem] items-center gap-2 border-b border-[#d7dee8] px-2 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-[#111827] dark:border-slate-700 dark:text-white">
+                  <div className="grid grid-cols-[3rem_minmax(0,1fr)_5rem_5rem_5rem_5rem_5rem] items-center gap-2 border-b border-[#d7dee8] px-2 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-[#111827] dark:border-slate-700 dark:text-white">
                     <span>Rank</span>
                     <span>Agent</span>
+                    <span className="text-right">Out</span>
+                    <span className="text-right">In</span>
                     <span className="text-right">Sales</span>
                     <span className="text-right">Calls</span>
                     <span className="text-right">Conv</span>
@@ -345,7 +347,7 @@ function RankingRow({ agent, rank }: { agent: AgentRow; rank: number }) {
   const conversion = agent.callsHandled > 0 ? clampPercent((agent.totalSales / agent.callsHandled) * 100) : 0;
   return (
     <article className={`relative overflow-hidden rounded-lg border-l-4 border border-[#d7dee8] dark:border-slate-800 ${medalBg}`}>
-      <div className="grid grid-cols-[3rem_minmax(0,1fr)_5rem_5rem_5rem] items-center gap-2 px-3 py-3">
+      <div className="grid grid-cols-[3rem_minmax(0,1fr)_5rem_5rem_5rem_5rem_5rem] items-center gap-2 px-3 py-3">
         <span className="flex items-center gap-1 font-mono text-[clamp(1rem,1.4vw,1.5rem)] font-black text-[#111827] dark:text-white">
           {rank === 1 ? <CrownIcon /> : null}
           {rank}
@@ -354,6 +356,8 @@ function RankingRow({ agent, rank }: { agent: AgentRow; rank: number }) {
           <span className="grid aspect-square w-8 shrink-0 place-items-center rounded-full bg-[#e5e7eb] font-mono text-xs font-black text-[#111827] dark:bg-slate-800 dark:text-cyan-200">{initials(agent.name)}</span>
           <p className="truncate text-[clamp(1rem,1.35vw,1.4rem)] font-bold leading-tight text-[#111827] dark:text-white">{agent.name}</p>
         </div>
+        <span className="text-right font-mono text-[clamp(.85rem,1vw,1rem)] font-bold text-cyan-700 dark:text-cyan-300">{agent.outboundSales}</span>
+        <span className="text-right font-mono text-[clamp(.85rem,1vw,1rem)] font-bold text-purple-700 dark:text-purple-300">{agent.inboundSales}</span>
         <span className={`text-right font-mono text-[clamp(1.15rem,1.5vw,1.6rem)] font-black ${highlightMedal ? 'text-lime-700 dark:text-lime-300' : 'text-[#111827] dark:text-white'}`}>{agent.totalSales}</span>
         <span className="text-right font-mono text-[clamp(.85rem,1vw,1rem)] font-bold text-[#111827] dark:text-white">{agent.callsHandled.toLocaleString('en-US')}</span>
         <span className="text-right font-mono text-[clamp(.85rem,1vw,1rem)] font-bold text-[#111827] dark:text-white">{conversion.toFixed(2)}%</span>
