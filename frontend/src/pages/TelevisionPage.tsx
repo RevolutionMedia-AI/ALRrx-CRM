@@ -84,6 +84,8 @@ export default function TelevisionPage() {
   const [lastUpdated, setLastUpdated] = useState('');
   const [tvSale, setTvSale] = useState<TvSale | null>(null);
   const saleTimeoutRef = useRef<number | null>(null);
+  const rankingRef = useRef<HTMLDivElement | null>(null);
+  const [rankingHeight, setRankingHeight] = useState(0);
 
   const refresh = useCallback(async () => {
     try {
@@ -123,6 +125,24 @@ export default function TelevisionPage() {
     const interval = window.setInterval(() => void refresh(), 30_000);
     return () => window.clearInterval(interval);
   }, [authorized, refresh]);
+
+  useEffect(() => {
+    if (!authorized) return;
+    const node = rankingRef.current;
+    if (!node) return;
+    const measure = () => setRankingHeight(node.offsetHeight);
+    measure();
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(measure);
+      observer.observe(node);
+    }
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer?.disconnect();
+    };
+  }, [authorized, report]);
 
   useEffect(() => {
     if (!authorized) return;
@@ -232,8 +252,8 @@ return (
         <Metric icon="conversion" label="Conversion" value={`${conversion.toFixed(2)}%`} sub="Calls → Sale" tone="orange" />
       </section>
 
-      <section className="grid min-h-0 grid-cols-1 items-start gap-2.5 lg:grid-cols-[2fr_1fr]">
-        <article className="flex flex-col overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
+      <section className="grid grid-cols-1 items-stretch gap-2.5 lg:grid-cols-[2fr_1fr]">
+        <article ref={rankingRef} className="flex flex-col overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
           <header className="flex items-center justify-between border-b border-cyan-500/30 px-4 py-3">
             <h3 className="font-mono text-base font-black uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Agent Ranking</h3>
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Updated {lastUpdated || '--:--'}</span>
@@ -263,9 +283,9 @@ return (
         </article>
 
         <aside className="flex flex-col gap-2.5">
-          <TopPerformer agents={agents} recentSales={recentSales} />
-          <DailyGoalCard current={totals.sales} canEdit={isAdmin} />
-          <TopRevenueCard recentSales={recentSales} />
+          <TopPerformer agents={agents} recentSales={recentSales} rankingHeight={rankingHeight} />
+          <DailyGoalCard current={totals.sales} canEdit={isAdmin} rankingHeight={rankingHeight} />
+          <TopRevenueCard recentSales={recentSales} rankingHeight={rankingHeight} />
         </aside>
       </section>
 
@@ -363,36 +383,39 @@ function RankingRow({ agent, rank, teamTotal, teamRevenue }: { agent: AgentRow; 
   );
 }
 
-function TopPerformer({ agents, recentSales }: { agents: AgentRow[]; recentSales: VicidialSaleDto[] }) {
+function TopPerformer({ agents, recentSales, rankingHeight = 0 }: { agents: AgentRow[]; recentSales: VicidialSaleDto[]; rankingHeight?: number }) {
   const top = agents[0];
   const last = recentSales[0];
   return (
-    <section className="relative overflow-hidden rounded-2xl border-2 border-purple-500 bg-gradient-to-br from-purple-100 via-white to-pink-100 p-5 shadow-[0_0_40px_rgba(168,85,247,.45)] dark:border-purple-300 dark:from-purple-500/30 dark:via-slate-900 dark:to-pink-500/20">
+    <section
+      style={{ minHeight: rankingHeight ? `${Math.max(220, Math.round(rankingHeight * 0.36))}px` : undefined }}
+      className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-purple-500 bg-gradient-to-br from-purple-100 via-white to-pink-100 p-4 shadow-[0_0_40px_rgba(168,85,247,.45)] dark:border-purple-300 dark:from-purple-500/30 dark:via-slate-900 dark:to-pink-500/20"
+    >
       <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-purple-300/40 blur-3xl dark:bg-purple-400/30" aria-hidden />
       <header className="flex items-center justify-between">
         <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-purple-700 dark:text-purple-200">Top Performer</h3>
         <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Today</span>
       </header>
       {top ? (
-        <div className="mt-4 flex items-center gap-4">
-          <span className="grid h-20 w-20 place-items-center rounded-full border-4 border-purple-500 bg-white text-2xl font-black text-purple-700 shadow-xl shadow-purple-500/50 dark:border-purple-300 dark:bg-slate-950 dark:text-purple-200">{initials(top.name)}</span>
+        <div className="mt-3 flex items-center gap-3">
+          <span className="grid h-16 w-16 place-items-center rounded-full border-4 border-purple-500 bg-white text-xl font-black text-purple-700 shadow-xl shadow-purple-500/50 dark:border-purple-300 dark:bg-slate-950 dark:text-purple-200">{initials(top.name)}</span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-2xl font-black text-[#111827] dark:text-white">{top.name}</p>
+            <p className="truncate text-xl font-black text-[#111827] dark:text-white">{top.name}</p>
             <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">ID {top.user || '—'}</p>
           </div>
         </div>
       ) : (
-        <p className="mt-4 font-mono text-sm uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting data</p>
+        <p className="mt-3 font-mono text-sm uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting data</p>
       )}
       {top ? (
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-xl border-2 border-purple-500 bg-white px-3 py-3 text-center dark:bg-slate-950">
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-xl border-2 border-purple-500 bg-white px-2 py-2 text-center dark:bg-slate-950">
             <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-purple-700 dark:text-purple-300">Total Sales</p>
-            <p className="mt-1 text-3xl font-black text-[#111827] dark:text-white">{top.totalSales}</p>
+            <p className="mt-1 text-2xl font-black text-[#111827] dark:text-white">{top.totalSales}</p>
           </div>
-          <div className="rounded-xl border-2 border-amber-500 bg-white px-3 py-3 text-center dark:bg-slate-950">
+          <div className="rounded-xl border-2 border-amber-500 bg-white px-2 py-2 text-center dark:bg-slate-950">
             <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-amber-700 dark:text-amber-300">Revenue</p>
-            <p className="mt-1 text-2xl font-black text-amber-600 dark:text-amber-300">{formatCurrency(top.revenue)}</p>
+            <p className="mt-1 text-lg font-black text-amber-600 dark:text-amber-300">{formatCurrency(top.revenue)}</p>
           </div>
         </div>
       ) : null}
@@ -425,7 +448,7 @@ function saveDailyGoal(value: number) {
   }
 }
 
-function DailyGoalCard({ current, canEdit }: { current: number; canEdit: boolean }) {
+function DailyGoalCard({ current, canEdit, rankingHeight = 0 }: { current: number; canEdit: boolean; rankingHeight?: number }) {
   const [target, setTarget] = useState<number>(() => loadDailyGoal());
   const [draft, setDraft] = useState<string>('');
   const [editing, setEditing] = useState(false);
@@ -448,7 +471,10 @@ function DailyGoalCard({ current, canEdit }: { current: number; canEdit: boolean
   };
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border-2 border-cyan-500 bg-gradient-to-br from-cyan-100 via-white to-blue-100 p-5 shadow-[0_0_40px_rgba(34,211,238,.45)] dark:border-cyan-300 dark:from-cyan-500/25 dark:via-slate-900 dark:to-blue-500/20">
+    <section
+      style={{ minHeight: rankingHeight ? `${Math.max(220, Math.round(rankingHeight * 0.28))}px` : undefined }}
+      className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-cyan-500 bg-gradient-to-br from-cyan-100 via-white to-blue-100 p-4 shadow-[0_0_40px_rgba(34,211,238,.45)] dark:border-cyan-300 dark:from-cyan-500/25 dark:via-slate-900 dark:to-blue-500/20"
+    >
       <div className="absolute -left-8 -top-8 h-32 w-32 rounded-full bg-cyan-300/40 blur-3xl dark:bg-cyan-400/30" aria-hidden />
       <header className="flex items-center justify-between">
         <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-200">Daily Goal</h3>
@@ -502,7 +528,7 @@ function DailyGoalCard({ current, canEdit }: { current: number; canEdit: boolean
   );
 }
 
-function TopRevenueCard({ recentSales }: { recentSales: VicidialSaleDto[] }) {
+function TopRevenueCard({ recentSales, rankingHeight = 0 }: { recentSales: VicidialSaleDto[]; rankingHeight?: number }) {
   const byAgent = useMemo(() => {
     const map = new Map<string, number>();
     for (const sale of recentSales) {
@@ -515,9 +541,11 @@ function TopRevenueCard({ recentSales }: { recentSales: VicidialSaleDto[] }) {
 
   const top = byAgent[0];
   const max = top?.[1] ?? 1;
-
   return (
-    <section className="relative overflow-hidden rounded-2xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-100 via-white to-teal-100 p-5 shadow-[0_0_40px_rgba(16,185,129,.45)] dark:border-emerald-300 dark:from-emerald-500/25 dark:via-slate-900 dark:to-teal-500/20">
+    <section
+      style={{ minHeight: rankingHeight ? `${Math.max(240, Math.round(rankingHeight * 0.36))}px` : undefined }}
+      className="relative flex flex-col overflow-hidden rounded-2xl border-2 border-emerald-500 bg-gradient-to-br from-emerald-100 via-white to-teal-100 p-4 shadow-[0_0_40px_rgba(16,185,129,.45)] dark:border-emerald-300 dark:from-emerald-500/25 dark:via-slate-900 dark:to-teal-500/20"
+    >
       <div className="absolute -right-8 -bottom-8 h-32 w-32 rounded-full bg-emerald-300/40 blur-3xl dark:bg-emerald-400/30" aria-hidden />
       <header className="flex items-center justify-between">
         <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-emerald-700 dark:text-emerald-200">Top Revenue</h3>
