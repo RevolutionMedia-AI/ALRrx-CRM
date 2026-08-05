@@ -223,7 +223,7 @@ const revenue = useMemo(() => {
   if (!authorized) return <div className="p-8 text-center">You don't have access to this view.</div>;
 
 return (
-    <main className="flex min-h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden bg-white p-4 text-[#111827] dark:bg-slate-950 dark:text-white">
+    <main className="flex min-h-[calc(100dvh-4rem)] flex-col gap-3 overflow-hidden bg-white px-2 py-3 text-[#111827] dark:bg-slate-950 dark:text-white sm:px-3 lg:px-4">
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -269,7 +269,7 @@ return (
         </aside>
       </section>
 
-      <footer className="flex h-[5vh] min-h-10 items-center justify-between border-t border-cyan-500/30 px-[2vw] font-mono text-[clamp(.55rem,.75vw,.75rem)] uppercase tracking-[0.3em] text-[#111827] dark:text-white">
+      <footer className="flex h-[5vh] min-h-10 items-center justify-between border-t border-cyan-500/30 px-2 font-mono text-[clamp(.55rem,.75vw,.75rem)] uppercase tracking-[0.3em] text-[#111827] dark:text-white">
         <span>{agents.length} agents ranked</span>
         <span className="text-cyan-700 dark:text-cyan-300">Every sale moves the board</span>
         <span>Updated {lastUpdated || '--:--'}</span>
