@@ -310,12 +310,12 @@ export default function TelevisionPage() {
 
   return (
     <div
-      className="flex min-h-[calc(100dvh-4rem)] w-full min-w-0 flex-col bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100"
+      className="flex min-h-[calc(100dvh-4rem)] w-full min-w-0 flex-col overflow-x-hidden bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100"
       style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}
     >
-      <div className="flex items-center justify-between border-b border-slate-300/60 bg-white px-4 py-3 text-slate-700 dark:border-cyan-400/20 dark:bg-slate-950 dark:text-cyan-100 sm:px-6">
+      <div className="flex items-center justify-between border-b border-slate-300/60 bg-white px-3 py-2.5 text-slate-700 dark:border-cyan-400/20 dark:bg-slate-950 dark:text-cyan-100 sm:px-6 sm:py-3">
         <div className="flex items-center gap-4 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-          <div className="font-semibold leading-none tracking-[0.18em] text-indigo-800 dark:text-cyan-300" style={{ fontSize: 'clamp(24px, 3.4vw, 54px)' }}>ALTRX</div>
+          <div className="hidden font-semibold leading-none tracking-[0.18em] text-indigo-800 dark:text-cyan-300 sm:block" style={{ fontSize: 'clamp(24px, 3.4vw, 54px)' }}>ALTRX</div>
         </div>
         <div className="flex items-center gap-3 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -323,20 +323,20 @@ export default function TelevisionPage() {
             <div className="font-semibold leading-none tracking-[0.28em] text-emerald-700 dark:text-emerald-400" style={{ fontSize: 'clamp(13px, 1.6vw, 22px)' }}>LIVE</div>
           </div>
           <div className="hidden font-medium uppercase leading-none tracking-[0.16em] text-slate-500 dark:text-cyan-200 sm:block" style={{ fontSize: 'clamp(11px, 1.4vw, 18px)' }}>{dateLabel}</div>
-          <div className="font-mono font-semibold leading-none tracking-[0.06em] text-slate-900 dark:text-cyan-300" style={{ fontSize: 'clamp(18px, 2.4vw, 36px)' }}>{clock || '--:--:--'}</div>
+          <div className="font-mono font-semibold leading-none tracking-[0.06em] text-slate-900 dark:text-cyan-300" style={{ fontSize: 'clamp(16px, 2.4vw, 36px)' }}>{clock || '--:--:--'}</div>
         </div>
       </div>
 
-      <div className="grid min-h-0 grid-cols-2 overflow-hidden border-b border-slate-300/60 bg-white text-slate-700 dark:border-cyan-400/15 dark:bg-slate-950 dark:text-cyan-100 lg:grid-cols-5">
-        <div className="flex flex-col gap-2 overflow-hidden border-r border-slate-300/60 px-5 py-3 min-w-0 dark:border-cyan-400/15">
+      <div className="grid min-h-0 grid-cols-2 border-b border-slate-300/60 bg-white text-slate-700 dark:border-cyan-400/15 dark:bg-slate-950 dark:text-cyan-100 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="col-span-2 flex flex-col gap-1.5 overflow-hidden border-b border-slate-300/60 px-3 py-3 min-w-0 sm:col-span-3 sm:border-b-0 sm:border-r sm:px-5 lg:col-span-1 dark:border-cyan-400/15">
           <div className="flex min-w-0 items-baseline justify-between gap-2" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
             <div className="font-semibold uppercase tracking-[0.2em] truncate text-slate-500 dark:text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>TEAM SALES TODAY</div>
             <div className="font-semibold uppercase tracking-[0.2em] truncate text-indigo-700 dark:text-cyan-300" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>{goalPctLabel} OF GOAL</div>
           </div>
           <div className="flex min-w-0 items-end gap-2 leading-none dark:text-cyan-300" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="font-semibold tracking-[-0.02em] truncate text-indigo-800 dark:text-cyan-300" style={{ fontSize: 'clamp(32px, 4.6vw, 64px)' }}>{totals.sales}</div>
-            <div className="font-normal text-slate-400 truncate dark:text-cyan-400/70" style={{ fontSize: 'clamp(14px, 1.6vw, 24px)' }}>/ {dailyGoal}</div>
-            <div className="pb-1 font-semibold uppercase tracking-[0.18em] truncate text-slate-500 dark:text-cyan-200/80" style={{ fontSize: 'clamp(9px, 1vw, 13px)' }}>DAILY GOAL</div>
+            <div className="font-semibold tracking-[-0.02em] truncate text-indigo-800 dark:text-cyan-300" style={{ fontSize: 'clamp(28px, 4.6vw, 64px)' }}>{totals.sales}</div>
+            <div className="font-normal text-slate-400 truncate dark:text-cyan-400/70" style={{ fontSize: 'clamp(12px, 1.6vw, 24px)' }}>/ {dailyGoal}</div>
+            <div className="hidden pb-1 font-semibold uppercase tracking-[0.18em] truncate text-slate-500 dark:text-cyan-200/80 sm:block" style={{ fontSize: 'clamp(9px, 1vw, 13px)' }}>DAILY GOAL</div>
           </div>
           <div className="relative h-[6px] w-full overflow-hidden rounded-sm border border-slate-300 dark:border-cyan-300/40">
             <div
@@ -363,26 +363,20 @@ export default function TelevisionPage() {
           titleClass="text-purple-700 dark:text-rose-300/80"
           valueClass="text-rose-700 dark:text-rose-400"
         />
-        <div className="flex min-w-0 flex-col justify-center gap-1 overflow-hidden px-5 py-3 min-w-0 lg:border-l lg:border-slate-300/60 dark:lg:border-cyan-400/15">
+        <div className="flex min-w-0 flex-col justify-center gap-1 overflow-hidden px-3 py-3 min-w-0 sm:border-r sm:border-slate-300/60 sm:px-5 dark:sm:border-cyan-400/15 lg:border-l lg:border-slate-300/60 dark:lg:border-cyan-400/15">
           <div className="flex items-center gap-2 font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
             <span className="relative inline-flex h-2 w-2 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400">
               <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/70 dark:bg-emerald-400/70" />
             </span>
             ON CALL
           </div>
-          <div className="font-semibold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(24px, 3.4vw, 52px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+          <div className="font-semibold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(20px, 3.4vw, 52px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
             {onCallCount}
           </div>
         </div>
       </div>
 
-      <div
-        className="grid flex-1 bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: rightRows.length ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr)',
-        }}
-      >
+      <div className="grid grid-cols-1 flex-1 bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100 lg:grid-cols-2">
         <RankPanel rows={leftRows} side="left" startRank={1} flashId={flashId} />
         {rightRows.length ? (
           <RankPanel rows={rightRows} side="right" startRank={splitIndex + 1} flashId={flashId} />
@@ -416,11 +410,11 @@ export default function TelevisionPage() {
 function KpiCell({ label, value, titleClass, valueClass }: { label: string; value: string; titleClass: string; valueClass: string }) {
   return (
     <div
-      className="flex flex-col justify-center gap-1 overflow-hidden border-r border-slate-300/60 px-5 py-3 last:border-r-0 dark:border-cyan-400/15"
+      className="flex flex-col justify-center gap-1 overflow-hidden border-r border-b border-slate-300/60 px-3 py-3 last:border-r-0 sm:border-b-0 sm:px-5 dark:border-cyan-400/15"
       style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
     >
-      <div className={`font-semibold uppercase tracking-[0.2em] truncate ${titleClass}`} style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>{label}</div>
-      <div className={`truncate font-semibold leading-none ${valueClass}`} style={{ fontSize: 'clamp(24px, 3.4vw, 52px)' }}>
+      <div className={`font-semibold uppercase tracking-[0.2em] truncate ${titleClass}`} style={{ fontSize: 'clamp(9px, 1.1vw, 15px)' }}>{label}</div>
+      <div className={`truncate font-semibold leading-none ${valueClass}`} style={{ fontSize: 'clamp(18px, 3.4vw, 52px)' }}>
         {value}
       </div>
     </div>
@@ -440,24 +434,23 @@ function RankPanel({
 }) {
   return (
     <div
-      className={`flex min-w-0 flex-col px-3 py-3 ${
-        side === 'right' ? 'border-l border-slate-300/60 dark:border-cyan-400/20' : ''
+      className={`flex min-w-0 flex-col px-2 py-2 sm:px-3 sm:py-3 ${
+        side === 'right' ? 'lg:border-l lg:border-slate-300/60 lg:dark:border-cyan-400/20 border-t border-slate-300/60 dark:border-cyan-400/20 lg:border-t-0' : ''
       }`}
     >
       <div
-        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-cyan-200"
+        className="mb-2 grid items-center gap-1 px-1 font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-cyan-200 grid-cols-[2.2rem_minmax(0,1fr)_3rem_3rem] sm:grid-cols-[2.6rem_minmax(0,1fr)_3.6rem_3.6rem_3.6rem_4.6rem] sm:gap-2 sm:px-2"
         style={{
-          gridTemplateColumns: '2.6rem minmax(0, 1fr) 3.6rem 3.6rem 3.6rem 4.6rem',
           fontFamily: 'Barlow Condensed, system-ui, sans-serif',
-          fontSize: 'clamp(11px, 1vw, 14px)',
+          fontSize: 'clamp(10px, 1vw, 14px)',
         }}
       >
         <div>RANK</div>
         <div>AGENT</div>
         <div className="text-center">SALES</div>
-        <div className="text-right">CALLS</div>
-        <div className="text-right">CONV</div>
         <div className="text-right">REVENUE</div>
+        <div className="hidden text-right sm:block">CALLS</div>
+        <div className="hidden text-right sm:block">CONV</div>
       </div>
       <div className="flex flex-col bg-white dark:bg-slate-950">
         {rows.length ? (
@@ -525,46 +518,45 @@ function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number;
   const rowBg = leadCfg ? '' : zebra ? 'bg-slate-100/70 dark:bg-cyan-400/[0.07]' : '';
   return (
     <div
-      className={`grid h-[clamp(72px,7vw,96px)] items-center gap-2 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-2 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'}`}
+      className={`grid h-[clamp(54px,6.5vw,72px)] sm:h-[clamp(72px,7vw,96px)] items-center gap-1 sm:gap-2 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-1 sm:px-2 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'} grid-cols-[2.2rem_minmax(0,1fr)_3rem_3rem] sm:grid-cols-[2.6rem_minmax(0,1fr)_3.6rem_3.6rem_3.6rem_4.6rem]`}
       style={{
         background: leadCfg ? leadCfg.gradient : undefined,
         animation: flash ? 'tvRankFlash 1.4s ease' : undefined,
         fontFamily: 'Barlow Condensed, system-ui, sans-serif',
-        gridTemplateColumns: '2.6rem minmax(0, 1fr) 3.6rem 3.6rem 3.6rem 4.6rem',
       }}
     >
       <div
         className={`flex items-center gap-1 font-bold leading-none ${rankColorClass}`}
-        style={{ fontSize: 'clamp(22px, 2.2vw, 30px)' }}
+        style={{ fontSize: 'clamp(18px, 2.2vw, 30px)' }}
       >
         {rank === 1 ? <CrownIcon /> : null}
         {rank}
       </div>
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <div
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-bold bg-slate-100 border border-slate-300 text-indigo-700 dark:bg-slate-900/60 dark:border-cyan-400/40 dark:text-cyan-200"
-          style={{ fontSize: 'clamp(13px, 1.2vw, 16px)' }}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full font-bold bg-slate-100 border border-slate-300 text-indigo-700 dark:bg-slate-900/60 dark:border-cyan-400/40 dark:text-cyan-200 sm:h-10 sm:w-10"
+          style={{ fontSize: 'clamp(11px, 1.2vw, 16px)' }}
         >
           {initials(agent.name)}
         </div>
-        <div className="min-w-0 flex-1 truncate font-bold leading-tight text-slate-800 dark:text-cyan-100" style={{ fontSize: 'clamp(15px, 1.5vw, 21px)' }}>
+        <div className="min-w-0 flex-1 truncate font-bold leading-tight text-slate-800 dark:text-cyan-100" style={{ fontSize: 'clamp(13px, 1.5vw, 21px)' }}>
           {agent.name}
         </div>
       </div>
       <div
         className="text-center font-bold leading-none text-indigo-700 dark:text-cyan-300"
-        style={{ fontSize: 'clamp(17px, 1.7vw, 26px)' }}
+        style={{ fontSize: 'clamp(15px, 1.7vw, 26px)' }}
       >
         {agent.totalSales}
       </div>
-      <div className="text-right font-bold leading-none text-amber-700 dark:text-yellow-300" style={{ fontSize: 'clamp(15px, 1.4vw, 19px)' }}>
+      <div className="text-right font-bold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(13px, 1.5vw, 20px)' }}>
+        {revenue}
+      </div>
+      <div className="hidden text-right font-bold leading-none text-amber-700 dark:text-yellow-300 sm:block" style={{ fontSize: 'clamp(15px, 1.4vw, 19px)' }}>
         {callsText}
       </div>
-      <div className="text-right font-bold leading-none text-amber-800 dark:text-yellow-300" style={{ fontSize: 'clamp(15px, 1.4vw, 19px)' }}>
+      <div className="hidden text-right font-bold leading-none text-amber-800 dark:text-yellow-300 sm:block" style={{ fontSize: 'clamp(15px, 1.4vw, 19px)' }}>
         {conv}
-      </div>
-      <div className="text-right font-bold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(15px, 1.5vw, 20px)' }}>
-        {revenue}
       </div>
     </div>
   );
