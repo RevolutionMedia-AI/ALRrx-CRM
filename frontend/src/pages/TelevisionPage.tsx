@@ -244,70 +244,85 @@ export default function TelevisionPage() {
 
   return (
     <div
-      className="flex h-[calc(100dvh-4rem)] w-full min-w-0 min-h-0 flex-col overflow-hidden bg-slate-950 text-cyan-100"
+      className="flex h-[calc(100dvh-4rem)] w-full min-w-0 min-h-0 flex-col overflow-hidden bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100"
       style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}
     >
-      <div className="flex items-center justify-between border-b border-cyan-400/20 px-4 py-3 sm:px-6">
+      <div className="flex items-center justify-between border-b border-slate-300/60 bg-white px-4 py-3 text-slate-700 dark:border-cyan-400/20 dark:bg-slate-950 dark:text-cyan-100 sm:px-6">
         <div className="flex items-center gap-4 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-          <div className="font-semibold leading-none tracking-[0.18em] text-cyan-300" style={{ fontSize: 'clamp(24px, 3.4vw, 54px)' }}>ALTRX</div>
+          <div className="font-semibold leading-none tracking-[0.18em] text-indigo-800 dark:text-cyan-300" style={{ fontSize: 'clamp(24px, 3.4vw, 54px)' }}>ALTRX</div>
         </div>
         <div className="flex items-center gap-3 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(16,185,129,.8)] sm:h-3 sm:w-3" />
-            <div className="font-semibold leading-none tracking-[0.28em] text-emerald-400" style={{ fontSize: 'clamp(13px, 1.6vw, 22px)' }}>LIVE</div>
+            <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,.8)] sm:h-3 sm:w-3" />
+            <div className="font-semibold leading-none tracking-[0.28em] text-emerald-700 dark:text-emerald-400" style={{ fontSize: 'clamp(13px, 1.6vw, 22px)' }}>LIVE</div>
           </div>
-          <div className="hidden font-medium uppercase leading-none tracking-[0.16em] text-cyan-200 sm:block" style={{ fontSize: 'clamp(11px, 1.4vw, 18px)' }}>{dateLabel}</div>
-          <div className="font-mono font-semibold leading-none tracking-[0.06em] text-cyan-300" style={{ fontSize: 'clamp(18px, 2.4vw, 36px)' }}>{clock || '--:--:--'}</div>
+          <div className="hidden font-medium uppercase leading-none tracking-[0.16em] text-slate-500 dark:text-cyan-200 sm:block" style={{ fontSize: 'clamp(11px, 1.4vw, 18px)' }}>{dateLabel}</div>
+          <div className="font-mono font-semibold leading-none tracking-[0.06em] text-slate-900 dark:text-cyan-300" style={{ fontSize: 'clamp(18px, 2.4vw, 36px)' }}>{clock || '--:--:--'}</div>
         </div>
       </div>
 
-      <div className="grid min-h-0 grid-cols-2 overflow-hidden border-b border-cyan-400/15 lg:grid-cols-5">
-        <div className="flex flex-col gap-2 overflow-hidden border-r border-cyan-400/15 px-5 py-3 min-w-0">
-          <div className="flex min-w-0 items-baseline justify-between gap-2 text-cyan-200" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="font-semibold uppercase tracking-[0.2em] truncate" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>TEAM SALES TODAY</div>
-            <div className="font-semibold uppercase tracking-[0.2em] text-cyan-300 truncate" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>{goalPctLabel} OF GOAL</div>
+      <div className="grid min-h-0 grid-cols-2 overflow-hidden border-b border-slate-300/60 bg-white text-slate-700 dark:border-cyan-400/15 dark:bg-slate-950 dark:text-cyan-100 lg:grid-cols-5">
+        <div className="flex flex-col gap-2 overflow-hidden border-r border-slate-300/60 px-5 py-3 min-w-0 dark:border-cyan-400/15">
+          <div className="flex min-w-0 items-baseline justify-between gap-2" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+            <div className="font-semibold uppercase tracking-[0.2em] truncate text-slate-500 dark:text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>TEAM SALES TODAY</div>
+            <div className="font-semibold uppercase tracking-[0.2em] truncate text-indigo-700 dark:text-cyan-300" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>{goalPctLabel} OF GOAL</div>
           </div>
-          <div className="flex min-w-0 items-end gap-2 leading-none text-cyan-300" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="font-semibold tracking-[-0.02em] truncate" style={{ fontSize: 'clamp(32px, 4.6vw, 64px)' }}>{totals.sales}</div>
-            <div className="font-normal text-cyan-400/70 truncate" style={{ fontSize: 'clamp(14px, 1.6vw, 24px)' }}>/ {dailyGoal}</div>
-            <div className="pb-1 font-semibold uppercase tracking-[0.18em] text-cyan-200/80 truncate" style={{ fontSize: 'clamp(9px, 1vw, 13px)' }}>DAILY GOAL</div>
+          <div className="flex min-w-0 items-end gap-2 leading-none dark:text-cyan-300" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+            <div className="font-semibold tracking-[-0.02em] truncate text-indigo-800 dark:text-cyan-300" style={{ fontSize: 'clamp(32px, 4.6vw, 64px)' }}>{totals.sales}</div>
+            <div className="font-normal text-slate-400 truncate dark:text-cyan-400/70" style={{ fontSize: 'clamp(14px, 1.6vw, 24px)' }}>/ {dailyGoal}</div>
+            <div className="pb-1 font-semibold uppercase tracking-[0.18em] truncate text-slate-500 dark:text-cyan-200/80" style={{ fontSize: 'clamp(9px, 1vw, 13px)' }}>DAILY GOAL</div>
           </div>
-          <div className="relative h-[6px] w-full overflow-hidden rounded-sm border border-cyan-300/40">
+          <div className="relative h-[6px] w-full overflow-hidden rounded-sm border border-slate-300 dark:border-cyan-300/40">
             <div
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-400 to-cyan-200"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-blue-700 dark:from-cyan-400 dark:to-cyan-200"
               style={{ width: `${goalPct}%`, transition: 'width .7s ease' }}
             />
           </div>
         </div>
-        <KpiCell label="REVENUE" value={formatCurrency(revenue)} accent="#67e8f9" />
-        <KpiCell label="CALLS DIALED" value={totals.calls.toLocaleString('en-US')} accent="#67e8f9" />
-        <KpiCell label="CONVERSION" value={`${conversion.toFixed(2)}%`} accent="#67e8f9" />
-        <div className="flex min-w-0 flex-col justify-center gap-1 overflow-hidden px-5 py-3 min-w-0 lg:border-l lg:border-cyan-400/15">
-          <div className="font-semibold uppercase tracking-[0.2em] text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+        <KpiCell
+          label="REVENUE"
+          value={formatCurrency(revenue)}
+          titleClass="text-emerald-700 dark:text-emerald-300/80"
+          valueClass="text-emerald-800 dark:text-emerald-400"
+        />
+        <KpiCell
+          label="CALLS DIALED"
+          value={totals.calls.toLocaleString('en-US')}
+          titleClass="text-amber-700 dark:text-yellow-300/80"
+          valueClass="text-amber-800 dark:text-yellow-300"
+        />
+        <KpiCell
+          label="CONVERSION"
+          value={`${conversion.toFixed(2)}%`}
+          titleClass="text-purple-700 dark:text-rose-300/80"
+          valueClass="text-rose-700 dark:text-rose-400"
+        />
+        <div className="flex min-w-0 flex-col justify-center gap-1 overflow-hidden px-5 py-3 min-w-0 lg:border-l lg:border-slate-300/60 dark:lg:border-cyan-400/15">
+          <div className="font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
             OUT / IN
           </div>
           <div className="flex min-w-0 items-baseline gap-2 leading-none" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="truncate font-semibold text-cyan-200" style={{ fontSize: 'clamp(22px, 2.6vw, 40px)' }}>{totals.outbound}</div>
-            <div className="truncate text-cyan-400/70" style={{ fontSize: 'clamp(14px, 1.6vw, 24px)' }}>/</div>
-            <div className="truncate font-semibold text-cyan-300" style={{ fontSize: 'clamp(22px, 2.6vw, 40px)' }}>{totals.inbound}</div>
+            <div className="truncate font-semibold text-slate-700 dark:text-cyan-200" style={{ fontSize: 'clamp(22px, 2.6vw, 40px)' }}>{totals.outbound}</div>
+            <div className="truncate text-slate-400 dark:text-cyan-400/70" style={{ fontSize: 'clamp(14px, 1.6vw, 24px)' }}>/</div>
+            <div className="truncate font-semibold text-slate-900 dark:text-cyan-300" style={{ fontSize: 'clamp(22px, 2.6vw, 40px)' }}>{totals.inbound}</div>
           </div>
         </div>
       </div>
 
       <div
-        className="grid min-h-0 flex-1 overflow-hidden"
+        className="grid min-h-0 flex-1 overflow-hidden bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100"
         style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)' }}
       >
         <RankPanel rows={leftRows} side="left" startRank={1} flashId={flashId} />
-        <RankPanel rows={rightRows} side="right" startRank={11} flashId={flashId} />
+        <RankPanel rows={rightRows} side="right" startRank={9} flashId={flashId} />
       </div>
 
       <div
-        className="flex h-[32px] items-center justify-between border-t border-cyan-400/20 px-3 text-cyan-300 sm:px-4"
+        className="flex h-[32px] items-center justify-between border-t border-slate-300/60 bg-white px-3 text-slate-600 dark:border-cyan-400/20 dark:bg-slate-950 dark:text-cyan-300 sm:px-4"
         style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
       >
         <div className="truncate font-medium tracking-[0.2em]" style={{ fontSize: 'clamp(8px, 0.85vw, 11px)' }}>{liveLine}</div>
-        <div className="hidden truncate font-medium tracking-[0.2em] text-cyan-200 md:block" style={{ fontSize: 'clamp(8px, 0.85vw, 11px)' }}>{tickerMessage}</div>
+        <div className="hidden truncate font-medium tracking-[0.2em] text-slate-500 dark:text-cyan-200 md:block" style={{ fontSize: 'clamp(8px, 0.85vw, 11px)' }}>{tickerMessage}</div>
         <div className="truncate font-medium tracking-[0.2em]" style={{ fontSize: 'clamp(8px, 0.85vw, 11px)' }}>UPDATED {lastUpdated || clock || '--:--'}</div>
       </div>
 
@@ -326,14 +341,14 @@ export default function TelevisionPage() {
   );
 }
 
-function KpiCell({ label, value, accent }: { label: string; value: string; accent: string }) {
+function KpiCell({ label, value, titleClass, valueClass }: { label: string; value: string; titleClass: string; valueClass: string }) {
   return (
     <div
-      className="flex flex-col justify-center gap-1 overflow-hidden border-r border-cyan-400/15 px-5 py-3 last:border-r-0"
+      className="flex flex-col justify-center gap-1 overflow-hidden border-r border-slate-300/60 px-5 py-3 last:border-r-0 dark:border-cyan-400/15"
       style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
     >
-      <div className="font-semibold uppercase tracking-[0.2em] text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>{label}</div>
-      <div className="truncate font-semibold leading-none" style={{ color: accent, fontSize: 'clamp(24px, 3.4vw, 52px)' }}>
+      <div className={`font-semibold uppercase tracking-[0.2em] truncate ${titleClass}`} style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>{label}</div>
+      <div className={`truncate font-semibold leading-none ${valueClass}`} style={{ fontSize: 'clamp(24px, 3.4vw, 52px)' }}>
         {value}
       </div>
     </div>
@@ -354,11 +369,11 @@ function RankPanel({
   return (
     <div
       className={`flex min-w-0 flex-col overflow-hidden px-3 py-3 ${
-        side === 'right' ? 'border-l border-cyan-400/20' : ''
+        side === 'right' ? 'border-l border-slate-300/60 dark:border-cyan-400/20' : ''
       }`}
     >
       <div
-        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.18em] text-cyan-200"
+        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-cyan-200"
         style={{
           gridTemplateColumns: '2.6rem minmax(0, 1fr) 3.6rem 3.6rem 3.6rem 4.6rem',
           fontFamily: 'Barlow Condensed, system-ui, sans-serif',
@@ -384,7 +399,7 @@ function RankPanel({
           ))
         ) : (
           <div
-            className="grid flex-1 place-items-center font-semibold uppercase tracking-[0.2em] text-cyan-400/70"
+            className="grid flex-1 place-items-center font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-cyan-400/70"
             style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(12px, 1.1vw, 14px)' }}
           >
             Awaiting data
@@ -397,7 +412,6 @@ function RankPanel({
 
 function RankRow({ agent, rank, flash }: { agent: AgentRow; rank: number; flash: boolean }) {
   const lead = agent.totalSales > 0 && rank <= 3;
-  const zero = agent.totalSales === 0;
   const medal = ['#facc15', '#67e8f9', '#fb923c'][rank - 1] ?? '#67e8f9';
   const tint = ['rgba(250,204,21,.18)', 'rgba(103,232,249,.16)', 'rgba(251,146,60,.18)'][rank - 1] ?? 'rgba(8,145,178,.14)';
   const callsText = agent.callsHandled.toLocaleString('en-US');
@@ -405,7 +419,7 @@ function RankRow({ agent, rank, flash }: { agent: AgentRow; rank: number; flash:
   const revenue = formatCurrency(agent.revenue);
   return (
     <div
-      className={`grid h-[clamp(56px,5.6vw,76px)] items-center gap-2 border-b border-cyan-400/10 border-l-[3px] px-2 ${flash ? 'animate-pulse' : ''}`}
+      className={`grid h-[clamp(56px,5.6vw,76px)] items-center gap-2 border-b border-slate-200/80 border-l-[3px] px-2 dark:border-cyan-400/10 ${flash ? 'animate-pulse' : ''}`}
       style={{
         background: lead ? tint : 'rgba(8,145,178,.14)',
         borderLeftColor: lead ? medal : '#22d3ee',
@@ -416,40 +430,35 @@ function RankRow({ agent, rank, flash }: { agent: AgentRow; rank: number; flash:
     >
       <div
         className="flex items-center gap-1 font-bold leading-none"
-        style={{ fontSize: 'clamp(16px, 1.7vw, 24px)', color: lead ? medal : 'rgba(103,232,249,.7)' }}
+        style={{ fontSize: 'clamp(16px, 1.7vw, 24px)', color: lead ? medal : '#67e8f9' }}
       >
         {rank === 1 ? <CrownIcon /> : null}
         {rank}
       </div>
       <div className="flex min-w-0 items-center gap-2">
         <div
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full font-bold"
-          style={{
-            background: 'rgba(8,47,73,.6)',
-            border: `1px solid ${lead ? medal : 'rgba(103,232,249,.4)'}`,
-            color: lead ? medal : '#67e8f9',
-            fontSize: 'clamp(11px, 1vw, 14px)',
-          }}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full font-bold bg-slate-100 border border-slate-300 text-indigo-700 dark:bg-slate-900/60 dark:border-cyan-400/40 dark:text-cyan-200"
+          style={{ fontSize: 'clamp(11px, 1vw, 14px)' }}
         >
           {initials(agent.name)}
         </div>
-        <div className="min-w-0 flex-1 truncate font-bold leading-tight" style={{ fontSize: 'clamp(13px, 1.2vw, 17px)', color: lead ? medal : '#67e8f9' }}>
+        <div className="min-w-0 flex-1 truncate font-bold leading-tight text-slate-800 dark:text-cyan-100" style={{ fontSize: 'clamp(13px, 1.2vw, 17px)' }}>
           {agent.name}
         </div>
       </div>
       <div
-        className="text-center font-bold leading-none"
-        style={{ fontSize: 'clamp(14px, 1.4vw, 22px)', color: lead ? medal : '#67e8f9' }}
+        className="text-center font-bold leading-none text-indigo-700 dark:text-cyan-300"
+        style={{ fontSize: 'clamp(14px, 1.4vw, 22px)' }}
       >
         {agent.totalSales}
       </div>
-      <div className="text-right font-bold leading-none text-cyan-200" style={{ fontSize: 'clamp(13px, 1.1vw, 16px)' }}>
+      <div className="text-right font-bold leading-none text-amber-700 dark:text-yellow-300" style={{ fontSize: 'clamp(13px, 1.1vw, 16px)' }}>
         {callsText}
       </div>
-      <div className="text-right font-bold leading-none text-cyan-200" style={{ fontSize: 'clamp(13px, 1.1vw, 16px)' }}>
+      <div className="text-right font-bold leading-none text-amber-800 dark:text-yellow-300" style={{ fontSize: 'clamp(13px, 1.1vw, 16px)' }}>
         {conv}
       </div>
-      <div className="text-right font-bold leading-none text-cyan-300" style={{ fontSize: 'clamp(13px, 1.2vw, 17px)' }}>
+      <div className="text-right font-bold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(13px, 1.2vw, 17px)' }}>
         {revenue}
       </div>
     </div>
@@ -467,24 +476,24 @@ function CrownIcon() {
 
 function SaleAnnouncement({ sale }: { sale: TvSale }) {
   return (
-    <div className="fixed inset-0 z-[120] grid place-items-center overflow-hidden bg-slate-950/95">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(132,204,22,.18),transparent_55%)]" />
-      <div className="absolute inset-2 border border-cyan-300/40 sm:inset-6" />
+    <div className="fixed inset-0 z-[120] grid place-items-center overflow-hidden bg-slate-900/95 text-slate-100 dark:bg-slate-950/95 dark:text-cyan-100">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(132,204,22,.18),transparent_55%)] dark:bg-[radial-gradient(circle_at_center,rgba(132,204,22,.18),transparent_55%)]" />
+      <div className="absolute inset-2 border border-slate-300/60 dark:border-cyan-300/40 sm:inset-6" />
       <div className="relative max-w-[92vw] text-center">
         <div
-          className="mb-4 font-semibold uppercase tracking-[0.4em] text-cyan-300"
+          className="mb-4 font-semibold uppercase tracking-[0.4em] text-emerald-600 dark:text-cyan-300"
           style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(28px, 3.2vw, 56px)' }}
         >
           NEW SALE
         </div>
         <div
-          className="font-semibold leading-[.9] text-cyan-100"
+          className="font-semibold leading-[.9] text-slate-900 dark:text-cyan-100"
           style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(54px, 7vw, 110px)', letterSpacing: '-.01em' }}
         >
           {sale.salesRep}
         </div>
         <div
-          className="mt-3 font-medium uppercase tracking-[0.22em] text-cyan-200"
+          className="mt-3 font-medium uppercase tracking-[0.22em] text-slate-600 dark:text-cyan-200"
           style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif', fontSize: 'clamp(18px, 1.8vw, 36px)' }}
         >
           #{sale.bundle} · {sale.todaysCount} SALES TODAY
@@ -520,12 +529,12 @@ function DailyGoalEditor({ goal, onSave }: { goal: number; onSave: (value: numbe
               }
             }}
             placeholder={String(goal)}
-            className="w-20 rounded border border-cyan-400/60 bg-slate-950 px-2 py-1 text-right font-mono text-xs font-bold text-cyan-100 outline-none focus:ring-2 focus:ring-cyan-400 sm:w-24 sm:text-sm"
+            className="w-20 rounded border border-slate-300 bg-white px-2 py-1 text-right font-mono text-xs font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-400 dark:border-cyan-400/60 dark:bg-slate-950 dark:text-cyan-100 sm:w-24 sm:text-sm"
           />
           <button
             type="button"
             onClick={handleSave}
-            className="rounded bg-cyan-500 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow hover:bg-cyan-400 sm:px-3 sm:text-xs"
+            className="rounded bg-emerald-600 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow hover:bg-emerald-500 dark:bg-cyan-500 sm:px-3 sm:text-xs"
           >
             Save
           </button>
@@ -537,7 +546,7 @@ function DailyGoalEditor({ goal, onSave }: { goal: number; onSave: (value: numbe
             setEditing(true);
             setDraft(String(goal));
           }}
-          className="rounded border border-cyan-400/60 bg-slate-950/80 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-200 shadow hover:border-cyan-300 sm:px-3 sm:text-xs"
+          className="rounded border border-slate-300 bg-white px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-slate-700 shadow hover:border-emerald-500 dark:border-cyan-400/60 dark:bg-slate-950/80 dark:text-cyan-200 sm:px-3 sm:text-xs"
         >
           Edit goal ({goal})
         </button>
