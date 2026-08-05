@@ -222,14 +222,20 @@ const revenue = useMemo(() => {
 
   if (!authorized) return <div className="p-8 text-center">You don't have access to this view.</div>;
 
-  return (
+return (
     <main className="flex min-h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden bg-white p-4 text-[#111827] dark:bg-slate-950 dark:text-white">
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
 
-      <section className="grid grid-cols-1 gap-[1vw] lg:grid-cols-[3fr_1fr]">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Metric icon="sales" label="Sales" value={String(totals.sales)} sub="Today" tone="lime" />
+        <Metric icon="conversion" label="Conversion" value={`${conversion.toFixed(2)}%`} sub="Calls → Sale" tone="orange" />
+        <Metric icon="revenue" label="Revenue" value={formatCurrency(revenue)} sub="Today" tone="purple" />
+      </section>
+
+      <section className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <article className="overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
           <header className="flex items-center justify-between border-b border-cyan-500/30 px-5 py-3">
-            <h3 className="font-mono text-sm font-bold uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Ranking de Agentes</h3>
+            <h3 className="font-mono text-base font-black uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Agent Ranking</h3>
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Updated {lastUpdated || '--:--'}</span>
           </header>
           <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-[#111827] dark:text-white">
@@ -242,7 +248,7 @@ const revenue = useMemo(() => {
             <span className="text-right">% Total</span>
           </div>
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-4 pb-4">
-            {agents.length ? agents.map((agent, index) => (
+            {agents.length ? agents.slice(0, 15).map((agent, index) => (
               <RankingRow
                 key={`${agent.user}-${agent.name}`}
                 agent={agent}
@@ -257,11 +263,6 @@ const revenue = useMemo(() => {
         </article>
 
         <aside className="flex flex-col gap-4">
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-1">
-            <Metric icon="sales" label="Sales" value={String(totals.sales)} sub="Today" tone="lime" />
-            <Metric icon="conversion" label="Conversion" value={`${conversion.toFixed(2)}%`} sub="Calls → Sale" tone="orange" />
-            <Metric icon="revenue" label="Revenue" value={formatCurrency(revenue)} sub="Today" tone="purple" />
-          </section>
           <TopPerformer agents={agents} recentSales={recentSales} />
           <DailyGoalCard current={totals.sales} canEdit={isAdmin} />
           <TopRevenueCard recentSales={recentSales} />
@@ -370,7 +371,7 @@ function TopPerformer({ agents, recentSales }: { agents: AgentRow[]; recentSales
       <div className="absolute -right-6 -top-6 h-32 w-32 rounded-full bg-purple-300/40 blur-3xl dark:bg-purple-400/30" aria-hidden />
       <header className="flex items-center justify-between">
         <h3 className="font-mono text-xs font-black uppercase tracking-[0.3em] text-purple-700 dark:text-purple-200">Top Performer</h3>
-        <span className="rounded-full bg-purple-600 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-white shadow-lg shadow-purple-500/40 dark:bg-purple-400 dark:text-purple-950">Live</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Today</span>
       </header>
       {top ? (
         <div className="mt-4 flex items-center gap-4">
