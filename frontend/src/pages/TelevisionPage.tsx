@@ -233,12 +233,12 @@ return (
       </section>
 
       <section className="grid min-h-0 flex-1 grid-cols-1 gap-2.5 lg:grid-cols-[2fr_1fr]">
-        <article className="overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
-          <header className="flex items-center justify-between border-b border-cyan-500/30 px-3 py-2">
+        <article className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
+          <header className="flex items-center justify-between border-b border-cyan-500/30 px-4 py-3">
             <h3 className="font-mono text-base font-black uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Agent Ranking</h3>
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Updated {lastUpdated || '--:--'}</span>
           </header>
-          <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.22em] text-[#111827] dark:text-white">
+          <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-4 py-2 font-mono text-sm uppercase tracking-[0.22em] text-[#111827] dark:text-white">
             <span>Pos.</span>
             <span>Agent</span>
             <span className="text-right">Outbound</span>
@@ -247,7 +247,7 @@ return (
             <span className="text-right">Revenue</span>
             <span className="text-right">% Total</span>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
             {agents.length ? agents.slice(0, 15).map((agent, index) => (
               <RankingRow
                 key={`${agent.user}-${agent.name}`}
@@ -262,7 +262,7 @@ return (
           </div>
         </article>
 
-        <aside className="flex flex-col gap-2.5">
+        <aside className="grid min-h-0 grid-rows-3 gap-2.5">
           <TopPerformer agents={agents} recentSales={recentSales} />
           <DailyGoalCard current={totals.sales} canEdit={isAdmin} />
           <TopRevenueCard recentSales={recentSales} />
@@ -339,20 +339,20 @@ function RankingRow({ agent, rank, teamTotal, teamRevenue }: { agent: AgentRow; 
     'bg-white border-l-[#d7dee8] dark:bg-slate-900/40 dark:border-l-slate-700';
   return (
     <article className={`relative overflow-hidden rounded-lg border-l-4 border border-[#d7dee8] dark:border-slate-800 ${medalBg}`}>
-      <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-3 py-1.5">
+      <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-3 py-3">
         <span className={`font-mono text-[clamp(1rem,1.4vw,1.5rem)] font-black ${highlightMedal ? 'text-lime-700 dark:text-lime-300' : 'text-[#111827] dark:text-white'}`}>{rank}</span>
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid aspect-square w-9 shrink-0 place-items-center rounded-full bg-[#e5e7eb] font-mono text-xs font-black text-[#111827] dark:bg-slate-800 dark:text-cyan-200">{initials(agent.name)}</span>
+          <span className="grid aspect-square w-10 shrink-0 place-items-center rounded-full bg-[#e5e7eb] font-mono text-sm font-black text-[#111827] dark:bg-slate-800 dark:text-cyan-200">{initials(agent.name)}</span>
           <div className="min-w-0">
-            <p className="truncate text-[clamp(.85rem,1.1vw,1.1rem)] font-bold leading-tight text-[#111827] dark:text-white">{agent.name}</p>
-            <p className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">{agent.user ? `#${agent.user}` : 'Agent'}</p>
+            <p className="truncate text-[clamp(1rem,1.35vw,1.4rem)] font-bold leading-tight text-[#111827] dark:text-white">{agent.name}</p>
+            <p className="truncate font-mono text-[11px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">{agent.user ? `#${agent.user}` : 'Agent'}</p>
           </div>
         </div>
-        <span className="text-right font-mono text-[clamp(.9rem,1.1vw,1.1rem)] font-bold text-cyan-700 dark:text-cyan-300">{agent.outboundSales}</span>
-        <span className="text-right font-mono text-[clamp(.9rem,1.1vw,1.1rem)] font-bold text-purple-700 dark:text-purple-300">{agent.inboundSales}</span>
-        <span className="text-right font-mono text-[clamp(1rem,1.3vw,1.4rem)] font-black text-lime-700 dark:text-lime-300">{agent.totalSales}</span>
-        <span className="text-right font-mono text-[clamp(.85rem,1vw,1rem)] font-bold text-[#111827] dark:text-white">{formatCurrency(agent.revenue)}</span>
-        <span className="text-right font-mono text-[clamp(.8rem,1vw,1rem)] font-bold text-[#111827] dark:text-white">{share.toFixed(1)}%</span>
+        <span className="text-right font-mono text-[clamp(1rem,1.35vw,1.4rem)] font-bold text-cyan-700 dark:text-cyan-300">{agent.outboundSales}</span>
+        <span className="text-right font-mono text-[clamp(1rem,1.35vw,1.4rem)] font-bold text-purple-700 dark:text-purple-300">{agent.inboundSales}</span>
+        <span className="text-right font-mono text-[clamp(1.15rem,1.5vw,1.6rem)] font-black text-lime-700 dark:text-lime-300">{agent.totalSales}</span>
+        <span className="text-right font-mono text-[clamp(1rem,1.2vw,1.25rem)] font-bold text-[#111827] dark:text-white">{formatCurrency(agent.revenue)}</span>
+        <span className="text-right font-mono text-[clamp(.95rem,1.15vw,1.15rem)] font-bold text-[#111827] dark:text-white">{share.toFixed(1)}%</span>
       </div>
       <span
         aria-hidden
