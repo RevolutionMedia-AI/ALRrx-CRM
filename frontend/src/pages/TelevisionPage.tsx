@@ -33,6 +33,7 @@ interface AgentRow {
   outboundSales: number;
   inboundSales: number;
   totalSales: number;
+  revenue: number;
   callsHandled: number;
   conversion: number;
 }
@@ -155,6 +156,7 @@ export default function TelevisionPage() {
       outboundSales: 0,
       inboundSales: 0,
       totalSales: num(row.Form_Sales_Count),
+      revenue: num(row.Form_Sales_Amount),
       callsHandled: num(row.Calls_Handled),
       conversion: num(row.Conversion_Percentage),
     }));
@@ -173,6 +175,7 @@ export default function TelevisionPage() {
           outboundSales: split.outboundSales,
           inboundSales: split.inboundSales,
           totalSales: split.outboundSales + split.inboundSales,
+          revenue: 0,
           callsHandled: 0,
           conversion: 0,
         });
@@ -228,43 +231,22 @@ const revenue = useMemo(() => {
   if (!authorized) return <div className="p-8 text-center">You don't have access to this view.</div>;
 
   return (
-    <main className="flex min-h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden bg-slate-950 p-4 text-white">
+    <main className="flex min-h-[calc(100dvh-4rem)] flex-col gap-4 overflow-hidden bg-white p-4 text-[#111827] dark:bg-slate-950 dark:text-white">
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
 
-      <header className="flex h-[9vh] min-h-16 items-center justify-between border-b border-cyan-400/30 px-[2vw]">
-        <div className="flex items-center gap-4">
-          <span className="bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-[clamp(1.3rem,2vw,2.5rem)] font-black tracking-[0.18em] text-transparent">ALTRX</span>
-          <span className="text-[clamp(.65rem,1vw,1rem)] font-bold uppercase tracking-[0.35em] text-cyan-300">Live Sales Floor</span>
-        </div>
-        <div className="flex items-center gap-4 font-mono text-[clamp(.6rem,.9vw,.9rem)] uppercase tracking-[0.25em] text-slate-300">
-          <span className="flex items-center gap-2 text-emerald-400">
-            <i className="h-2 w-2 rounded-full bg-emerald-400" />Live
-          </span>
-          <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-          <span className="text-[clamp(1rem,1.8vw,2rem)] font-black tracking-[0.1em] text-white">{lastUpdated || '--:--'}</span>
-        </div>
-      </header>
-
-      <section className="grid h-[18vh] min-h-32 grid-cols-3 gap-[1vw] border-b border-cyan-400/20 px-[2vw] py-[1vh]">
-        <Metric icon="sales" label="Sales" value={String(totals.sales)} sub="Today" tone="lime" />
-        <Metric icon="conversion" label="Conversion" value={`${conversion.toFixed(2)}%`} sub="Calls → Sale" tone="orange" />
-        <Metric icon="revenue" label="Revenue" value={formatCurrency(revenue)} sub="Today" tone="purple" />
-      </section>
-
-      {error ? <div className="border-b border-red-500/30 bg-red-500/10 px-5 py-2 font-mono text-sm text-red-300">{error}</div> : null}
-
-      <section className="grid min-h-0 flex-1 grid-cols-1 gap-[1vw] px-[1.5vw] py-[1vh] lg:grid-cols-[3fr_1fr]">
-        <article className="overflow-hidden rounded-xl border border-cyan-400/30 bg-slate-900/60 shadow-[0_0_30px_rgba(34,211,238,.18)]">
-          <header className="flex items-center justify-between border-b border-cyan-400/20 px-5 py-3">
-            <h3 className="font-mono text-sm font-bold uppercase tracking-[0.25em] text-cyan-300">Ranking de Agentes</h3>
-            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-400">Updated {lastUpdated || '--:--'}</span>
+      <section className="grid grid-cols-1 gap-[1vw] lg:grid-cols-[3fr_1fr]">
+        <article className="overflow-hidden rounded-xl border border-cyan-500/40 bg-white shadow-[0_0_30px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
+          <header className="flex items-center justify-between border-b border-cyan-500/30 px-5 py-3">
+            <h3 className="font-mono text-sm font-bold uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Ranking de Agentes</h3>
+            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Updated {lastUpdated || '--:--'}</span>
           </header>
-          <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_5rem] items-center gap-2 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-slate-400">
+          <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-4 py-2 font-mono text-[11px] uppercase tracking-[0.22em] text-[#111827] dark:text-white">
             <span>Pos.</span>
             <span>Agent</span>
             <span className="text-right">Outbound</span>
             <span className="text-right">Inbound</span>
-            <span className="text-right">Total</span>
+            <span className="text-right">Sales</span>
+            <span className="text-right">Revenue</span>
             <span className="text-right">% Total</span>
           </div>
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-4 pb-4">
@@ -274,23 +256,29 @@ const revenue = useMemo(() => {
                 agent={agent}
                 rank={index + 1}
                 teamTotal={totals.sales}
+                teamRevenue={revenue}
               />
             )) : (
-              <div className="grid place-items-center py-10 font-mono text-sm uppercase tracking-[0.25em] text-slate-500">Awaiting data</div>
+              <div className="grid place-items-center py-10 font-mono text-sm uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting data</div>
             )}
           </div>
         </article>
 
-        <aside className="space-y-3">
+        <aside className="flex flex-col gap-4">
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-1">
+            <Metric icon="sales" label="Sales" value={String(totals.sales)} sub="Today" tone="lime" />
+            <Metric icon="conversion" label="Conversion" value={`${conversion.toFixed(2)}%`} sub="Calls → Sale" tone="orange" />
+            <Metric icon="revenue" label="Revenue" value={formatCurrency(revenue)} sub="Today" tone="purple" />
+          </section>
           <TopPerformer agents={agents} recentSales={recentSales} />
           <DailyGoalCard current={totals.sales} />
           <PulseBoard activeAgents={activeAgents} recentSales={recentSales} />
         </aside>
       </section>
 
-      <footer className="flex h-[5vh] min-h-10 items-center justify-between border-t border-cyan-400/20 px-[2vw] font-mono text-[clamp(.55rem,.75vw,.75rem)] uppercase tracking-[0.3em] text-slate-400">
+      <footer className="flex h-[5vh] min-h-10 items-center justify-between border-t border-cyan-500/30 px-[2vw] font-mono text-[clamp(.55rem,.75vw,.75rem)] uppercase tracking-[0.3em] text-[#111827] dark:text-white">
         <span>{agents.length} agents ranked</span>
-        <span className="text-cyan-300">Every sale moves the board</span>
+        <span className="text-cyan-700 dark:text-cyan-300">Every sale moves the board</span>
         <span>Updated {lastUpdated || '--:--'}</span>
       </footer>
     </main>
@@ -299,21 +287,21 @@ const revenue = useMemo(() => {
 
 function Metric({ icon, label, value, sub, tone }: { icon: 'sales' | 'conversion' | 'revenue'; label: string; value: string; sub: string; tone: 'lime' | 'orange' | 'purple' }) {
   const tones: Record<typeof tone, { text: string; ring: string; glow: string }> = {
-    lime: { text: 'text-lime-300', ring: 'border-lime-300/40', glow: 'shadow-[0_0_25px_rgba(132,204,22,.25)]' },
-    orange: { text: 'text-orange-300', ring: 'border-orange-300/40', glow: 'shadow-[0_0_25px_rgba(251,146,60,.25)]' },
-    purple: { text: 'text-purple-300', ring: 'border-purple-300/40', glow: 'shadow-[0_0_25px_rgba(192,132,252,.25)]' },
+    lime: { text: 'text-lime-700 dark:text-lime-300', ring: 'border-lime-500/60 dark:border-lime-300/40', glow: 'shadow-[0_0_25px_rgba(132,204,22,.18)]' },
+    orange: { text: 'text-orange-700 dark:text-orange-300', ring: 'border-orange-500/60 dark:border-orange-300/40', glow: 'shadow-[0_0_25px_rgba(251,146,60,.18)]' },
+    purple: { text: 'text-purple-700 dark:text-purple-300', ring: 'border-purple-500/60 dark:border-purple-300/40', glow: 'shadow-[0_0_25px_rgba(192,132,252,.18)]' },
   };
   const Icon = icon === 'sales' ? ShoppingCartIcon : icon === 'conversion' ? TargetIcon : DollarIcon;
   const accent = tones[tone];
   return (
-    <div className={`flex items-center gap-4 rounded-xl border ${accent.ring} bg-slate-900/50 px-5 py-3 ${accent.glow}`}>
+    <div className={`flex items-center gap-4 rounded-xl border ${accent.ring} bg-white px-5 py-3 dark:bg-slate-900/60 ${accent.glow}`}>
       <span className={`grid h-14 w-14 place-items-center rounded-full border ${accent.ring} ${accent.text}`}>
         <Icon />
       </span>
       <div className="min-w-0">
         <p className={`font-mono text-[11px] font-bold uppercase tracking-[0.3em] ${accent.text}`}>{label}</p>
-        <p className="text-[clamp(2rem,3.2vw,3.5rem)] font-black leading-none text-white">{value}</p>
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-400">{sub}</p>
+        <p className="text-[clamp(2rem,3.2vw,3.5rem)] font-black leading-none text-[#111827] dark:text-white">{value}</p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">{sub}</p>
       </div>
     </div>
   );
@@ -348,33 +336,35 @@ function DollarIcon() {
   );
 }
 
-function RankingRow({ agent, rank, teamTotal }: { agent: AgentRow; rank: number; teamTotal: number }) {
+function RankingRow({ agent, rank, teamTotal, teamRevenue }: { agent: AgentRow; rank: number; teamTotal: number; teamRevenue: number }) {
   const share = teamTotal > 0 ? clampPercent((agent.totalSales / teamTotal) * 100) : 0;
+  const revenueShare = teamRevenue > 0 ? clampPercent((agent.revenue / teamRevenue) * 100) : 0;
   const highlightMedal = rank <= 3;
-  const medalBg = rank === 1 ? 'bg-lime-400/10 border-l-lime-300' :
-    rank === 2 ? 'bg-cyan-400/10 border-l-cyan-300' :
-    rank === 3 ? 'bg-orange-400/10 border-l-orange-300' :
-    'bg-slate-900/40 border-l-slate-700';
+  const medalBg = rank === 1 ? 'bg-lime-100 border-l-lime-500 dark:bg-lime-400/10 dark:border-l-lime-300' :
+    rank === 2 ? 'bg-cyan-100 border-l-cyan-500 dark:bg-cyan-400/10 dark:border-l-cyan-300' :
+    rank === 3 ? 'bg-orange-100 border-l-orange-500 dark:bg-orange-400/10 dark:border-l-orange-300' :
+    'bg-white border-l-[#d7dee8] dark:bg-slate-900/40 dark:border-l-slate-700';
   return (
-    <article className={`relative overflow-hidden rounded-lg border-l-4 border border-slate-800 ${medalBg}`}>
-      <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_5rem] items-center gap-2 px-3 py-2">
-        <span className={`font-mono text-[clamp(1rem,1.4vw,1.5rem)] font-black ${highlightMedal ? 'text-lime-300' : 'text-slate-200'}`}>{rank}</span>
+    <article className={`relative overflow-hidden rounded-lg border-l-4 border border-[#d7dee8] dark:border-slate-800 ${medalBg}`}>
+      <div className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem_6rem_6rem_6rem_5rem] items-center gap-2 px-3 py-2">
+        <span className={`font-mono text-[clamp(1rem,1.4vw,1.5rem)] font-black ${highlightMedal ? 'text-lime-700 dark:text-lime-300' : 'text-[#111827] dark:text-white'}`}>{rank}</span>
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid aspect-square w-9 shrink-0 place-items-center rounded-full bg-slate-800 font-mono text-xs font-black text-cyan-200">{initials(agent.name)}</span>
+          <span className="grid aspect-square w-9 shrink-0 place-items-center rounded-full bg-[#e5e7eb] font-mono text-xs font-black text-[#111827] dark:bg-slate-800 dark:text-cyan-200">{initials(agent.name)}</span>
           <div className="min-w-0">
-            <p className="truncate text-[clamp(.85rem,1.1vw,1.1rem)] font-bold leading-tight text-white">{agent.name}</p>
-            <p className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-slate-400">{agent.user ? `#${agent.user}` : 'Agent'}</p>
+            <p className="truncate text-[clamp(.85rem,1.1vw,1.1rem)] font-bold leading-tight text-[#111827] dark:text-white">{agent.name}</p>
+            <p className="truncate font-mono text-[10px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">{agent.user ? `#${agent.user}` : 'Agent'}</p>
           </div>
         </div>
-        <span className="text-right font-mono text-[clamp(.9rem,1.1vw,1.1rem)] font-bold text-cyan-300">{agent.outboundSales}</span>
-        <span className="text-right font-mono text-[clamp(.9rem,1.1vw,1.1rem)] font-bold text-purple-300">{agent.inboundSales}</span>
-        <span className="text-right font-mono text-[clamp(1rem,1.3vw,1.4rem)] font-black text-lime-300">{agent.totalSales}</span>
-        <span className="text-right font-mono text-[clamp(.8rem,1vw,1rem)] font-bold text-slate-200">{share.toFixed(1)}%</span>
+        <span className="text-right font-mono text-[clamp(.9rem,1.1vw,1.1rem)] font-bold text-cyan-700 dark:text-cyan-300">{agent.outboundSales}</span>
+        <span className="text-right font-mono text-[clamp(.9rem,1.1vw,1.1rem)] font-bold text-purple-700 dark:text-purple-300">{agent.inboundSales}</span>
+        <span className="text-right font-mono text-[clamp(1rem,1.3vw,1.4rem)] font-black text-lime-700 dark:text-lime-300">{agent.totalSales}</span>
+        <span className="text-right font-mono text-[clamp(.85rem,1vw,1rem)] font-bold text-[#111827] dark:text-white">{formatCurrency(agent.revenue)}</span>
+        <span className="text-right font-mono text-[clamp(.8rem,1vw,1rem)] font-bold text-[#111827] dark:text-white">{share.toFixed(1)}%</span>
       </div>
       <span
         aria-hidden
-        className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-lime-400 via-cyan-400 to-purple-400"
-        style={{ width: `${share}%`, transition: 'width .7s ease' }}
+        className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-lime-500 via-cyan-500 to-purple-500 dark:from-lime-400 dark:via-cyan-400 dark:to-purple-400"
+        style={{ width: `${Math.max(share, revenueShare)}%`, transition: 'width .7s ease' }}
       />
     </article>
   );
@@ -384,21 +374,21 @@ function TopPerformer({ agents, recentSales }: { agents: AgentRow[]; recentSales
   const top = agents[0];
   const last = recentSales[0];
   return (
-    <section className="overflow-hidden rounded-xl border border-purple-400/40 bg-slate-900/60 p-4 shadow-[0_0_25px_rgba(192,132,252,.18)]">
+    <section className="overflow-hidden rounded-xl border border-purple-500/60 bg-white p-4 shadow-[0_0_25px_rgba(192,132,252,.18)] dark:bg-slate-900/60">
       <header className="flex items-center justify-between">
-        <h3 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-purple-300">Top Performer</h3>
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-400">Today</span>
+        <h3 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-purple-700 dark:text-purple-300">Top Performer</h3>
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Today</span>
       </header>
       {top ? (
         <div className="mt-3 flex items-center gap-3">
-          <span className="grid h-14 w-14 place-items-center rounded-full border border-purple-300/60 bg-purple-500/15 font-mono text-base font-black text-purple-200">{initials(top.name)}</span>
+          <span className="grid h-14 w-14 place-items-center rounded-full border border-purple-500/70 bg-purple-100 font-mono text-base font-black text-purple-700 dark:border-purple-300/60 dark:bg-purple-500/15 dark:text-purple-200">{initials(top.name)}</span>
           <div className="min-w-0">
-            <p className="truncate text-lg font-black text-white">{top.name}</p>
-            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-400">{top.totalSales} sales · {formatCurrency(last?.amount ?? 0)} last</p>
+            <p className="truncate text-lg font-black text-[#111827] dark:text-white">{top.name}</p>
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">{top.totalSales} sales · {formatCurrency(last?.amount ?? 0)} last</p>
           </div>
         </div>
       ) : (
-        <p className="mt-3 font-mono text-xs uppercase tracking-[0.25em] text-slate-500">Awaiting data</p>
+        <p className="mt-3 font-mono text-xs uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting data</p>
       )}
     </section>
   );
@@ -409,22 +399,22 @@ function DailyGoalCard({ current }: { current: number }) {
   const percent = target > 0 ? clampPercent((current / target) * 100) : 0;
   const remaining = Math.max(target - current, 0);
   return (
-    <section className="overflow-hidden rounded-xl border border-cyan-400/40 bg-slate-900/60 p-4 shadow-[0_0_25px_rgba(34,211,238,.18)]">
+    <section className="overflow-hidden rounded-xl border border-cyan-500/60 bg-white p-4 shadow-[0_0_25px_rgba(34,211,238,.18)] dark:bg-slate-900/60">
       <header className="flex items-center justify-between">
-        <h3 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">Daily Goal</h3>
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-400">Sales target</span>
+        <h3 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Daily Goal</h3>
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">Sales target</span>
       </header>
       <div className="relative mt-3 grid place-items-center">
         <ProgressDial percent={percent} />
         <p className="pointer-events-none absolute text-center">
-          <span className="block text-2xl font-black text-white">{current}</span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-400">of {target || '—'}</span>
+          <span className="block text-2xl font-black text-[#111827] dark:text-white">{current}</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">of {target || '—'}</span>
         </p>
       </div>
-      <dl className="mt-3 grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-slate-300">
-        <div><dt className="text-cyan-300">Current</dt><dd className="text-white">{current}</dd></div>
-        <div><dt className="text-purple-300">Target</dt><dd className="text-white">{target || '—'}</dd></div>
-        <div><dt className="text-orange-300">Remaining</dt><dd className="text-white">{remaining || '—'}</dd></div>
+      <dl className="mt-3 grid grid-cols-3 gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#111827] dark:text-white">
+        <div><dt className="text-cyan-700 dark:text-cyan-300">Current</dt><dd className="text-[#111827] dark:text-white">{current}</dd></div>
+        <div><dt className="text-purple-700 dark:text-purple-300">Target</dt><dd className="text-[#111827] dark:text-white">{target || '—'}</dd></div>
+        <div><dt className="text-orange-700 dark:text-orange-300">Remaining</dt><dd className="text-[#111827] dark:text-white">{remaining || '—'}</dd></div>
       </dl>
     </section>
   );
@@ -454,19 +444,19 @@ function ProgressDial({ percent }: { percent: number }) {
 function PulseBoard({ activeAgents, recentSales }: { activeAgents: number; recentSales: VicidialSaleDto[] }) {
   const latest = recentSales.slice(0, 3);
   return (
-    <section className="overflow-hidden rounded-xl border border-lime-400/40 bg-slate-900/60 p-4 shadow-[0_0_25px_rgba(132,204,22,.18)]">
+    <section className="overflow-hidden rounded-xl border border-lime-500/60 bg-white p-4 shadow-[0_0_25px_rgba(132,204,22,.18)] dark:bg-slate-900/60">
       <header className="flex items-center justify-between">
-        <h3 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-lime-300">Live Pulse</h3>
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-slate-400">{activeAgents} active</span>
+        <h3 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-lime-700 dark:text-lime-300">Live Pulse</h3>
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#111827] dark:text-white">{activeAgents} active</span>
       </header>
-      <ul className="mt-3 space-y-2 text-sm text-white">
+      <ul className="mt-3 space-y-2 text-sm text-[#111827] dark:text-white">
         {latest.length ? latest.map((sale) => (
           <li key={sale.id} className="flex items-center justify-between gap-2">
-            <span className="truncate text-slate-100">{sale.salesRep}</span>
-            <span className="font-mono text-xs text-lime-300">{formatCurrency(Number(sale.amount))}</span>
+            <span className="truncate text-[#111827] dark:text-slate-100">{sale.salesRep}</span>
+            <span className="font-mono text-xs text-lime-700 dark:text-lime-300">{formatCurrency(Number(sale.amount))}</span>
           </li>
         )) : (
-          <li className="font-mono text-xs uppercase tracking-[0.25em] text-slate-500">Awaiting first sale</li>
+          <li className="font-mono text-xs uppercase tracking-[0.25em] text-[#111827] dark:text-white">Awaiting first sale</li>
         )}
       </ul>
     </section>
@@ -475,14 +465,14 @@ function PulseBoard({ activeAgents, recentSales }: { activeAgents: number; recen
 
 function SaleAnnouncement({ sale }: { sale: TvSale }) {
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-slate-950 text-center">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(132,204,22,.16),transparent_55%)]" />
-      <div className="absolute inset-6 border border-lime-300/30" />
+    <div className="fixed inset-0 z-[100] grid place-items-center overflow-hidden bg-white text-center text-[#111827] dark:bg-slate-950 dark:text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(132,204,22,.18),transparent_55%)] dark:bg-[radial-gradient(circle_at_center,rgba(132,204,22,.16),transparent_55%)]" />
+      <div className="absolute inset-6 border border-lime-500/40 dark:border-lime-300/30" />
       <div className="relative max-w-[92vw]">
-        <p className="mb-8 font-mono text-[clamp(1rem,2vw,2rem)] font-black uppercase tracking-[0.55em] text-lime-300">New Sale</p>
-        <h2 className="text-[clamp(4rem,11vw,10rem)] font-black leading-[.85] tracking-tight text-white">{sale.salesRep}</h2>
-        <p className="mt-10 font-mono text-[clamp(1rem,2.2vw,2.25rem)] uppercase tracking-[0.25em] text-cyan-200">{sale.bundle}</p>
-        <p className="mt-5 font-mono text-[clamp(1rem,2vw,2rem)] uppercase tracking-[0.3em] text-lime-300">{sale.todaysCount} {sale.todaysCount === 1 ? 'sale' : 'sales'} today</p>
+        <p className="mb-8 font-mono text-[clamp(1rem,2vw,2rem)] font-black uppercase tracking-[0.55em] text-lime-700 dark:text-lime-300">New Sale</p>
+        <h2 className="text-[clamp(4rem,11vw,10rem)] font-black leading-[.85] tracking-tight text-[#111827] dark:text-white">{sale.salesRep}</h2>
+        <p className="mt-10 font-mono text-[clamp(1rem,2.2vw,2.25rem)] uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-200">{sale.bundle}</p>
+        <p className="mt-5 font-mono text-[clamp(1rem,2vw,2rem)] uppercase tracking-[0.3em] text-lime-700 dark:text-lime-300">{sale.todaysCount} {sale.todaysCount === 1 ? 'sale' : 'sales'} today</p>
       </div>
     </div>
   );
