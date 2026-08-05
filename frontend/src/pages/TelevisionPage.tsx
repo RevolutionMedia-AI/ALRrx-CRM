@@ -267,16 +267,16 @@ export default function TelevisionPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 min-h-0 overflow-hidden">
-        <div className="flex flex-col gap-2 overflow-hidden border-r border-cyan-400/20 px-6 py-4 min-w-0">
+      <div className="grid min-h-0 grid-cols-2 overflow-hidden border-b border-cyan-400/15 lg:grid-cols-5">
+        <div className="flex flex-col gap-2 overflow-hidden border-r border-cyan-400/15 px-5 py-3 min-w-0">
           <div className="flex min-w-0 items-baseline justify-between gap-2 text-cyan-200" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="text-[clamp(11px,1.4vw,18px)] font-semibold uppercase tracking-[0.2em]">TEAM SALES TODAY</div>
-            <div className="text-[clamp(11px,1.4vw,18px)] font-semibold uppercase tracking-[0.2em] text-cyan-300">{goalPctLabel} OF GOAL</div>
+            <div className="font-semibold uppercase tracking-[0.2em] truncate" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>TEAM SALES TODAY</div>
+            <div className="font-semibold uppercase tracking-[0.2em] text-cyan-300 truncate" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>{goalPctLabel} OF GOAL</div>
           </div>
           <div className="flex min-w-0 items-end gap-2 leading-none text-cyan-300" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="text-[clamp(36px,5.5vw,72px)] font-semibold tracking-[-0.02em]">{totals.sales}</div>
-            <div className="text-[clamp(18px,2.2vw,32px)] font-normal text-cyan-400/70">/ {dailyGoal}</div>
-            <div className="pb-1 text-[clamp(10px,1.2vw,15px)] font-semibold uppercase tracking-[0.18em] text-cyan-200/80">DAILY GOAL</div>
+            <div className="font-semibold tracking-[-0.02em] truncate" style={{ fontSize: 'clamp(32px, 4.6vw, 64px)' }}>{totals.sales}</div>
+            <div className="font-normal text-cyan-400/70 truncate" style={{ fontSize: 'clamp(14px, 1.6vw, 24px)' }}>/ {dailyGoal}</div>
+            <div className="pb-1 font-semibold uppercase tracking-[0.18em] text-cyan-200/80 truncate" style={{ fontSize: 'clamp(9px, 1vw, 13px)' }}>DAILY GOAL</div>
           </div>
           <div className="relative h-[6px] w-full overflow-hidden rounded-sm border border-cyan-300/40">
             <div
@@ -288,14 +288,14 @@ export default function TelevisionPage() {
         <KpiCell label="REVENUE" value={formatCurrency(revenue)} accent="#67e8f9" />
         <KpiCell label="CALLS DIALED" value={totals.calls.toLocaleString('en-US')} accent="#67e8f9" />
         <KpiCell label="CONVERSION" value={`${conversion.toFixed(2)}%`} accent="#67e8f9" />
-        <div className="flex min-w-0 flex-col justify-center gap-1 overflow-hidden border-l border-cyan-400/20 px-4 py-4">
-          <div className="text-[clamp(10px,1.2vw,15px)] font-semibold uppercase tracking-[0.2em] text-cyan-200" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+        <div className="flex min-w-0 flex-col justify-center gap-1 overflow-hidden px-5 py-3 min-w-0 lg:border-l lg:border-cyan-400/15">
+          <div className="font-semibold uppercase tracking-[0.2em] text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
             OUT / IN
           </div>
           <div className="flex min-w-0 items-baseline gap-2 leading-none" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="text-[clamp(28px,3.4vw,48px)] font-semibold text-cyan-200">{totals.outbound}</div>
-            <div className="text-[clamp(18px,2vw,28px)] text-cyan-400/70">/</div>
-            <div className="text-[clamp(28px,3.4vw,48px)] font-semibold text-cyan-300">{totals.inbound}</div>
+            <div className="truncate font-semibold text-cyan-200" style={{ fontSize: 'clamp(22px, 2.6vw, 40px)' }}>{totals.outbound}</div>
+            <div className="truncate text-cyan-400/70" style={{ fontSize: 'clamp(14px, 1.6vw, 24px)' }}>/</div>
+            <div className="truncate font-semibold text-cyan-300" style={{ fontSize: 'clamp(22px, 2.6vw, 40px)' }}>{totals.inbound}</div>
           </div>
         </div>
       </div>
@@ -335,11 +335,11 @@ export default function TelevisionPage() {
 function KpiCell({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
     <div
-      className="flex flex-col justify-center gap-1 px-6 py-4"
+      className="flex flex-col justify-center gap-1 overflow-hidden border-r border-cyan-400/15 px-5 py-3 last:border-r-0"
       style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
     >
-      <div className="text-[20px] font-semibold uppercase tracking-[0.2em] text-[#f2f2f3]/60">{label}</div>
-      <div className="text-[60px] font-semibold leading-none" style={{ color: accent }}>
+      <div className="font-semibold uppercase tracking-[0.2em] text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>{label}</div>
+      <div className="truncate font-semibold leading-none" style={{ color: accent, fontSize: 'clamp(24px, 3.4vw, 52px)' }}>
         {value}
       </div>
     </div>
