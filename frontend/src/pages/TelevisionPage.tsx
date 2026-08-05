@@ -182,38 +182,69 @@ export default function TelevisionPage() {
   }, [authorized, refresh]);
 
   const agents = useMemo<AgentRow[]>(() => {
-    const performance = (report?.rows ?? []).map((row) => ({
-      name: String(row.Name ?? row.User ?? ''),
-      user: String(row.User ?? ''),
-      outboundSales: 0,
-      inboundSales: 0,
-      totalSales: num(row.Form_Sales_Count),
-      revenue: num(row.Form_Sales_Amount),
-      callsHandled: num(row.Calls_Handled),
-    }));
-    const lookup = new Map(performance.map((agent) => [agent.name.toLowerCase(), agent]));
+    const performanceByName = new Map<string, AgentRow>();
+    for (const row of report?.rows ?? []) {
+      const name = String(row.Name ?? row.User ?? '');
+      const user = String(row.User ?? '');
+      if (!name) continue;
+      performanceByName.set(name.toLowerCase(), {
+        name,
+        user,
+        outboundSales: 0,
+        inboundSales: 0,
+        totalSales: num(row.Form_Sales_Count),
+        revenue: num(row.Form_Sales_Amount),
+        callsHandled: num(row.Calls_Handled),
+      });
+    }
     for (const split of callTypeSales) {
-      const key = String(split.agentName ?? '').toLowerCase();
-      const existing = lookup.get(key);
+      if (!split.agentName) continue;
+      const key = split.agentName.toLowerCase();
+      const existing = performanceByName.get(key);
       if (existing) {
         existing.outboundSales = split.outboundSales;
         existing.inboundSales = split.inboundSales;
-      } else if (split.agentName && !isExcludedFromRank(split.agentName)) {
-        performance.push({
-          name: split.agentName,
-          user: split.agentId,
-          outboundSales: split.outboundSales,
-          inboundSales: split.inboundSales,
-          totalSales: split.outboundSales + split.inboundSales,
+      }
+    }
+    const baseRows = staffingReport?.rows ?? [];
+    const agentsFromStaffing: AgentRow[] = [];
+    for (const row of baseRows) {
+      const name = String(row.Name ?? row.User ?? '');
+      if (!name) continue;
+      if (isExcludedFromRank(name)) continue;
+      const user = String(row.User ?? '');
+      const enriched = performanceByName.get(name.toLowerCase());
+      if (enriched) {
+        agentsFromStaffing.push({
+          ...enriched,
+          user: enriched.user || user,
+        });
+      } else {
+        agentsFromStaffing.push({
+          name,
+          user,
+          outboundSales: 0,
+          inboundSales: 0,
+          totalSales: 0,
           revenue: 0,
           callsHandled: 0,
         });
       }
     }
-    return performance
-      .filter((agent) => agent.name && !isExcludedFromRank(agent.name))
-      .sort((a, b) => b.totalSales - a.totalSales || b.revenue - a.revenue || a.name.localeCompare(b.name));
-  }, [report, callTypeSales]);
+    const presentNames = new Set(agentsFromStaffing.map((a) => a.name.toLowerCase()));
+    for (const agent of performanceByName.values()) {
+      if (presentNames.has(agent.name.toLowerCase())) continue;
+      if (isExcludedFromRank(agent.name)) continue;
+      agentsFromStaffing.push(agent);
+    }
+    return agentsFromStaffing.sort(
+      (a, b) =>
+        b.totalSales - a.totalSales ||
+        b.revenue - a.revenue ||
+        b.callsHandled - a.callsHandled ||
+        a.name.localeCompare(b.name),
+    );
+  }, [report, callTypeSales, staffingReport]);
 
   const totals = useMemo(
     () =>
