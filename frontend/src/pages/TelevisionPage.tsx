@@ -319,7 +319,8 @@ export default function TelevisionPage() {
       style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}
     >
       <div className="flex items-center justify-between border-b border-slate-300/60 bg-white px-3 py-2.5 text-slate-700 dark:border-cyan-400/20 dark:bg-slate-950 dark:text-cyan-100 sm:px-6 sm:py-3">
-        <div className="flex items-center gap-4 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+        <div className="flex items-center gap-3 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+          <NavToggleButton navHidden={navHidden} onToggle={toggleNav} />
           <div className="hidden font-semibold leading-none tracking-[0.18em] text-indigo-800 dark:text-cyan-300 sm:block" style={{ fontSize: 'clamp(24px, 3.4vw, 54px)' }}>ALTRX</div>
         </div>
         <div className="flex items-center gap-3 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
@@ -332,8 +333,8 @@ export default function TelevisionPage() {
         </div>
       </div>
 
-      <div className="grid min-h-0 grid-cols-2 border-b border-slate-300/60 bg-white text-slate-700 dark:border-cyan-400/15 dark:bg-slate-950 dark:text-cyan-100 sm:grid-cols-3 lg:grid-cols-[1.6fr_1fr_1.7fr_0.75fr_0.75fr_0.85fr]">
-        <div className="col-span-2 flex flex-col gap-1.5 overflow-hidden border-b border-slate-300/60 px-3 py-3 min-w-0 sm:col-span-3 sm:border-b-0 sm:border-r sm:px-4 lg:col-span-1 lg:px-5 dark:border-cyan-400/15">
+      <div className="grid min-h-0 grid-cols-2 border-b border-slate-300/60 bg-white text-slate-700 dark:border-cyan-400/15 dark:bg-slate-950 dark:text-cyan-100 sm:grid-cols-3 lg:grid-cols-[1.6fr_1fr_0.85fr_0.75fr_0.75fr_1.7fr]">
+        <div className="col-span-2 flex flex-col gap-1 overflow-hidden border-b border-slate-300/60 px-3 py-2.5 min-w-0 sm:col-span-3 sm:border-b-0 sm:border-r sm:px-4 lg:col-span-1 lg:px-5 dark:border-cyan-400/15">
           <div className="flex min-w-0 items-baseline justify-between gap-2" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
             <div className="flex items-center gap-1.5 font-semibold uppercase tracking-[0.2em] truncate text-slate-500 dark:text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>
               <span className="material-symbols-outlined shrink-0" style={{ fontSize: 'clamp(14px, 1.3vw, 18px)' }}>point_of_sale</span>
@@ -345,14 +346,14 @@ export default function TelevisionPage() {
             </div>
           </div>
           <div className="flex min-w-0 items-end gap-2 leading-none dark:text-cyan-300" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="font-semibold tracking-[-0.02em] truncate text-indigo-800 dark:text-cyan-300" style={{ fontSize: 'clamp(28px, 4.6vw, 64px)' }}>{totals.sales}</div>
-            <div className="font-normal text-slate-400 truncate dark:text-cyan-400/70" style={{ fontSize: 'clamp(12px, 1.6vw, 24px)' }}>/ {dailyGoal}</div>
+            <div className="font-semibold tracking-[-0.02em] truncate text-indigo-800 dark:text-cyan-300" style={{ fontSize: 'clamp(24px, 3.9vw, 54px)' }}>{totals.sales}</div>
+            <div className="font-normal text-slate-400 truncate dark:text-cyan-400/70" style={{ fontSize: 'clamp(11px, 1.4vw, 22px)' }}>/ {dailyGoal}</div>
             <div className="hidden pb-1 font-semibold uppercase tracking-[0.18em] truncate text-slate-500 dark:text-cyan-200/80 sm:flex sm:items-center sm:gap-1 sm:pb-0" style={{ fontSize: 'clamp(9px, 1vw, 13px)' }}>
               <span className="material-symbols-outlined" style={{ fontSize: 'clamp(12px, 1.2vw, 14px)' }}>track_changes</span>
               <span>DAILY GOAL</span>
             </div>
           </div>
-          <div className="relative h-[6px] w-full overflow-hidden rounded-sm border border-slate-300 dark:border-cyan-300/40">
+          <div className="relative h-[5px] w-full overflow-hidden rounded-sm border border-slate-300 dark:border-cyan-300/40">
             <div
               className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-blue-700 dark:from-cyan-400 dark:to-cyan-200"
               style={{ width: `${goalPct}%`, transition: 'width .7s ease' }}
@@ -366,7 +367,18 @@ export default function TelevisionPage() {
           valueClass="text-emerald-800 dark:text-emerald-400"
           icon="payments"
         />
-        <LastSaleInline sale={recentSales[0] ?? null} />
+        <div className="flex min-w-0 flex-col justify-center gap-0.5 overflow-hidden border-b border-slate-300/60 px-3 py-2.5 sm:border-b-0 sm:px-3 dark:border-cyan-400/15">
+          <div className="flex items-center gap-1 font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80" style={{ fontSize: 'clamp(9px, 1vw, 13px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+            <span className="material-symbols-outlined shrink-0" style={{ fontSize: 'clamp(12px, 1.1vw, 14px)' }}>phone_in_talk</span>
+            <span className="relative inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400">
+              <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/70 dark:bg-emerald-400/70" />
+            </span>
+            ON CALL
+          </div>
+          <div className="font-semibold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(16px, 2.1vw, 32px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+            {onCallCount}
+          </div>
+        </div>
         <KpiCell
           label="CALLS"
           value={totals.calls.toLocaleString('en-US')}
@@ -381,18 +393,7 @@ export default function TelevisionPage() {
           valueClass="text-rose-700 dark:text-rose-400"
           icon="percent"
         />
-        <div className="flex min-w-0 flex-col justify-center gap-0.5 overflow-hidden px-2 py-3 sm:px-3 lg:border-l lg:border-slate-300/60 dark:lg:border-cyan-400/15">
-          <div className="flex items-center gap-1 font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80" style={{ fontSize: 'clamp(9px, 1vw, 13px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <span className="material-symbols-outlined shrink-0" style={{ fontSize: 'clamp(12px, 1.1vw, 14px)' }}>phone_in_talk</span>
-            <span className="relative inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400">
-              <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/70 dark:bg-emerald-400/70" />
-            </span>
-            ON CALL
-          </div>
-          <div className="font-semibold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(18px, 2.4vw, 36px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            {onCallCount}
-          </div>
-        </div>
+        <LastSaleInline sale={recentSales[0] ?? null} />
       </div>
 
       <div className="grid grid-cols-1 flex-1 bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100 lg:grid-cols-2">
@@ -413,8 +414,6 @@ export default function TelevisionPage() {
 
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
 
-      <NavToggleButton navHidden={navHidden} onToggle={toggleNav} />
-
       {isAdmin && (
         <DailyGoalEditor
           goal={dailyGoal}
@@ -431,14 +430,14 @@ export default function TelevisionPage() {
 function KpiCell({ label, value, titleClass, valueClass, icon }: { label: string; value: string; titleClass: string; valueClass: string; icon: string }) {
   return (
     <div
-      className="flex flex-col justify-center gap-1 overflow-hidden border-r border-b border-slate-300/60 px-3 py-3 last:border-r-0 sm:border-b-0 sm:px-5 dark:border-cyan-400/15"
+      className="flex flex-col justify-center gap-0.5 overflow-hidden border-r border-b border-slate-300/60 px-3 py-2.5 last:border-r-0 sm:border-b-0 sm:px-4 dark:border-cyan-400/15"
       style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
     >
-      <div className={`flex items-center gap-1.5 font-semibold uppercase tracking-[0.2em] truncate ${titleClass}`} style={{ fontSize: 'clamp(9px, 1.1vw, 15px)' }}>
-        <span className="material-symbols-outlined shrink-0" style={{ fontSize: 'clamp(14px, 1.3vw, 18px)' }}>{icon}</span>
+      <div className={`flex items-center gap-1.5 font-semibold uppercase tracking-[0.2em] truncate ${titleClass}`} style={{ fontSize: 'clamp(9px, 1.1vw, 14px)' }}>
+        <span className="material-symbols-outlined shrink-0" style={{ fontSize: 'clamp(13px, 1.2vw, 17px)' }}>{icon}</span>
         <span className="truncate">{label}</span>
       </div>
-      <div className={`truncate font-semibold leading-none ${valueClass}`} style={{ fontSize: 'clamp(18px, 3.4vw, 52px)' }}>
+      <div className={`truncate font-semibold leading-none ${valueClass}`} style={{ fontSize: 'clamp(16px, 2.8vw, 44px)' }}>
         {value}
       </div>
     </div>
@@ -463,10 +462,10 @@ function LastSaleInline({ sale }: { sale: VicidialSaleDto | null }) {
 
   return (
     <div
-      className="col-span-2 flex min-w-0 items-center gap-2 overflow-hidden border-b border-r border-amber-300/60 bg-gradient-to-r from-amber-100/70 via-yellow-50/50 to-transparent px-3 py-3 sm:col-span-3 sm:border-b-0 sm:gap-3 sm:px-4 lg:col-span-1 lg:px-5 dark:border-yellow-400/20 dark:from-yellow-500/12 dark:via-yellow-500/[0.05] dark:to-transparent"
+      className="col-span-2 flex min-w-0 items-center gap-2 overflow-hidden border-b border-r border-amber-300/60 bg-amber-100 px-3 py-2 sm:col-span-3 sm:border-b-0 sm:gap-3 sm:px-4 lg:col-span-1 lg:px-5 dark:border-yellow-400/30 dark:bg-yellow-500/15"
       style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
     >
-      <span className="material-symbols-outlined shrink-0 text-amber-600 drop-shadow-[0_0_10px_rgba(234,179,8,.45)] dark:text-yellow-300" style={{ fontSize: 'clamp(20px, 2vw, 28px)' }}>
+      <span className="material-symbols-outlined shrink-0 text-amber-600 dark:text-yellow-300" style={{ fontSize: 'clamp(20px, 2vw, 28px)' }}>
         celebration
       </span>
       <div className="flex min-w-0 flex-1 flex-col">
@@ -482,13 +481,13 @@ function LastSaleInline({ sale }: { sale: VicidialSaleDto | null }) {
         </div>
         {sale ? (
           <div className="mt-0.5 flex min-w-0 items-baseline gap-x-2 gap-y-0.5">
-            <span className="truncate font-bold text-slate-900 dark:text-cyan-100" style={{ fontSize: 'clamp(15px, 1.7vw, 24px)' }}>
+            <span className="truncate font-bold text-slate-900 dark:text-cyan-100" style={{ fontSize: 'clamp(14px, 1.5vw, 21px)' }}>
               {sale.salesRep}
             </span>
-            <span className="hidden truncate text-sm font-medium text-slate-600 sm:inline dark:text-cyan-200" style={{ fontSize: 'clamp(12px, 1.3vw, 17px)' }}>
+            <span className="hidden truncate text-sm font-medium text-slate-600 sm:inline dark:text-cyan-200" style={{ fontSize: 'clamp(11px, 1.2vw, 16px)' }}>
               {sale.bundle}
             </span>
-            <span className="ml-auto font-bold text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(15px, 1.6vw, 22px)' }}>
+            <span className="ml-auto font-bold text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(14px, 1.4vw, 20px)' }}>
               ${sale.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
@@ -507,12 +506,12 @@ function NavToggleButton({ navHidden, onToggle }: { navHidden: boolean; onToggle
     <button
       type="button"
       onClick={onToggle}
-      className="fixed left-3 top-2 z-[80] flex h-9 w-9 items-center justify-center rounded-md border border-whisper-border bg-pure-surface/90 text-primary shadow-md backdrop-blur transition-colors hover:border-electric-blue dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-100"
+      className="flex h-7 w-7 items-center justify-center rounded-md border border-whisper-border bg-surface-container-low text-secondary hover:text-primary hover:border-electric-blue transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:text-gray-100"
       title={navHidden ? 'Show navigation' : 'Hide navigation'}
       aria-label={navHidden ? 'Show navigation' : 'Hide navigation'}
     >
-      <span className="material-symbols-outlined text-[20px]">
-        {navHidden ? 'expand_less' : 'expand_more'}
+      <span className="material-symbols-outlined text-[18px]">
+        {navHidden ? 'expand_more' : 'expand_less'}
       </span>
     </button>
   );
