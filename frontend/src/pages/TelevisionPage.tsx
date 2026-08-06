@@ -463,7 +463,7 @@ function LastSaleInline({ sale }: { sale: VicidialSaleDto | null }) {
 
   return (
     <div
-      className="col-span-2 flex min-w-0 items-center gap-2 overflow-hidden border-b border-r border-amber-300/60 bg-amber-100 px-3 py-2 sm:col-span-3 sm:border-b-0 sm:gap-3 sm:px-4 lg:col-span-1 lg:px-5 dark:border-yellow-400/30 dark:bg-yellow-500/15"
+      className="col-span-2 flex min-w-0 items-center gap-2 overflow-hidden border-b border-r border-slate-300/60 px-3 py-2 sm:col-span-3 sm:border-b-0 sm:gap-3 sm:px-4 lg:col-span-1 lg:px-5 dark:border-cyan-400/15"
       style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
     >
       <span className="material-symbols-outlined shrink-0 text-amber-600 dark:text-yellow-300" style={{ fontSize: 'clamp(20px, 2vw, 28px)' }}>
