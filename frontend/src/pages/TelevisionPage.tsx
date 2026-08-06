@@ -331,13 +331,22 @@ export default function TelevisionPage() {
       <div className="grid min-h-0 grid-cols-2 border-b border-slate-300/60 bg-white text-slate-700 dark:border-cyan-400/15 dark:bg-slate-950 dark:text-cyan-100 sm:grid-cols-3 lg:grid-cols-5">
         <div className="col-span-2 flex flex-col gap-1.5 overflow-hidden border-b border-slate-300/60 px-3 py-3 min-w-0 sm:col-span-3 sm:border-b-0 sm:border-r sm:px-5 lg:col-span-1 dark:border-cyan-400/15">
           <div className="flex min-w-0 items-baseline justify-between gap-2" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-            <div className="font-semibold uppercase tracking-[0.2em] truncate text-slate-500 dark:text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>TEAM SALES TODAY</div>
-            <div className="font-semibold uppercase tracking-[0.2em] truncate text-indigo-700 dark:text-cyan-300" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>{goalPctLabel} OF GOAL</div>
+            <div className="flex items-center gap-1.5 font-semibold uppercase tracking-[0.2em] truncate text-slate-500 dark:text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>
+              <span className="material-symbols-outlined shrink-0" style={{ fontSize: 'clamp(14px, 1.3vw, 18px)' }}>point_of_sale</span>
+              <span className="truncate">TEAM SALES TODAY</span>
+            </div>
+            <div className="flex items-center gap-1 font-semibold uppercase tracking-[0.2em] truncate text-indigo-700 dark:text-cyan-300" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)' }}>
+              <span className="material-symbols-outlined shrink-0" style={{ fontSize: 'clamp(14px, 1.3vw, 18px)' }}>flag</span>
+              <span className="truncate">{goalPctLabel} OF GOAL</span>
+            </div>
           </div>
           <div className="flex min-w-0 items-end gap-2 leading-none dark:text-cyan-300" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
             <div className="font-semibold tracking-[-0.02em] truncate text-indigo-800 dark:text-cyan-300" style={{ fontSize: 'clamp(28px, 4.6vw, 64px)' }}>{totals.sales}</div>
             <div className="font-normal text-slate-400 truncate dark:text-cyan-400/70" style={{ fontSize: 'clamp(12px, 1.6vw, 24px)' }}>/ {dailyGoal}</div>
-            <div className="hidden pb-1 font-semibold uppercase tracking-[0.18em] truncate text-slate-500 dark:text-cyan-200/80 sm:block" style={{ fontSize: 'clamp(9px, 1vw, 13px)' }}>DAILY GOAL</div>
+            <div className="hidden pb-1 font-semibold uppercase tracking-[0.18em] truncate text-slate-500 dark:text-cyan-200/80 sm:flex sm:items-center sm:gap-1 sm:pb-0" style={{ fontSize: 'clamp(9px, 1vw, 13px)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 'clamp(12px, 1.2vw, 14px)' }}>track_changes</span>
+              <span>DAILY GOAL</span>
+            </div>
           </div>
           <div className="relative h-[6px] w-full overflow-hidden rounded-sm border border-slate-300 dark:border-cyan-300/40">
             <div
@@ -351,21 +360,25 @@ export default function TelevisionPage() {
           value={formatCurrency(revenue)}
           titleClass="text-emerald-700 dark:text-emerald-300/80"
           valueClass="text-emerald-800 dark:text-emerald-400"
+          icon="payments"
         />
         <KpiCell
           label="CALLS DIALED"
           value={totals.calls.toLocaleString('en-US')}
           titleClass="text-amber-700 dark:text-yellow-300/80"
           valueClass="text-amber-800 dark:text-yellow-300"
+          icon="dialer_sip"
         />
         <KpiCell
           label="CONVERSION"
           value={`${conversion.toFixed(2)}%`}
           titleClass="text-purple-700 dark:text-rose-300/80"
           valueClass="text-rose-700 dark:text-rose-400"
+          icon="percent"
         />
         <div className="flex min-w-0 flex-col justify-center gap-1 overflow-hidden px-3 py-3 min-w-0 sm:border-r sm:border-slate-300/60 sm:px-5 dark:sm:border-cyan-400/15 lg:border-l lg:border-slate-300/60 dark:lg:border-cyan-400/15">
-          <div className="flex items-center gap-2 font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+          <div className="flex items-center gap-1.5 font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80" style={{ fontSize: 'clamp(10px, 1.1vw, 15px)', fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+            <span className="material-symbols-outlined shrink-0" style={{ fontSize: 'clamp(14px, 1.3vw, 18px)' }}>phone_in_talk</span>
             <span className="relative inline-flex h-2 w-2 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400">
               <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/70 dark:bg-emerald-400/70" />
             </span>
@@ -376,6 +389,8 @@ export default function TelevisionPage() {
           </div>
         </div>
       </div>
+
+      <LastSaleStrip sale={recentSales[0] ?? null} />
 
       <div className="grid grid-cols-1 flex-1 bg-white text-slate-700 dark:bg-slate-950 dark:text-cyan-100 lg:grid-cols-2">
         <RankPanel rows={leftRows} side="left" startRank={1} flashId={flashId} />
@@ -408,16 +423,86 @@ export default function TelevisionPage() {
   );
 }
 
-function KpiCell({ label, value, titleClass, valueClass }: { label: string; value: string; titleClass: string; valueClass: string }) {
+function KpiCell({ label, value, titleClass, valueClass, icon }: { label: string; value: string; titleClass: string; valueClass: string; icon: string }) {
   return (
     <div
       className="flex flex-col justify-center gap-1 overflow-hidden border-r border-b border-slate-300/60 px-3 py-3 last:border-r-0 sm:border-b-0 sm:px-5 dark:border-cyan-400/15"
       style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
     >
-      <div className={`font-semibold uppercase tracking-[0.2em] truncate ${titleClass}`} style={{ fontSize: 'clamp(9px, 1.1vw, 15px)' }}>{label}</div>
+      <div className={`flex items-center gap-1.5 font-semibold uppercase tracking-[0.2em] truncate ${titleClass}`} style={{ fontSize: 'clamp(9px, 1.1vw, 15px)' }}>
+        <span className="material-symbols-outlined shrink-0" style={{ fontSize: 'clamp(14px, 1.3vw, 18px)' }}>{icon}</span>
+        <span className="truncate">{label}</span>
+      </div>
       <div className={`truncate font-semibold leading-none ${valueClass}`} style={{ fontSize: 'clamp(18px, 3.4vw, 52px)' }}>
         {value}
       </div>
+    </div>
+  );
+}
+
+function LastSaleStrip({ sale }: { sale: VicidialSaleDto | null }) {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => force((value) => value + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  if (!sale) {
+    return (
+      <div className="flex items-center gap-3 border-b border-slate-300/60 bg-white px-3 py-2.5 sm:px-6 sm:py-3 dark:border-cyan-400/15 dark:bg-slate-950">
+        <span className="material-symbols-outlined text-amber-500 dark:text-yellow-300" style={{ fontSize: 'clamp(20px, 2vw, 26px)' }}>hourglass_empty</span>
+        <div className="flex min-w-0 flex-1 items-baseline gap-2" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+          <span className="font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-cyan-200" style={{ fontSize: 'clamp(10px, 1.1vw, 14px)' }}>LAST SALE</span>
+          <span className="truncate text-sm font-medium text-muted-slate dark:text-cyan-300/60">Awaiting first close today</span>
+        </div>
+      </div>
+    );
+  }
+
+  const saleTime = new Date(sale.saleDate);
+  const minutesAgo = Math.max(0, Math.floor((Date.now() - saleTime.getTime()) / 60_000));
+  const timeLabel =
+    minutesAgo < 1
+      ? 'just now'
+      : minutesAgo === 1
+      ? '1 min ago'
+      : minutesAgo < 60
+      ? `${minutesAgo} min ago`
+      : `${Math.floor(minutesAgo / 60)}h ${minutesAgo % 60}m ago`;
+  const amountLabel = `$${sale.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  return (
+    <div
+      className="flex items-center gap-3 border-b border-amber-300/60 bg-gradient-to-r from-amber-100/60 via-yellow-50/40 to-transparent px-3 py-2.5 sm:gap-4 sm:px-6 sm:py-3 dark:border-yellow-400/20 dark:from-yellow-500/10 dark:via-yellow-500/[0.04] dark:to-transparent"
+      style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}
+    >
+      <span className="material-symbols-outlined shrink-0 text-amber-600 drop-shadow-[0_0_10px_rgba(234,179,8,.45)] dark:text-yellow-300" style={{ fontSize: 'clamp(22px, 2.4vw, 32px)' }}>
+        celebration
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-yellow-300" style={{ fontSize: 'clamp(10px, 1.1vw, 14px)' }}>
+            LAST SALE
+          </span>
+          <span className="hidden font-medium uppercase tracking-[0.18em] text-slate-500 sm:inline dark:text-cyan-200/70" style={{ fontSize: 'clamp(9px, 1vw, 12px)' }}>
+            · {timeLabel}
+          </span>
+        </div>
+        <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <span className="truncate font-bold text-slate-900 dark:text-cyan-100" style={{ fontSize: 'clamp(16px, 2vw, 28px)' }}>
+            {sale.salesRep}
+          </span>
+          <span className="hidden truncate text-sm font-medium text-slate-600 sm:inline dark:text-cyan-200" style={{ fontSize: 'clamp(12px, 1.4vw, 18px)' }}>
+            {sale.bundle}
+          </span>
+          <span className="font-bold text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(15px, 1.7vw, 22px)' }}>
+            {amountLabel}
+          </span>
+        </div>
+      </div>
+      <span className="shrink-0 rounded-full border border-amber-300 bg-white/80 px-2 py-0.5 font-semibold uppercase tracking-[0.16em] text-amber-700 sm:px-3 sm:py-1 dark:border-yellow-400/40 dark:bg-slate-900/60 dark:text-yellow-300" style={{ fontSize: 'clamp(9px, 1vw, 12px)' }}>
+        {timeLabel}
+      </span>
     </div>
   );
 }
