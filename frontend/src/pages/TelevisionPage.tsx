@@ -37,6 +37,7 @@ const EXCLUDED_RANK_NAMES = new Set(
     'hector villeda',
     'jesus ibarra',
     'jessica duarte',
+    'francisco quintero',
   ].map((name) => name.toLowerCase()),
 );
 
