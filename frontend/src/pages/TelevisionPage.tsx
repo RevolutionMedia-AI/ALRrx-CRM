@@ -520,10 +520,10 @@ function RankPanel({
       }`}
     >
       <div
-        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-cyan-200 grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_4.4rem_5.6rem_4.4rem_5.2rem] sm:gap-3 sm:px-3"
+        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-cyan-200 grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_4.4rem_5.6rem_4.4rem_5.2rem] sm:gap-3 sm:px-3"
         style={{
           fontFamily: 'Barlow Condensed, system-ui, sans-serif',
-          fontSize: 'clamp(10px, 1.4vw, 20px)',
+          fontSize: 'clamp(10px, 0.9vw, 13px)',
         }}
       >
         <div>RANK</div>
