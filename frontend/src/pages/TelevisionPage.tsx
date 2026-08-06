@@ -483,7 +483,7 @@ function LastSaleInline({ sale }: { sale: VicidialSaleDto | null }) {
         {sale ? (
           <div className="mt-0.5 flex min-w-0 items-baseline gap-x-2 gap-y-0.5">
             <span className="truncate font-bold text-slate-900 dark:text-cyan-100" style={{ fontSize: 'clamp(14px, 1.5vw, 21px)' }}>
-              {sale.salesRep}
+              {displayName(sale.salesRep)}
             </span>
             <span className="hidden truncate text-sm font-medium text-slate-600 sm:inline dark:text-cyan-200" style={{ fontSize: 'clamp(11px, 1.2vw, 16px)' }}>
               {sale.bundle}
@@ -621,7 +621,7 @@ function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number;
           {initials(agent.name)}
         </div>
         <div className="min-w-0 flex-1 truncate font-bold leading-tight text-slate-800 dark:text-cyan-100" style={{ fontSize: 'clamp(20px, 3.5vh, 42px)' }}>
-          {agent.name}
+          {displayName(agent.name)}
         </div>
       </div>
       <div
@@ -735,8 +735,15 @@ function DailyGoalEditor({ goal, onSave }: { goal: number; onSave: (value: numbe
   );
 }
 
+function displayName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 2) return name.trim();
+  return `${parts[0]} ${parts[parts.length - 1]}`;
+}
+
 function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '--';
+  const display = displayName(name);
+  return display.split(/\s+/).filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || '--';
 }
 
 function clampPercent(value: number): number {
