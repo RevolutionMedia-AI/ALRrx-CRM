@@ -5,6 +5,7 @@ import { getAccessGroup } from '../../utils/accessControl';
 import type { ReactNode } from 'react';
 import MobileNavMenu, { type MobileNavItem } from './MobileNavMenu';
 import { useNavHidden } from '../../hooks/useNavHidden';
+import NavToggleButton from './NavToggleButton';
 
 const navItems = [
   { label: 'Dashboard ALTRX', path: '/' },
@@ -151,6 +152,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <main className={`max-w-[1400px] mx-auto px-gutter-mobile md:px-gutter-tablet lg:px-gutter-desktop py-8 flex flex-col gap-8 min-h-screen ${authUnavailable && !navHidden ? 'pt-32' : navHidden ? 'pt-4' : 'pt-24'}`}>
         {children}
       </main>
+      <NavToggleButton />
     </div>
   );
 }

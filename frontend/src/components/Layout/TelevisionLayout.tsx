@@ -5,6 +5,7 @@ import { getAccessGroup } from '../../utils/accessControl';
 import type { ReactNode } from 'react';
 import MobileNavMenu, { type MobileNavItem } from './MobileNavMenu';
 import { useNavHidden } from '../../hooks/useNavHidden';
+import NavToggleButton from './NavToggleButton';
 
 const navItems = [
   { label: 'Dashboard ALTRX', path: '/' },
@@ -135,6 +136,7 @@ export default function TelevisionLayout({ children }: { children: ReactNode }) 
       <main className={`w-full px-2.5 ${navHidden ? 'pt-2' : 'pt-[calc(4rem+0.5rem)]'} pb-2 flex flex-col gap-3 min-h-screen ${authUnavailable && !navHidden ? 'pt-[calc(4rem+2.25rem)]' : ''}`}>
         {children}
       </main>
+      <NavToggleButton />
     </div>
   );
 }

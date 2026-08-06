@@ -110,9 +110,10 @@ function findMetric(metrics: { label: string; value: string }[] | undefined, hin
 }
 
 export default function TelevisionPage() {
-  const { has, isAdmin } = useAuth();
+  const { has, isAdmin, canEdit } = useAuth();
   const authorized = has('tv.view');
-  const [navHidden, toggleNav] = useNavHidden();
+  const [navHidden] = useNavHidden();
+  void isAdmin;
   const [report, setReport] = useState<ReportDto | null>(null);
   const [staffingReport, setStaffingReport] = useState<ReportDto | null>(null);
   const [salesSummary, setSalesSummary] = useState<{ totalSales: number; totalCount: number } | null>(null);
@@ -319,9 +320,17 @@ export default function TelevisionPage() {
       style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}
     >
       <div className="flex items-center justify-between border-b border-slate-300/60 bg-white px-3 py-2.5 text-slate-700 dark:border-cyan-400/20 dark:bg-slate-950 dark:text-cyan-100 sm:px-6 sm:py-3">
-        <div className="flex items-center gap-3 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
-          <NavToggleButton navHidden={navHidden} onToggle={toggleNav} />
+        <div className="flex items-center gap-2 sm:gap-4" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
           <div className="hidden font-semibold leading-none tracking-[0.18em] text-indigo-800 dark:text-cyan-300 sm:block" style={{ fontSize: 'clamp(24px, 3.4vw, 54px)' }}>ALTRX</div>
+          {canEdit ? (
+            <DailyGoalEditor
+              goal={dailyGoal}
+              onSave={(value) => {
+                setDailyGoal(value);
+                saveDailyGoal(value);
+              }}
+            />
+          ) : null}
         </div>
         <div className="flex items-center gap-3 sm:gap-6" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -413,16 +422,6 @@ export default function TelevisionPage() {
       </div>
 
       {tvSale ? <SaleAnnouncement sale={tvSale} /> : null}
-
-      {isAdmin && (
-        <DailyGoalEditor
-          goal={dailyGoal}
-          onSave={(value) => {
-            setDailyGoal(value);
-            saveDailyGoal(value);
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -706,7 +705,7 @@ function DailyGoalEditor({ goal, onSave }: { goal: number; onSave: (value: numbe
     setDraft('');
   };
   return (
-    <div className="fixed bottom-3 right-3 z-[110] flex items-center gap-2 sm:bottom-4 sm:right-4">
+    <div className="flex items-center gap-1.5 sm:gap-2">
       {editing ? (
         <>
           <input
@@ -722,7 +721,7 @@ function DailyGoalEditor({ goal, onSave }: { goal: number; onSave: (value: numbe
               }
             }}
             placeholder={String(goal)}
-            className="w-20 rounded border border-slate-300 bg-white px-2 py-1 text-right font-mono text-xs font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-400 dark:border-cyan-400/60 dark:bg-slate-950 dark:text-cyan-100 sm:w-24 sm:text-sm"
+            className="w-16 rounded border border-slate-300 bg-white px-1.5 py-1 text-right font-mono text-[11px] font-bold text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-400 dark:border-cyan-400/60 dark:bg-slate-950 dark:text-cyan-100 sm:w-20 sm:text-xs"
           />
           <button
             type="button"
@@ -739,9 +738,11 @@ function DailyGoalEditor({ goal, onSave }: { goal: number; onSave: (value: numbe
             setEditing(true);
             setDraft(String(goal));
           }}
-          className="rounded border border-slate-300 bg-white px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-slate-700 shadow hover:border-emerald-500 dark:border-cyan-400/60 dark:bg-slate-950/80 dark:text-cyan-200 sm:px-3 sm:text-xs"
+          className="flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-slate-700 shadow hover:border-emerald-500 dark:border-cyan-400/60 dark:bg-slate-950/80 dark:text-cyan-200 sm:px-3 sm:text-xs"
+          title="Edit daily sales goal"
         >
-          Edit goal ({goal})
+          <span className="material-symbols-outlined" style={{ fontSize: 'clamp(12px, 1.2vw, 14px)' }}>edit</span>
+          <span>GOAL ({goal})</span>
         </button>
       )}
     </div>
