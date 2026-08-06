@@ -515,7 +515,7 @@ function RankPanel({
 }) {
   return (
     <div
-      className={`flex min-w-0 flex-col px-2 py-2 sm:px-3 sm:py-3 ${
+      className={`flex h-full min-h-0 min-w-0 flex-col px-2 py-2 sm:px-3 sm:py-3 ${
         side === 'right' ? 'lg:border-l lg:border-slate-300/60 lg:dark:border-cyan-400/20 border-t border-slate-300/60 dark:border-cyan-400/20 lg:border-t-0' : ''
       }`}
     >
@@ -523,7 +523,7 @@ function RankPanel({
         className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-cyan-200 grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_4.4rem_5.6rem_4.4rem_5.2rem] sm:gap-3 sm:px-3"
         style={{
           fontFamily: 'Barlow Condensed, system-ui, sans-serif',
-          fontSize: 'clamp(10px, 1vw, 14px)',
+          fontSize: 'clamp(10px, 1.4vw, 20px)',
         }}
       >
         <div>RANK</div>
@@ -533,7 +533,7 @@ function RankPanel({
         <div className="hidden text-right sm:block">CALLS</div>
         <div className="hidden text-right sm:block">CONV</div>
       </div>
-      <div className="flex flex-col bg-white dark:bg-slate-950">
+      <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-slate-950">
         {rows.length ? (
           rows.map((agent, index) => (
             <RankRow
@@ -599,7 +599,7 @@ function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number;
   const rowBg = leadCfg ? '' : zebra ? 'bg-slate-100/70 dark:bg-cyan-400/[0.07]' : '';
   return (
     <div
-      className={`grid h-[clamp(81px,9.5vw,108px)] sm:h-[clamp(108px,10.5vw,144px)] items-center gap-2 sm:gap-3 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-2 sm:px-3 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'} grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_4.4rem_5.6rem_4.4rem_5.2rem]`}
+      className={`grid min-h-[64px] flex-1 items-center gap-2 sm:gap-3 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-2 sm:px-3 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'} grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_4.4rem_5.6rem_4.4rem_5.2rem]`}
       style={{
         background: leadCfg ? leadCfg.gradient : undefined,
         animation: flash ? 'tvRankFlash 1.4s ease' : undefined,
@@ -608,35 +608,35 @@ function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number;
     >
       <div
         className={`flex items-center gap-1 font-bold leading-none ${rankColorClass}`}
-        style={{ fontSize: 'clamp(27px, 3.3vw, 45px)' }}
+        style={{ fontSize: 'clamp(28px, 5vh, 64px)' }}
       >
         {rank === 1 ? <CrownIcon /> : null}
         {rank}
       </div>
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <div
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-full font-bold bg-slate-100 border border-slate-300 text-indigo-700 dark:bg-slate-900/60 dark:border-cyan-400/40 dark:text-cyan-200 sm:h-14 sm:w-14"
-          style={{ fontSize: 'clamp(16px, 1.8vw, 24px)' }}
+          className="grid aspect-square h-[clamp(48px,6vh,80px)] w-auto shrink-0 place-items-center rounded-full font-bold bg-slate-100 border border-slate-300 text-indigo-700 dark:bg-slate-900/60 dark:border-cyan-400/40 dark:text-cyan-200"
+          style={{ fontSize: 'clamp(16px, 2.5vh, 30px)' }}
         >
           {initials(agent.name)}
         </div>
-        <div className="min-w-0 flex-1 truncate font-bold leading-tight text-slate-800 dark:text-cyan-100" style={{ fontSize: 'clamp(19px, 2.2vw, 32px)' }}>
+        <div className="min-w-0 flex-1 truncate font-bold leading-tight text-slate-800 dark:text-cyan-100" style={{ fontSize: 'clamp(20px, 3.5vh, 42px)' }}>
           {agent.name}
         </div>
       </div>
       <div
         className="text-center font-bold leading-none text-indigo-700 dark:text-cyan-300"
-        style={{ fontSize: 'clamp(22px, 2.5vw, 39px)' }}
+        style={{ fontSize: 'clamp(24px, 4vh, 52px)' }}
       >
         {agent.totalSales}
       </div>
-      <div className="text-right font-bold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(19px, 2.2vw, 30px)' }}>
+      <div className="text-right font-bold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(20px, 3.5vh, 42px)' }}>
         {revenue}
       </div>
-      <div className="hidden text-right font-bold leading-none text-amber-700 dark:text-yellow-300 sm:block" style={{ fontSize: 'clamp(22px, 2.1vw, 28px)' }}>
+      <div className="hidden text-right font-bold leading-none text-amber-700 dark:text-yellow-300 sm:block" style={{ fontSize: 'clamp(22px, 3.2vh, 38px)' }}>
         {callsText}
       </div>
-      <div className="hidden text-right font-bold leading-none text-amber-800 dark:text-yellow-300 sm:block" style={{ fontSize: 'clamp(22px, 2.1vw, 28px)' }}>
+      <div className="hidden text-right font-bold leading-none text-amber-800 dark:text-yellow-300 sm:block" style={{ fontSize: 'clamp(22px, 3.2vh, 38px)' }}>
         {conv}
       </div>
     </div>
@@ -645,7 +645,7 @@ function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number;
 
 function CrownIcon() {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f0b429" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="#f0b429" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ maxWidth: 'clamp(28px, 5vh, 56px)', maxHeight: 'clamp(28px, 5vh, 56px)' }} aria-hidden>
       <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z" />
       <path d="M5 21h14" />
     </svg>
