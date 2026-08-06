@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getAccessGroup } from '../../utils/accessControl';
 import type { ReactNode } from 'react';
 import MobileNavMenu, { type MobileNavItem } from './MobileNavMenu';
+import { useNavHidden } from '../../hooks/useNavHidden';
 
 const navItems = [
   { label: 'Dashboard ALTRX', path: '/' },
@@ -20,6 +21,7 @@ export default function TelevisionLayout({ children }: { children: ReactNode }) 
   const navigate = useNavigate();
   const location = useLocation();
   const canSeeTv = has('tv.view');
+  const [navHidden] = useNavHidden();
 
   const hasDualAccess = !!user && getAccessGroup(user.platformAccess) === 'both';
 
@@ -50,7 +52,7 @@ export default function TelevisionLayout({ children }: { children: ReactNode }) 
           User service temporarily unavailable. Showing cached data. Retrying…
         </div>
       )}
-      <nav className={`fixed ${authUnavailable ? 'top-9' : 'top-0'} left-0 right-0 z-50 flex justify-between items-center px-4 h-16 bg-pure-surface dark:bg-gray-900 border-b border-whisper-border dark:border-gray-800 transition-colors`}>
+      <nav className={`fixed ${authUnavailable ? 'top-9' : 'top-0'} left-0 right-0 z-50 flex justify-between items-center px-4 h-16 bg-pure-surface dark:bg-gray-900 border-b border-whisper-border dark:border-gray-800 transition-colors ${navHidden ? 'hidden' : ''}`}>
         <div className="flex items-center gap-3 md:gap-8">
           <MobileNavMenu items={mobileNavItems} />
           <div className="font-display-hero text-base md:text-lg font-bold text-primary dark:text-gray-100 flex items-center gap-2">
@@ -130,7 +132,7 @@ export default function TelevisionLayout({ children }: { children: ReactNode }) 
           </button>
         </div>
       </nav>
-      <main className={`w-full px-2.5 pt-[calc(4rem+0.5rem)] pb-2 flex flex-col gap-3 min-h-[calc(100dvh-4rem)] ${authUnavailable ? 'pt-[calc(4rem+2.25rem)]' : ''}`}>
+      <main className={`w-full px-2.5 ${navHidden ? 'pt-2' : 'pt-[calc(4rem+0.5rem)]'} pb-2 flex flex-col gap-3 min-h-screen ${authUnavailable && !navHidden ? 'pt-[calc(4rem+2.25rem)]' : ''}`}>
         {children}
       </main>
     </div>

@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getAccessGroup } from '../../utils/accessControl';
 import type { ReactNode } from 'react';
 import MobileNavMenu, { type MobileNavItem } from './MobileNavMenu';
+import { useNavHidden } from '../../hooks/useNavHidden';
 
 const navItems = [
   { label: 'Dashboard ALTRX', path: '/' },
@@ -29,6 +30,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const canSeeTv = has('tv.view');
+  const [navHidden] = useNavHidden();
 
   // Admins and dual-platform users route to the platform picker instead of a
   // full sign-out. The picker is the only entry point to the Admin Panel.
@@ -63,7 +65,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           User service temporarily unavailable. Showing cached data. Retrying…
         </div>
       )}
-      <nav className={`fixed ${authUnavailable ? 'top-9' : 'top-0'} left-0 right-0 z-50 flex justify-between items-center px-gutter-mobile md:px-gutter-tablet lg:px-gutter-desktop h-16 bg-pure-surface dark:bg-gray-900 border-b border-whisper-border dark:border-gray-800 transition-colors`}>
+      <nav className={`fixed ${authUnavailable ? 'top-9' : 'top-0'} left-0 right-0 z-50 flex justify-between items-center px-gutter-mobile md:px-gutter-tablet lg:px-gutter-desktop h-16 bg-pure-surface dark:bg-gray-900 border-b border-whisper-border dark:border-gray-800 transition-colors ${navHidden ? 'hidden' : ''}`}>
         <div className="flex items-center gap-3 md:gap-8">
           <MobileNavMenu items={mobileNavItems} />
           <div className="font-display-hero text-base md:text-lg font-bold text-primary dark:text-gray-100 flex items-center gap-2">
@@ -146,7 +148,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
       </nav>
-      <main className={`max-w-[1400px] mx-auto px-gutter-mobile md:px-gutter-tablet lg:px-gutter-desktop py-8 flex flex-col gap-8 min-h-[calc(100dvh-4rem)] ${authUnavailable ? 'pt-32' : 'pt-24'}`}>
+      <main className={`max-w-[1400px] mx-auto px-gutter-mobile md:px-gutter-tablet lg:px-gutter-desktop py-8 flex flex-col gap-8 min-h-screen ${authUnavailable && !navHidden ? 'pt-32' : navHidden ? 'pt-4' : 'pt-24'}`}>
         {children}
       </main>
     </div>
