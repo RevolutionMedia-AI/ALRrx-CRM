@@ -13,6 +13,7 @@ import {
 } from '../services/vicidialFormApi';
 import { readSharedToken } from '../utils/sharedToken';
 import { useNavHidden } from '../hooks/useNavHidden';
+import NavToggleButton from '../components/Layout/NavToggleButton';
 import type { ReportDto, VicidialSaleDto } from '../types';
 
 interface TvSale {
@@ -320,7 +321,8 @@ export default function TelevisionPage() {
       style={{ fontFamily: 'Barlow, system-ui, sans-serif' }}
     >
       <div className="flex items-center justify-between border-b border-slate-300/60 bg-white px-3 py-2.5 text-slate-700 dark:border-cyan-400/20 dark:bg-slate-950 dark:text-cyan-100 sm:px-6 sm:py-3">
-        <div className="flex items-center gap-2 sm:gap-4" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+        <div className="flex items-center gap-2 sm:gap-3" style={{ fontFamily: 'Barlow Condensed, system-ui, sans-serif' }}>
+          <NavToggleButton variant="inline" />
           <div className="hidden font-semibold leading-none tracking-[0.18em] text-indigo-800 dark:text-cyan-300 sm:block" style={{ fontSize: 'clamp(24px, 3.4vw, 54px)' }}>ALTRX</div>
           {canEdit ? (
             <DailyGoalEditor
@@ -497,22 +499,6 @@ function LastSaleInline({ sale }: { sale: VicidialSaleDto | null }) {
         )}
       </div>
     </div>
-  );
-}
-
-function NavToggleButton({ navHidden, onToggle }: { navHidden: boolean; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex h-7 w-7 items-center justify-center rounded-md border border-whisper-border bg-surface-container-low text-secondary hover:text-primary hover:border-electric-blue transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:text-gray-100"
-      title={navHidden ? 'Show navigation' : 'Hide navigation'}
-      aria-label={navHidden ? 'Show navigation' : 'Hide navigation'}
-    >
-      <span className="material-symbols-outlined text-[18px]">
-        {navHidden ? 'expand_more' : 'expand_less'}
-      </span>
-    </button>
   );
 }
 
