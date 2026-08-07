@@ -520,7 +520,7 @@ function RankPanel({
       }`}
     >
       <div
-        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-cyan-200 grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_4.4rem_5.6rem_4.4rem_5.2rem] sm:gap-3 sm:px-3"
+        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-cyan-200 grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_5rem_6.5rem_5rem_5.5rem] sm:gap-4 sm:px-3"
         style={{
           fontFamily: 'Barlow Condensed, system-ui, sans-serif',
           fontSize: 'clamp(10px, 0.9vw, 13px)',
@@ -599,7 +599,7 @@ function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number;
   const rowBg = leadCfg ? '' : zebra ? 'bg-slate-100/70 dark:bg-cyan-400/[0.07]' : '';
   return (
     <div
-      className={`grid min-h-[64px] flex-1 items-center gap-2 sm:gap-3 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-2 sm:px-3 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'} grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_4.4rem_5.6rem_4.4rem_5.2rem]`}
+      className={`grid min-h-[64px] flex-1 items-center gap-2 sm:gap-4 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-2 sm:px-3 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'} grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_5rem_6.5rem_5rem_5.5rem]`}
       style={{
         background: leadCfg ? leadCfg.gradient : undefined,
         animation: flash ? 'tvRankFlash 1.4s ease' : undefined,
