@@ -520,7 +520,7 @@ function RankPanel({
       }`}
     >
       <div
-        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-cyan-200 grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_5rem_6.5rem_5rem_5.5rem] sm:gap-4 sm:px-3"
+        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-cyan-200 grid-cols-[minmax(36px,0.5fr)_minmax(0,1.5fr)_minmax(56px,0.8fr)_minmax(72px,1fr)] sm:grid-cols-[minmax(44px,0.5fr)_minmax(0,1.5fr)_minmax(64px,0.7fr)_minmax(96px,1fr)_minmax(64px,0.7fr)_minmax(72px,0.8fr)] sm:gap-4 sm:px-3"
         style={{
           fontFamily: 'Barlow Condensed, system-ui, sans-serif',
           fontSize: 'clamp(10px, 0.9vw, 13px)',
@@ -599,7 +599,7 @@ function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number;
   const rowBg = leadCfg ? '' : zebra ? 'bg-slate-100/70 dark:bg-cyan-400/[0.07]' : '';
   return (
     <div
-      className={`grid min-h-[64px] flex-1 items-center gap-2 sm:gap-4 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-2 sm:px-3 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'} grid-cols-[2.2rem_minmax(0,1fr)_3.6rem_4.4rem] sm:grid-cols-[2.8rem_minmax(0,1fr)_5rem_6.5rem_5rem_5.5rem]`}
+      className={`grid min-h-[64px] flex-1 items-center gap-2 sm:gap-4 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-2 sm:px-3 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'} grid-cols-[minmax(36px,0.5fr)_minmax(0,1.5fr)_minmax(56px,0.8fr)_minmax(72px,1fr)] sm:grid-cols-[minmax(44px,0.5fr)_minmax(0,1.5fr)_minmax(64px,0.7fr)_minmax(96px,1fr)_minmax(64px,0.7fr)_minmax(72px,0.8fr)]`}
       style={{
         background: leadCfg ? leadCfg.gradient : undefined,
         animation: flash ? 'tvRankFlash 1.4s ease' : undefined,
@@ -625,18 +625,18 @@ function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number;
         </div>
       </div>
       <div
-        className="text-center font-bold leading-none text-indigo-700 dark:text-cyan-300"
-        style={{ fontSize: 'clamp(24px, 4vh, 52px)' }}
+        className="overflow-hidden text-center font-bold leading-none text-indigo-700 dark:text-cyan-300"
+        style={{ fontSize: 'clamp(20px, 3vh, 36px)' }}
       >
         {agent.totalSales}
       </div>
-      <div className="text-right font-bold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(20px, 3.5vh, 42px)' }}>
+      <div className="overflow-hidden text-right font-bold leading-none text-emerald-700 dark:text-emerald-300" style={{ fontSize: 'clamp(16px, 2.6vh, 30px)' }}>
         {revenue}
       </div>
-      <div className="hidden text-right font-bold leading-none text-amber-700 dark:text-yellow-300 sm:block" style={{ fontSize: 'clamp(22px, 3.2vh, 38px)' }}>
+      <div className="hidden overflow-hidden text-right font-bold leading-none text-amber-700 dark:text-yellow-300 sm:block" style={{ fontSize: 'clamp(18px, 2.8vh, 32px)' }}>
         {callsText}
       </div>
-      <div className="hidden text-right font-bold leading-none text-amber-800 dark:text-yellow-300 sm:block" style={{ fontSize: 'clamp(22px, 3.2vh, 38px)' }}>
+      <div className="hidden overflow-hidden text-right font-bold leading-none text-amber-800 dark:text-yellow-300 sm:block" style={{ fontSize: 'clamp(18px, 2.8vh, 32px)' }}>
         {conv}
       </div>
     </div>
