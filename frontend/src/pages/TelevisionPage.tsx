@@ -520,7 +520,7 @@ function RankPanel({
       }`}
     >
       <div
-        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-cyan-200 grid-cols-[minmax(36px,0.5fr)_minmax(0,1.5fr)_minmax(56px,0.8fr)_minmax(72px,1fr)] sm:grid-cols-[minmax(44px,0.5fr)_minmax(0,1.5fr)_minmax(64px,0.7fr)_minmax(96px,1fr)_minmax(64px,0.7fr)_minmax(72px,0.8fr)] sm:gap-4 sm:px-3"
+        className="mb-2 grid items-center gap-2 px-2 font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-cyan-200 grid-cols-[minmax(36px,0.4fr)_minmax(0,2fr)_minmax(52px,0.7fr)_minmax(68px,1fr)] sm:grid-cols-[minmax(44px,0.4fr)_minmax(0,2.5fr)_minmax(58px,0.55fr)_minmax(86px,0.85fr)_minmax(58px,0.55fr)_minmax(66px,0.65fr)] sm:gap-3 sm:px-3"
         style={{
           fontFamily: 'Barlow Condensed, system-ui, sans-serif',
           fontSize: 'clamp(10px, 0.9vw, 13px)',
@@ -599,7 +599,7 @@ function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number;
   const rowBg = leadCfg ? '' : zebra ? 'bg-slate-100/70 dark:bg-cyan-400/[0.07]' : '';
   return (
     <div
-      className={`grid min-h-[64px] flex-1 items-center gap-2 sm:gap-4 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-2 sm:px-3 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'} grid-cols-[minmax(36px,0.5fr)_minmax(0,1.5fr)_minmax(56px,0.8fr)_minmax(72px,1fr)] sm:grid-cols-[minmax(44px,0.5fr)_minmax(0,1.5fr)_minmax(64px,0.7fr)_minmax(96px,1fr)_minmax(64px,0.7fr)_minmax(72px,0.8fr)]`}
+      className={`grid min-h-[64px] flex-1 items-center gap-2 sm:gap-3 border-b border-slate-300/80 dark:border-b-cyan-400/15 border-l-[4px] px-2 sm:px-3 ${rowBg} ${flash ? 'animate-pulse' : ''} ${leadCfg ? `${leadCfg.borderLight} ${leadCfg.borderDark}` : 'border-l-[#0e7490] dark:border-l-cyan-300/40'} grid-cols-[minmax(36px,0.4fr)_minmax(0,2fr)_minmax(52px,0.7fr)_minmax(68px,1fr)] sm:grid-cols-[minmax(44px,0.4fr)_minmax(0,2.5fr)_minmax(58px,0.55fr)_minmax(86px,0.85fr)_minmax(58px,0.55fr)_minmax(66px,0.65fr)]`}
       style={{
         background: leadCfg ? leadCfg.gradient : undefined,
         animation: flash ? 'tvRankFlash 1.4s ease' : undefined,
@@ -613,14 +613,14 @@ function RankRow({ agent, rank, flash, zebra }: { agent: AgentRow; rank: number;
         {rank === 1 ? <CrownIcon /> : null}
         {rank}
       </div>
-      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="flex min-w-0 items-center gap-2 pr-2 sm:gap-3 sm:pr-4">
         <div
           className="grid aspect-square h-[clamp(48px,6vh,80px)] w-auto shrink-0 place-items-center rounded-full font-bold bg-slate-100 border border-slate-300 text-indigo-700 dark:bg-slate-900/60 dark:border-cyan-400/40 dark:text-cyan-200"
           style={{ fontSize: 'clamp(16px, 2.5vh, 30px)' }}
         >
           {initials(agent.name)}
         </div>
-        <div className="min-w-0 flex-1 truncate font-bold leading-tight text-slate-800 dark:text-cyan-100" style={{ fontSize: 'clamp(20px, 3.5vh, 42px)' }}>
+        <div className="min-w-0 flex-1 truncate font-bold leading-tight text-slate-800 dark:text-cyan-100" style={{ fontSize: 'clamp(18px, 3vh, 32px)' }}>
           {displayName(agent.name)}
         </div>
       </div>
