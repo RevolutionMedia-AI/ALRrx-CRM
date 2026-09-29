@@ -94,7 +94,13 @@ COPY backend/ALRrx.Api/        ALRrx.Api/
 COPY backend/ALRrx.Application/ ALRrx.Application/
 COPY backend/ALRrx.Domain/     ALRrx.Domain/
 COPY backend/ALRrx.Infrastructure/ ALRrx.Infrastructure/
-RUN dotnet restore ALRrx.sln
+# Restore the project we publish, not the whole solution. ALRrx.sln also lists
+# ALRrx.Application.Tests, which is deliberately absent from this image (tests
+# are not shipped), so restoring the solution fails with MSB3202 "project file
+# not found" the moment a test project is added. Targeting the publish closure
+# keeps the layer cache benefit and makes the build independent of what else
+# the solution contains. Mirrors the publish on the next line.
+RUN dotnet restore ALRrx.Api/ALRrx.Api.csproj
 COPY backend/ .
 RUN dotnet publish ALRrx.Api/ALRrx.Api.csproj -c Release -o /publish-alrrx
 
