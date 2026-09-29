@@ -65,6 +65,58 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         await EnsureLeadIdColumnAsync(connection, ct);
         await EnsureLeadIdIndexAsync(connection, ct);
         await EnsureConfirmationUrlColumnAsync(connection, ct);
+        await EnsureIdempotencyKeyAsync(connection, ct);
+    }
+
+    /// <summary>
+    /// Adds IdempotencyKey plus its UNIQUE index. MySQL treats NULLs as
+    /// distinct in a unique index, so human submissions that send no key stay
+    /// unconstrained while agent submissions that do send one are protected
+    /// against double-insert on retry.
+    /// </summary>
+    private async Task EnsureIdempotencyKeyAsync(MySqlConnection connection, CancellationToken ct)
+    {
+        const string columnCheck = """
+            SELECT COUNT(*) FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'vicidial_form_sales'
+              AND COLUMN_NAME = 'IdempotencyKey'
+            """;
+
+        await using (var checkCmd = new MySqlCommand(columnCheck, connection))
+        {
+            if (Convert.ToInt32(await checkCmd.ExecuteScalarAsync(ct)) == 0)
+            {
+                const string addColumn = """
+                    ALTER TABLE vicidial_form_sales
+                        ADD COLUMN IdempotencyKey VARCHAR(64) NULL AFTER Source
+                    """;
+                await using var alterCmd = new MySqlCommand(addColumn, connection);
+                await alterCmd.ExecuteNonQueryAsync(ct);
+                _logger.LogInformation("vicidial_form_sales.IdempotencyKey column added");
+            }
+        }
+
+        const string indexCheck = """
+            SELECT COUNT(*) FROM information_schema.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'vicidial_form_sales'
+              AND INDEX_NAME = 'uq_idempotency_key'
+            """;
+
+        await using (var checkCmd = new MySqlCommand(indexCheck, connection))
+        {
+            if (Convert.ToInt32(await checkCmd.ExecuteScalarAsync(ct)) == 0)
+            {
+                const string addIndex = """
+                    ALTER TABLE vicidial_form_sales
+                        ADD UNIQUE INDEX uq_idempotency_key (IdempotencyKey)
+                    """;
+                await using var alterCmd = new MySqlCommand(addIndex, connection);
+                await alterCmd.ExecuteNonQueryAsync(ct);
+                _logger.LogInformation("vicidial_form_sales uq_idempotency_key index added");
+            }
+        }
     }
 
     private async Task EnsureLeadIdColumnAsync(MySqlConnection connection, CancellationToken ct)
@@ -148,16 +200,26 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         _logger.LogInformation("vicidial_form_sales.ConfirmationUrl column added");
     }
 
-    public async Task<int> InsertAsync(VicidialSaleRequest request, string bundleDisplayName, CancellationToken ct = default)
+    public async Task<int?> GetByIdempotencyKeyAsync(string idempotencyKey, CancellationToken ct = default)
+    {
+        await using var connection = await GetOpenConnectionAsync(ct);
+        await using var cmd = new MySqlCommand(
+            "SELECT Id FROM vicidial_form_sales WHERE IdempotencyKey = @Key LIMIT 1", connection);
+        cmd.Parameters.Add("@Key", MySqlDbType.VarChar).Value = idempotencyKey;
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is null or DBNull ? null : Convert.ToInt32(result);
+    }
+
+    public async Task<int> InsertAsync(VicidialSaleRequest request, string bundleDisplayName, string? idempotencyKey, CancellationToken ct = default)
     {
         var source = request.LeadId.HasValue ? "VicidialForm" : "ManualForm";
 
         await using var connection = await GetOpenConnectionAsync(ct);
         await using var cmd = new MySqlCommand("""
             INSERT INTO vicidial_form_sales
-                (LeadId, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, ConfirmationUrl, Source)
+                (LeadId, SalesRep, SaleDate, ClientPhone, ClientName, ClientEmail, Bundle, Amount, ConfirmationUrl, Source, IdempotencyKey)
             VALUES
-                (@LeadId, @SalesRep, @SaleDate, @ClientPhone, @ClientName, @ClientEmail, @Bundle, @Amount, @ConfirmationUrl, @Source)
+                (@LeadId, @SalesRep, @SaleDate, @ClientPhone, @ClientName, @ClientEmail, @Bundle, @Amount, @ConfirmationUrl, @Source, @IdempotencyKey)
             """, connection);
 
         cmd.Parameters.Add("@LeadId", MySqlDbType.Int32).Value = (object?)request.LeadId ?? DBNull.Value;
@@ -170,9 +232,30 @@ public sealed class VicidialSalesRepository : IVicidialSalesRepository
         cmd.Parameters.AddWithValue("@Amount", request.Amount);
         cmd.Parameters.AddWithValue("@ConfirmationUrl", request.ConfirmationUrl.Trim());
         cmd.Parameters.Add("@Source", MySqlDbType.VarChar).Value = source;
+        cmd.Parameters.Add("@IdempotencyKey", MySqlDbType.VarChar).Value =
+            string.IsNullOrWhiteSpace(idempotencyKey) ? DBNull.Value : idempotencyKey.Trim();
 
-        await cmd.ExecuteNonQueryAsync(ct);
-        var newId = cmd.LastInsertedId;
+        long newId;
+        try
+        {
+            await cmd.ExecuteNonQueryAsync(ct);
+            newId = cmd.LastInsertedId;
+        }
+        catch (MySqlException ex) when (ex.Number == 1062 && !string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            // 1062 = duplicate key: a concurrent request carrying the same key
+            // won the race between the caller's pre-check and this INSERT. The
+            // unique index is the actual guarantee, so honour the winner rather
+            // than surfacing a 500 for what is logically the same sale.
+            var winner = await GetByIdempotencyKeyAsync(idempotencyKey.Trim(), ct);
+            if (winner is not null)
+            {
+                _logger.LogInformation("Vicidial sale idempotent race: key={Key} resolved to existing #{Id}", idempotencyKey, winner);
+                return winner.Value;
+            }
+            throw;
+        }
+
         _logger.LogInformation("Vicidial sale recorded: LeadId={LeadId} | {SalesRep} | {Bundle} | ${Amount} | Id={Id} | Source={Source}",
             request.LeadId, request.SalesRep, bundleDisplayName, request.Amount, newId, source);
         return Convert.ToInt32(newId);

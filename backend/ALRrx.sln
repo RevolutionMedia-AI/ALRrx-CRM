@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ALRrx.Infrastructure", "ALR
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ALRrx.Api", "ALRrx.Api\ALRrx.Api.csproj", "{996D875C-8DC3-45ED-AD56-58182F97F1DC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ALRrx.Application.Tests", "ALRrx.Application.Tests\ALRrx.Application.Tests.csproj", "{33FA0CFC-2E26-475C-B188-B04983517253}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{996D875C-8DC3-45ED-AD56-58182F97F1DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{996D875C-8DC3-45ED-AD56-58182F97F1DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{996D875C-8DC3-45ED-AD56-58182F97F1DC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33FA0CFC-2E26-475C-B188-B04983517253}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33FA0CFC-2E26-475C-B188-B04983517253}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33FA0CFC-2E26-475C-B188-B04983517253}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33FA0CFC-2E26-475C-B188-B04983517253}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

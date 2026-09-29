@@ -57,10 +57,18 @@ public sealed class VicidialFormController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        // Optional, but an AI caller that times out and retries without it will
+        // double-insert. Any stable per-sale string works (UUID, call id).
+        var idempotencyKey = Request.Headers["Idempotency-Key"].FirstOrDefault()?.Trim();
+        if (idempotencyKey is { Length: > 64 })
+            return BadRequest(new { error = "Idempotency-Key must be 64 characters or fewer" });
+
         try
         {
-            var newId = await _submit.ExecuteAsync(request, ct);
-            return Ok(new { id = newId, message = "Sale recorded successfully" });
+            var newId = await _submit.ExecuteAsync(request, idempotencyKey, ct);
+            // Echo the normalized sale date so the caller can confirm the sale
+            // landed on the intended business day.
+            return Ok(new { id = newId, saleDate = request.SaleDate, message = "Sale recorded successfully" });
         }
         catch (ArgumentException ex)
         {

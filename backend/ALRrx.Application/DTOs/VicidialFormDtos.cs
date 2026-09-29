@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 
 namespace ALRrx.Application.DTOs;
 
@@ -50,7 +51,7 @@ public sealed class VicidialSaleRequest
     public string SalesRep { get; init; } = string.Empty;
 
     [Required]
-    public DateTime SaleDate { get; init; }
+    public DateTime SaleDate { get; set; }
 
     [Required]
     public string ClientPhone { get; init; } = string.Empty;
@@ -159,23 +160,40 @@ public static class BundleTypeExtensions
         _ => bundle.ToString()
     };
 
-    public static bool TryParseBundle(string input, out BundleType result)
+    // A phone AI agent does not reliably emit the canonical display string:
+    // it writes "glp-1 3-month", "GLP1 3mo", "GLP-1/GIP 3 meses". The previous
+    // switch only matched 8 hardcoded spellings and 400'd everything else, so
+    // the caller had to guess. This normalizes separators away and then
+    // matches the (drug, gip?, months, unit?) shape, tolerating the unit being
+    // singular, plural, abbreviated, in Spanish, or absent entirely.
+    private static readonly Regex BundleRegex = new(
+        @"^(?<drug>glp1|glpone)(?<gip>gip)?(?<months>1|3|6|12)(?<unit>months?|mos?|meses|mes|m)?$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    public static bool TryParseBundle(string? input, out BundleType result)
     {
         result = default;
-        var normalized = input?.Trim().ToLowerInvariant().Replace(" ", "").Replace("-", "").Replace("/", "") ?? "";
-        return normalized switch
-        {
-            "glp11month" => Assign(result = BundleType.Glp1_1Month),
-            "glp13months" => Assign(result = BundleType.Glp1_3Months),
-            "glp16months" => Assign(result = BundleType.Glp1_6Months),
-            "glp112months" => Assign(result = BundleType.Glp1_12Months),
-            "glp1gip1month" => Assign(result = BundleType.Glp1Gip_1Month),
-            "glp1gip3months" => Assign(result = BundleType.Glp1Gip_3Months),
-            "glp1gip6months" => Assign(result = BundleType.Glp1Gip_6Months),
-            "glp1gip12months" => Assign(result = BundleType.Glp1Gip_12Months),
-            _ => false
-        };
-    }
+        if (string.IsNullOrWhiteSpace(input)) return false;
 
-    private static bool Assign(BundleType _) => true;
+        var normalized = input.Trim().ToLowerInvariant()
+            .Replace(" ", "").Replace("-", "").Replace("_", "").Replace("/", "").Replace(".", "");
+        var match = BundleRegex.Match(normalized);
+        if (!match.Success) return false;
+
+        var gip = match.Groups["gip"].Success;
+        result = (gip, match.Groups["months"].Value) switch
+        {
+            (false, "1") => BundleType.Glp1_1Month,
+            (false, "3") => BundleType.Glp1_3Months,
+            (false, "6") => BundleType.Glp1_6Months,
+            (false, "12") => BundleType.Glp1_12Months,
+            (true, "1") => BundleType.Glp1Gip_1Month,
+            (true, "3") => BundleType.Glp1Gip_3Months,
+            (true, "6") => BundleType.Glp1Gip_6Months,
+            (true, "12") => BundleType.Glp1Gip_12Months,
+            // Unreachable: the regex only admits 1/3/6/12.
+            _ => BundleType.Glp1_1Month,
+        };
+        return true;
+    }
 }
