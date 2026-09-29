@@ -110,6 +110,24 @@ public sealed record ActiveAltrxAgentDto
     public string FullName { get; init; } = string.Empty;
 }
 
+/// <summary>
+/// Decides whether a submitted SalesRep names a real agent. The caller has
+/// already narrowed the list to active ALTRX agents, so this only has to match
+/// the string. SalesRep arrives as a full name from the human form and as a
+/// username when it falls back, so both are accepted.
+/// </summary>
+public static class ActiveAgentMatcher
+{
+    public static bool IsKnownAgent(IEnumerable<ActiveAltrxAgentDto> agents, string? salesRep)
+    {
+        if (string.IsNullOrWhiteSpace(salesRep)) return false;
+        var needle = salesRep.Trim();
+        return agents.Any(a =>
+            string.Equals(a.FullName, needle, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(a.User, needle, StringComparison.OrdinalIgnoreCase));
+    }
+}
+
 public sealed record VicidialSaleEnrichedDto
 {
     public int Id { get; init; }

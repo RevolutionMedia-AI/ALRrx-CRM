@@ -73,4 +73,40 @@ public class VicidialSaleInputTests
         (DateTime)typeof(SubmitVicidialSaleUseCase)
             .GetMethod("ToBusinessWallClock", BindingFlags.NonPublic | BindingFlags.Static)!
             .Invoke(null, new object[] { saleDate })!;
+
+    private static readonly List<ActiveAltrxAgentDto> ActiveAgents = new()
+    {
+        new() { User = "kevin.escalante", FullName = "Kevin Escalante" },
+        new() { User = "jessica.duarte", FullName = "Jessica Duarte" },
+    };
+
+    [Theory]
+    [InlineData("Kevin Escalante")]   // full name, as the human form sends
+    [InlineData("kevin.escalante")]   // username fallback
+    [InlineData("KEVIN ESCALANTE")]   // case-insensitive
+    [InlineData("  Kevin Escalante ")]
+    public void IsKnownAgent_accepts_active_agent(string salesRep)
+        => Assert.True(ActiveAgentMatcher.IsKnownAgent(ActiveAgents, salesRep));
+
+    [Theory]
+    [InlineData("Not An Agent")]
+    [InlineData("Kevin Escalante Jr")]
+    [InlineData("kevin")]             // partial match must not pass
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void IsKnownAgent_rejects_others(string? salesRep)
+        => Assert.False(ActiveAgentMatcher.IsKnownAgent(ActiveAgents, salesRep));
+
+    // A deactivated Vicidial user drops out of the list, so the same name
+    // stops validating.
+    [Fact]
+    public void IsKnownAgent_rejects_agent_no_longer_active()
+    {
+        var stillActive = new List<ActiveAltrxAgentDto>
+        {
+            new() { User = "jessica.duarte", FullName = "Jessica Duarte" },
+        };
+        Assert.False(ActiveAgentMatcher.IsKnownAgent(stillActive, "Kevin Escalante"));
+    }
 }

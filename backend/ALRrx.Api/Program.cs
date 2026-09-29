@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
 using ALRrx.Api.HostedServices;
@@ -10,6 +11,7 @@ using ALRrx.Domain.ValueObjects;
 using ALRrx.Infrastructure.DependencyInjection;
 using ALRrx.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 
@@ -89,6 +91,7 @@ var rlGlobal = builder.Configuration.GetValue<int>("RateLimiting:GlobalPerIpPerM
 var rlAuth = builder.Configuration.GetValue<int>("RateLimiting:AuthPerIpPerMinute", 60);
 var rlAuthCheck = builder.Configuration.GetValue<int>("RateLimiting:AuthCheckPerUserPerMinute", 120);
 var rlVicidial = builder.Configuration.GetValue<int>("RateLimiting:VicidialPerIpPerMinute", 120);
+var rlVicidialSale = builder.Configuration.GetValue<int>("RateLimiting:VicidialSalePerIpPer2Min", 15);
 var rlAdmin = builder.Configuration.GetValue<int>("RateLimiting:AdminPerUserPerMinute", 120);
 
 builder.Services.AddRateLimiter(options =>
@@ -137,6 +140,24 @@ builder.Services.AddRateLimiter(options =>
         {
             PermitLimit = rlAuth,
             Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+        });
+    });
+
+    // Sale intake (POST /api/vicidial-form/sale) is called by an automated
+    // agent with no session, so it gets a much tighter bucket than the rest of
+    // the Vicidial surface: 15 per IP per 2 minutes. Tripping it is not just a
+    // 429 for this window — IpBanMiddleware turns the rejection into a
+    // multi-hour ban, because a limit that resets every two minutes is one an
+    // attacker can simply wait out. Attached to the action only, so the
+    // human-facing GETs keep the permissive "vicidial" bucket.
+    options.AddPolicy("vicidial-sale", ctx =>
+    {
+        var key = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = rlVicidialSale,
+            Window = TimeSpan.FromMinutes(2),
             QueueLimit = 0,
         });
     });
@@ -219,10 +240,24 @@ builder.Services.AddApplication();
 
 builder.Services.AddSingleton<IAuthService, ALRrx.Infrastructure.Auth.AuthService>();
 builder.Services.AddSingleton<ISalesBroadcastService, SignalRSalesBroadcastService>();
+builder.Services.AddSingleton<IpBanStore>();
 builder.Services.AddHostedService<DatabaseSeedHostedService>();
 builder.Services.AddScoped<ALRrx.Application.Interfaces.ITwilioService, ALRrx.Infrastructure.Twilio.TwilioService>();
 
 var app = builder.Build();
+
+// Must run before UseRateLimiter, which keys every per-IP bucket off
+// Connection.RemoteIpAddress. In the combined container nginx is the only
+// thing connecting to :5000, so without this every request looks like it came
+// from loopback and the "per-IP" limits would actually be global — one noisy
+// caller could lock out everyone. Only the co-located proxy is trusted, so a
+// client cannot spoof its address by sending its own X-Forwarded-For.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    KnownNetworks = { new Microsoft.AspNetCore.HttpOverrides.IPNetwork(IPAddress.Loopback, 8) },
+    KnownProxies = { IPAddress.Loopback, IPAddress.IPv6Loopback },
+});
 
 app.UseCors();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
@@ -236,6 +271,9 @@ app.Use(async (ctx, next) =>
 
 app.UseAuthentication();
 app.UseAuthorization();
+// Must sit immediately before UseRateLimiter: a banned IP is turned away
+// without consuming quota, and the limiter's 429 is what triggers the ban.
+app.UseMiddleware<IpBanMiddleware>();
 app.UseRateLimiter();
 app.UseMiddleware<UserStatusMiddleware>();
 

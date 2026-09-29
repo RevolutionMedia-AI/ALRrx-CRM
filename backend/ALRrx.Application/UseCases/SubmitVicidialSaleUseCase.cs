@@ -7,15 +7,18 @@ namespace ALRrx.Application.UseCases;
 public sealed class SubmitVicidialSaleUseCase
 {
     private readonly IVicidialSalesRepository _repo;
+    private readonly IActiveAgentsRepository _agents;
     private readonly ILogger<SubmitVicidialSaleUseCase> _logger;
     private readonly ISalesBroadcastService? _broadcast;
 
     public SubmitVicidialSaleUseCase(
         IVicidialSalesRepository repo,
+        IActiveAgentsRepository agents,
         ILogger<SubmitVicidialSaleUseCase> logger,
         ISalesBroadcastService? broadcast = null)
     {
         _repo = repo;
+        _agents = agents;
         _logger = logger;
         _broadcast = broadcast;
     }
@@ -43,6 +46,16 @@ public sealed class SubmitVicidialSaleUseCase
             throw new ArgumentException($"Invalid bundle: '{request.Bundle}'. Allowed: GLP-1 1/3/6/12 Months, GLP-1/GIP 1/3/6/12 Months");
 
         var bundleDisplayName = bundleType.ToDisplayName();
+
+        // The caller is an automated agent with no session, so the SalesRep it
+        // claims is the only identity signal on the request. Require it to be an
+        // agent Vicidial still has active before anything is written.
+        var rep = request.SalesRep.Trim();
+        if (!ActiveAgentMatcher.IsKnownAgent(await _agents.GetActiveAltrxAgentsAsync(ct), rep))
+        {
+            _logger.LogWarning("Rejected sale: SalesRep '{SalesRep}' is not an active ALTRX agent", rep);
+            throw new UnauthorizedAccessException($"SalesRep '{rep}' is not an active ALTRX agent");
+        }
 
         // MySQL stores SaleDate in a naive DATETIME column and every report
         // query filters it against America/Tijuana wall-clock strings. A caller

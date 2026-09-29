@@ -50,6 +50,8 @@ public sealed class VicidialFormController : ControllerBase
     }
 
     [HttpPost("sale")]
+    // Overrides the controller-level "vicidial" bucket for this action only.
+    [EnableRateLimiting("vicidial-sale")]
     public async Task<ActionResult> SubmitSale(
         [FromBody] VicidialSaleRequest request,
         CancellationToken ct = default)
@@ -73,6 +75,10 @@ public sealed class VicidialFormController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { error = ex.Message });
         }
     }
 
