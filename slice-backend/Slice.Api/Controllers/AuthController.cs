@@ -75,15 +75,23 @@ public sealed class AuthController : ControllerBase
             googleRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", request.AccessToken);
             using var googleResponse = await client.SendAsync(googleRequest, HttpCompletionOption.ResponseHeadersRead, ct);
 
+            if ((int)googleResponse.StatusCode == 429 || (int)googleResponse.StatusCode >= 500)
+                return StatusCode(503, new { error = "Google verification temporarily unavailable." });
+
             if (!googleResponse.IsSuccessStatusCode)
                 return Unauthorized(new { error = "Invalid Google token." });
 
             userInfo = await googleResponse.Content.ReadFromJsonAsync<GoogleUserInfo>(ct);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("Google userinfo request timed out");
+            return StatusCode(503, new { error = "Google verification temporarily unavailable." });
+        }
+        catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Failed to fetch Google userinfo");
-            return Unauthorized(new { error = "Invalid Google token." });
+            return StatusCode(503, new { error = "Google verification temporarily unavailable." });
         }
 
         if (userInfo is null || string.IsNullOrEmpty(userInfo.Email))

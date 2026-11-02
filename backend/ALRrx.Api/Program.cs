@@ -85,6 +85,11 @@ builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient("Google", client =>
+{
+    client.BaseAddress = new Uri("https://www.googleapis.com/oauth2/v3/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 builder.Services.AddHttpClient<IEmailService, ResendEmailService>();
 
 var rlGlobal = builder.Configuration.GetValue<int>("RateLimiting:GlobalPerIpPerMinute", 600);

@@ -19,6 +19,7 @@ public sealed class AuthController : ControllerBase
     private readonly IAuthService _auth;
     private readonly IAuditLogRepository _audit;
     private readonly IEmailService _email;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
     private readonly ALRrx.Application.Interfaces.IRevokedUserStore _revoked;
@@ -30,6 +31,7 @@ public sealed class AuthController : ControllerBase
         IAuthService auth,
         IAuditLogRepository audit,
         IEmailService email,
+        IHttpClientFactory httpClientFactory,
         IConfiguration config,
         IWebHostEnvironment env,
         ALRrx.Application.Interfaces.IRevokedUserStore revoked,
@@ -40,6 +42,7 @@ public sealed class AuthController : ControllerBase
         _auth = auth;
         _audit = audit;
         _email = email;
+        _httpClientFactory = httpClientFactory;
         _config = config;
         _env = env;
         _revoked = revoked;
@@ -100,21 +103,29 @@ public sealed class AuthController : ControllerBase
         GoogleUserInfo? userInfo;
         try
         {
-            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-            http.DefaultRequestHeaders.Authorization =
+            using var http = _httpClientFactory.CreateClient("Google");
+            using var googleRequest = new HttpRequestMessage(HttpMethod.Get, "userinfo");
+            googleRequest.Headers.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", request.AccessToken);
+            using var googleResponse = await http.SendAsync(googleRequest, ct);
 
-            userInfo = await http.GetFromJsonAsync<GoogleUserInfo>(
-                "https://www.googleapis.com/oauth2/v3/userinfo", ct);
+            if ((int)googleResponse.StatusCode == 429 || (int)googleResponse.StatusCode >= 500)
+                return StatusCode(503, new { error = "Google verification temporarily unavailable" });
+
+            if (!googleResponse.IsSuccessStatusCode)
+                return Unauthorized(new { error = "Invalid Google token" });
+
+            userInfo = await googleResponse.Content.ReadFromJsonAsync<GoogleUserInfo>(ct);
         }
-        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            return Unauthorized(new { error = "Google verification timed out" });
+            _logger.LogWarning("Google userinfo request timed out");
+            return StatusCode(503, new { error = "Google verification temporarily unavailable" });
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Google login failed");
-            return Unauthorized(new { error = "Invalid Google credential" });
+            _logger.LogWarning(ex, "Google userinfo request failed");
+            return StatusCode(503, new { error = "Google verification temporarily unavailable" });
         }
 
         if (userInfo is null || string.IsNullOrEmpty(userInfo.Email))

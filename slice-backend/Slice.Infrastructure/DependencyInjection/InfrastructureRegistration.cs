@@ -88,6 +88,7 @@ public static class InfrastructureRegistration
         services.AddHttpClient("Google", client =>
         {
             client.BaseAddress = new Uri("https://www.googleapis.com/oauth2/v3/");
+            client.Timeout = TimeSpan.FromSeconds(10);
         });
 
         services.AddScoped<IEmailService, ResendEmailService>();
