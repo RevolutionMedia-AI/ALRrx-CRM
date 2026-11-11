@@ -29,12 +29,13 @@ public readonly record struct TimeRange
         var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
         var todayStart = nowLocal.Date;
         var todayEnd = todayStart.AddDays(1).AddSeconds(-1);
+        var daysSinceMonday = ((int)todayStart.DayOfWeek + 6) % 7;
         return period switch
         {
             TimePeriod.LastHour => new TimeRange(nowLocal.AddHours(-1), nowLocal),
             TimePeriod.Today => new TimeRange(todayStart, todayEnd),
             TimePeriod.ThisWeek => new TimeRange(
-                todayStart.AddDays(-(int)todayStart.DayOfWeek),
+                todayStart.AddDays(-daysSinceMonday),
                 todayEnd),
             TimePeriod.ThisMonth => new TimeRange(
                 new DateTime(todayStart.Year, todayStart.Month, 1, 0, 0, 0),

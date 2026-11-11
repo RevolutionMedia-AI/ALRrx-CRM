@@ -74,10 +74,10 @@ public sealed class GetAgentPerformanceWithSalesUseCase
         {
             return (
                 filter.CustomStart.Value.ToString("yyyy-MM-dd HH:mm:ss"),
-                filter.CustomEnd.Value.ToString("yyyy-MM-dd HH:mm:ss")
+                filter.CustomEnd.Value.AddSeconds(1).ToString("yyyy-MM-dd HH:mm:ss")
             );
         }
         var tr = TimeFilterHelper.BuildTimeRange(filter);
-        return (tr.Start.ToString("yyyy-MM-dd HH:mm:ss"), tr.End.ToString("yyyy-MM-dd HH:mm:ss"));
+        return (tr.Start.ToString("yyyy-MM-dd HH:mm:ss"), tr.End.AddSeconds(1).ToString("yyyy-MM-dd HH:mm:ss"));
     }
 }
