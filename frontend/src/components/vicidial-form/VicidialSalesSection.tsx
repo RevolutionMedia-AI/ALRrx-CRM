@@ -12,6 +12,7 @@ interface VicidialSalesSectionProps {
   pagePeriod?: PagePeriod;
   pageCustomStart?: string;
   pageCustomEnd?: string;
+  onSalesChanged?: () => void;
 }
 
 const ALLOWED_EDIT_EMAILS = new Set<string>([
@@ -135,7 +136,7 @@ function ConfirmDeleteModal({
   );
 }
 
-export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageCustomStart, pageCustomEnd }: VicidialSalesSectionProps) {
+export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageCustomStart, pageCustomEnd, onSalesChanged }: VicidialSalesSectionProps) {
   const { user } = useAuth();
   const canEdit = !!user && ALLOWED_EDIT_EMAILS.has(user.email);
 
@@ -218,6 +219,7 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
       await updateVicidialSale(editingId, { ...editForm, editorEmail: user.email });
       cancelEdit();
       setRefreshNonce((n) => n + 1);
+      onSalesChanged?.();
     } catch (err: unknown) {
       setEditError(extractErrorMessage(err, 'Could not update the sale'));
     } finally {
@@ -243,6 +245,7 @@ export default function VicidialSalesSection({ refreshKey = 0, pagePeriod, pageC
       await deleteVicidialSale(deletingId, user.email);
       cancelDelete();
       setRefreshNonce((n) => n + 1);
+      onSalesChanged?.();
     } catch (err: unknown) {
       setDeleteError(extractErrorMessage(err, 'Could not delete the sale'));
     } finally {

@@ -858,6 +858,7 @@ export default function AnalyticsPage() {
         pagePeriod={period}
         pageCustomStart={customStart}
         pageCustomEnd={customEnd}
+        onSalesChanged={() => { void fetchAnalytics(period); }}
       />
 
       <PeriodComparisonModal isOpen={showPeriodComparison} onClose={() => setShowPeriodComparison(false)} />
