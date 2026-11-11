@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { listAllVicidialSales, updateVicidialSale, deleteVicidialSale, exportVicidialSalesExcel, type VicidialSaleUpdatePayload } from '../../services/vicidialFormApi';
 import { BUNDLE_OPTIONS, type BundleOption, type VicidialSaleDto } from '../../types';
 import { extractErrorMessage } from '../../utils/extractErrorMessage';
+import { getBusinessDateRange } from '../../utils/businessDateRange';
 
 type PagePeriod = 'Today' | 'Week' | 'Month' | 'Custom';
 
@@ -21,17 +22,6 @@ const ALLOWED_EDIT_EMAILS = new Set<string>([
 
 const BUSINESS_TZ = 'America/Tijuana';
 
-const TIJUANA_FMT = new Intl.DateTimeFormat('en-CA', {
-  timeZone: BUSINESS_TZ,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: false,
-});
-
 const TIJUANA_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
   timeZone: BUSINESS_TZ,
   year: 'numeric',
@@ -39,53 +29,16 @@ const TIJUANA_DATE_FMT = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 });
 
-function formatTijuanaDateTime(d: Date): string {
-  const parts = TIJUANA_FMT.formatToParts(d);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
-  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
-}
-
 function formatTijuanaDate(d: Date): string {
   const parts = TIJUANA_DATE_FMT.formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '00';
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
-function getTijuanaDateParts(d: Date): { year: number; month: number; day: number; dayOfWeek: number } {
-  const dateStr = formatTijuanaDate(d);
-  const [y, m, day] = dateStr.split('-').map(Number);
-  const dayOfWeek = new Date(y, m - 1, day).getDay();
-  return { year: y, month: m, day, dayOfWeek };
-}
-
-function addDays(d: Date, n: number): Date {
-  return new Date(d.getTime() + n * 24 * 60 * 60 * 1000);
-}
-
 function getEffectivePeriod(period: PagePeriod | undefined, customStart: string | undefined, customEnd: string | undefined): { from: string; to: string } {
   if (!period) return { from: '', to: '' };
-  const now = new Date();
-  const tp = getTijuanaDateParts(now);
-  const todayLocalMidnight = new Date(tp.year, tp.month - 1, tp.day, 0, 0, 0);
-  if (period === 'Today') {
-    const tomorrow = addDays(todayLocalMidnight, 1);
-    return { from: formatTijuanaDateTime(todayLocalMidnight), to: formatTijuanaDateTime(tomorrow) };
-  }
-  if (period === 'Week') {
-    const daysSinceMonday = tp.dayOfWeek === 0 ? 6 : tp.dayOfWeek - 1;
-    const startLocalMidnight = addDays(todayLocalMidnight, -daysSinceMonday);
-    const tomorrow = addDays(todayLocalMidnight, 1);
-    return { from: formatTijuanaDateTime(startLocalMidnight), to: formatTijuanaDateTime(tomorrow) };
-  }
-  if (period === 'Month') {
-    const startLocalMidnight = new Date(tp.year, tp.month - 1, 1, 0, 0, 0);
-    const nextMonthStart = new Date(tp.year, tp.month, 1, 0, 0, 0);
-    return { from: formatTijuanaDateTime(startLocalMidnight), to: formatTijuanaDateTime(nextMonthStart) };
-  }
-  return {
-    from: `${customStart ?? ''} 00:00:00`,
-    to: `${customEnd ?? ''} 23:59:59`,
-  };
+  const range = getBusinessDateRange(period, customStart, customEnd);
+  return { from: range.from ?? '', to: range.to ?? '' };
 }
 
 function formatCurrency(amount: number): string {
